@@ -1,0 +1,71 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+require('dotenv').config();
+
+const { connectDB } = require('./config/db');
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const bookRoutes = require('./routes/books');
+const authorRoutes = require('./routes/authors');
+const genreRoutes = require('./routes/genres');
+const libraryRoutes = require('./routes/library');
+const wishlistRoutes = require('./routes/wishlist');
+const reviewRoutes = require('./routes/reviews');
+const errorHandler = require('./middleware/errorHandler');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+app.get('/api/v1/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/books', bookRoutes);
+app.use('/api/v1/authors', authorRoutes);
+app.use('/api/v1/genres', genreRoutes);
+app.use('/api/v1/library', libraryRoutes);
+app.use('/api/v1/wishlist', wishlistRoutes);
+app.use('/api/v1/reviews', reviewRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({ message: 'Resource not found' });
+});
+
+app.use(errorHandler);
+
+const startServer = async () => {
+  try {
+    const useMocks = process.env.USE_MOCKS === 'true';
+    if (!useMocks) {
+      await connectDB();
+      if (process.env.NODE_ENV !== 'test') {
+        console.log('✅ Database connected successfully');
+      }
+    } else if (process.env.NODE_ENV !== 'test') {
+      console.log('⚠️  USE_MOCKS=true → skipping database connection (responses served from mock data)');
+    }
+
+    app.listen(PORT, () => {
+      console.log(`🚀 BiblioConnect API listening on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error('❌ Unable to connect to database', err);
+    process.exit(1);
+  }
+};
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;
+module.exports.startServer = startServer;
