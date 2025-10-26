@@ -16,7 +16,7 @@ import ReviewCard from '../components/ReviewCard.jsx'
 import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
 import getAverageRating from '../utils/getAverageRating'
-import { ASSETS_BASE_URL } from '../api/axios'
+import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
@@ -68,7 +68,7 @@ const BookDetails = () => {
     if (!isbn) {
       return []
     }
-    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BASE_URL}/${isbn}.${ext}`)
+    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BOOKS_BASE_URL}/${isbn}.${ext}`)
   }, [bookQuery.data?.isbn])
 
   const [coverSrc, setCoverSrc] = useState(() => coverCandidates[0] || PLACEHOLDER_COVER)

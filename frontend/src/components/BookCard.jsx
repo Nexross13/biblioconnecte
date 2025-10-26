@@ -6,7 +6,7 @@ import clsx from 'clsx'
 import { addBookToLibrary, removeBookFromLibrary } from '../api/library'
 import { addBookToWishlist, removeBookFromWishlist } from '../api/wishlist'
 import useAuth from '../hooks/useAuth'
-import { ASSETS_BASE_URL } from '../api/axios'
+import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
@@ -18,7 +18,7 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
     if (!book?.isbn) {
       return []
     }
-    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BASE_URL}/${book.isbn}.${ext}`)
+    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BOOKS_BASE_URL}/${book.isbn}.${ext}`)
   }, [book?.isbn])
 
   const [coverSrc, setCoverSrc] = useState(() => coverCandidates[0] || PLACEHOLDER_COVER)

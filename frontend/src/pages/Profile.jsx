@@ -1,17 +1,47 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchUserById } from '../api/users'
+import { toast } from 'react-hot-toast'
+import { fetchUserById, updateProfile } from '../api/users'
 import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
 import Loader from '../components/Loader.jsx'
+import { ASSETS_PROFILE_BASE_URL } from '../api/axios'
+import EditProfileModal from '../components/EditProfileModal.jsx'
+
+const PLACEHOLDER_AVATAR = '/placeholder-user.svg'
+const AVATAR_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 const Profile = () => {
   const { user } = useAuth()
-
   const userQuery = useQuery({
     queryKey: ['user', user?.id],
     queryFn: () => fetchUserById(user.id),
     enabled: Boolean(user?.id),
   })
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [avatarVersion, setAvatarVersion] = useState(0)
+  const [avatarCandidateIndex, setAvatarCandidateIndex] = useState(0)
+  const [avatarSrc, setAvatarSrc] = useState(PLACEHOLDER_AVATAR)
+
+  const avatarCandidates = useMemo(() => {
+    if (!userQuery.data?.id) {
+      return []
+    }
+    return AVATAR_EXTENSIONS.map(
+      (extension) => `${ASSETS_PROFILE_BASE_URL}/${userQuery.data.id}.${extension}?v=${avatarVersion}`,
+    )
+  }, [userQuery.data?.id, avatarVersion])
+
+  useEffect(() => {
+    if (!avatarCandidates.length) {
+      setAvatarSrc(PLACEHOLDER_AVATAR)
+      setAvatarCandidateIndex(0)
+      return
+    }
+    setAvatarCandidateIndex(0)
+    setAvatarSrc(avatarCandidates[0])
+  }, [avatarCandidates])
 
   if (userQuery.isLoading) {
     return <Loader label="Chargement du profil..." />
@@ -25,13 +55,55 @@ const Profile = () => {
     )
   }
 
+  const handleUpdate = async (formData) => {
+    try {
+      await updateProfile(userQuery.data.id, formData)
+      toast.success('Profil mis à jour')
+
+      if (formData instanceof FormData && formData.get('profileImage')) {
+        setAvatarCandidateIndex(0)
+        setAvatarVersion((value) => value + 1)
+      }
+
+      await userQuery.refetch()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Impossible de mettre à jour le profil')
+      throw error
+    }
+  }
+
   return (
     <section className="mx-auto max-w-3xl space-y-6">
-      <header className="card space-y-3">
-        <h1 className="text-3xl font-bold text-primary">Mon profil</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-300">
-          Gérez les informations associées à votre compte BiblioConnecte.
-        </p>
+      <header className="card space-y-4">
+        <div className="flex flex-col items-center gap-4 text-center md:flex-row md:text-left">
+          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-primary/30 bg-slate-100 shadow-inner dark:bg-slate-800">
+            <img
+              src={avatarSrc}
+              alt={`Avatar de ${userQuery.data.firstName}`}
+              onError={() => {
+                if (avatarCandidateIndex < avatarCandidates.length - 1) {
+                  const nextIndex = avatarCandidateIndex + 1
+                  setAvatarCandidateIndex(nextIndex)
+                  setAvatarSrc(avatarCandidates[nextIndex])
+                } else {
+                  setAvatarSrc(PLACEHOLDER_AVATAR)
+                }
+              }}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-primary">
+              {userQuery.data.firstName} {userQuery.data.lastName}
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-300">
+              Gérez les informations associées à votre compte BiblioConnecte.
+            </p>
+            <button type="button" className="btn-secondary" onClick={() => setIsEditing(true)}>
+              Modifier mes informations
+            </button>
+          </div>
+        </div>
       </header>
 
       <section className="card space-y-4">
@@ -71,6 +143,14 @@ const Profile = () => {
           </div>
         </dl>
       </section>
+
+      {isEditing && (
+        <EditProfileModal
+          user={userQuery.data}
+          onClose={() => setIsEditing(false)}
+          onUpdated={handleUpdate}
+        />
+      )}
     </section>
   )
 }
