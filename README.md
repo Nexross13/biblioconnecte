@@ -8,6 +8,7 @@ Plateforme de gestion pour bibliothèque connectée : catalogues, comptes lecteu
 - [Prérequis](#prérequis)
 - [Installation](#installation)
 - [Configuration de l’environnement](#configuration-de-lenvironnement)
+- [Documentation API](#documentation-api)
 - [Scripts npm](#scripts-npm)
 - [Tests](#tests)
 - [Conventions de développement](#conventions-de-développement)
