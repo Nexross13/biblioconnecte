@@ -42,6 +42,7 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
   - `controllers/`, `routes/`, `models/`, `middleware/`, `utils/` : logique métier et couches de l’API.
   - `data/` : ressources d’intégration (fixtures, seeders ou scripts SQL).
   - `assets/books/` : couvertures de livres (fichier `.jpg`, `.jpeg`, `.png` ou `.webp` nommé avec l’ISBN, ex. `9780451524935.jpg`).
+  - `assets/profile/` : avatars utilisateurs (fichier `.jpg`, `.jpeg`, `.png` ou `.webp` nommé avec l’identifiant utilisateur, ex. `1.jpg`).
 - `frontend/` : application React (voir section dédiée).
 
 ### Prérequis
@@ -67,6 +68,7 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
 - La spécification OpenAPI est disponible dans `backend/docs/openapi.yaml`.
 - Une interface Swagger UI est exposée sur `http://localhost:3000/api-docs` (après `npm run dev` ou `npm start`).
 - Les couvertures importées sont servies via `http://localhost:3000/assets/books/<ISBN>.(jpg|jpeg|png|webp)`.
+ - Les avatars sont servis via `http://localhost:3000/assets/profile/<userId>.(jpg|jpeg|png|webp)`.
 
 ### Scripts npm (backend)
 Depuis le dossier `backend/` :
@@ -139,6 +141,7 @@ frontend/src/
 - Les tokens JWT renvoyés par `/auth/login` et `/auth/register` sont stockés dans `localStorage` (`biblio_token`).
 - À l’initialisation, le contexte tente `/auth/me` pour récupérer le profil courant et injecte automatiquement le token dans Axios.
 - Le composant `ProtectedRoute` protège les pages nécessitant une session active.
+- Les utilisateurs peuvent mettre à jour leur profil (nom, email, mot de passe) et téléverser une photo depuis l’interface.
 
 ### Conventions (frontend)
 - ESLint + Prettier configurés (voir `npm run lint`).
