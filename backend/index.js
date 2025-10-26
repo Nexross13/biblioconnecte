@@ -1,7 +1,11 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yaml');
 require('dotenv').config();
 
 const { connectDB } = require('./config/db');
@@ -18,10 +22,43 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 app.use(cors());
 app.use(express.json());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+const openApiPath = path.join(__dirname, 'docs', 'openapi.yaml');
+let openApiDocument;
+let openApiRaw;
+try {
+  openApiRaw = fs.readFileSync(openApiPath, 'utf8');
+  openApiDocument = YAML.parse(openApiRaw);
+} catch (error) {
+  console.warn('⚠️  Unable to load OpenAPI specification:', error.message);
+}
+
+if (openApiDocument) {
+  app.get('/openapi.yaml', (req, res) => {
+    res.type('application/yaml').send(openApiRaw);
+  });
+
+  app.use(
+    '/api-docs',
+    swaggerUi.serve,
+    swaggerUi.setup(null, {
+      explorer: true,
+      swaggerOptions: {
+        url: '/openapi.yaml',
+        persistAuthorization: true,
+      },
+    }),
+  );
+}
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
