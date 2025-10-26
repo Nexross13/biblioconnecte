@@ -1,0 +1,1642 @@
+openapi: 3.1.0
+info:
+  title: BiblioConnecte API
+  version: 1.0.0
+  description: |
+    API REST du projet BiblioConnecte.
+    Permet la gestion de bibliothèques personnelles, la recherche de livres,
+    la gestion des souhaits, des amis et des avis.
+  contact:
+    name: Nexross
+    url: https://github.com/Nexross13/biblioconnecte
+    email: contact@nexross.dev
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Serveur local de développement
+tags:
+  - name: Authentification
+  - name: Utilisateurs
+  - name: Livres
+  - name: Auteurs
+  - name: Genres
+  - name: Bibliothèque
+  - name: Wishlist
+  - name: Avis
+security:
+  - bearerAuth: []
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentification
+      summary: Inscription d'un utilisateur
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              inscription:
+                summary: Inscription
+                value:
+                  firstName: Alice
+                  lastName: Martin
+                  email: alice@example.com
+                  password: Mot2PasseSecurise!
+      responses:
+        '201':
+          description: Utilisateur créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                created:
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+                    user:
+                      id: 42
+                      firstName: Alice
+                      lastName: Martin
+                      email: alice@example.com
+                      createdAt: '2024-03-21T10:00:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Un compte existe déjà avec cet email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                conflict:
+                  value:
+                    message: An account already exists with this email
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/login:
+    post:
+      tags:
+        - Authentification
+      summary: Connexion d'un utilisateur
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+            examples:
+              login:
+                value:
+                  email: alice@example.com
+                  password: Mot2PasseSecurise!
+      responses:
+        '200':
+          description: Authentification réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                success:
+                  value:
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
+                    user:
+                      id: 42
+                      firstName: Alice
+                      lastName: Martin
+                      email: alice@example.com
+                      createdAt: '2024-03-21T10:00:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/me:
+    get:
+      tags:
+        - Authentification
+      summary: Récupérer le profil courant
+      responses:
+        '200':
+          description: Profil de l'utilisateur courant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+              examples:
+                me:
+                  value:
+                    user:
+                      id: 42
+                      firstName: Alice
+                      lastName: Martin
+                      email: alice@example.com
+                      createdAt: '2024-03-21T10:00:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users:
+    get:
+      tags:
+        - Utilisateurs
+      summary: Lister les utilisateurs
+      responses:
+        '200':
+          description: Liste des utilisateurs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+              examples:
+                list:
+                  value:
+                    users:
+                      - id: 1
+                        firstName: Alice
+                        lastName: Martin
+                        email: alice@biblio.test
+                        createdAt: '2024-01-10T08:00:00.000Z'
+                      - id: 2
+                        firstName: Benoit
+                        lastName: Durand
+                        email: benoit@biblio.test
+                        createdAt: '2024-01-12T10:15:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users/{id}:
+    get:
+      tags:
+        - Utilisateurs
+      summary: Récupérer un utilisateur
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Utilisateur trouvé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+              examples:
+                user:
+                  value:
+                    user:
+                      id: 1
+                      firstName: Alice
+                      lastName: Martin
+                      email: alice@biblio.test
+                      createdAt: '2024-01-10T08:00:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users/{id}/friends:
+    get:
+      tags:
+        - Utilisateurs
+      summary: Lister les amis d'un utilisateur
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: Liste des amis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  friends:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Friend'
+              examples:
+                friends:
+                  value:
+                    friends:
+                      - id: 2
+                        firstName: Benoit
+                        lastName: Durand
+                        email: benoit@biblio.test
+                        status: accepted
+                        since: '2024-02-01T12:00:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Utilisateurs
+      summary: Envoyer une demande d'ami
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '201':
+          description: Demande envoyée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  friendship:
+                    $ref: '#/components/schemas/Friendship'
+              examples:
+                pending:
+                  value:
+                    friendship:
+                      requesterId: 1
+                      addresseeId: 2
+                      status: pending
+                      requestedAt: '2024-03-15T09:30:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users/{id}/friends/{friendId}/accept:
+    put:
+      tags:
+        - Utilisateurs
+      summary: Accepter une demande d'ami
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/FriendId'
+      responses:
+        '200':
+          description: Demande d'ami acceptée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  friendship:
+                    $ref: '#/components/schemas/Friendship'
+              examples:
+                accepted:
+                  value:
+                    friendship:
+                      requesterId: 1
+                      addresseeId: 2
+                      status: accepted
+                      requestedAt: '2024-03-15T09:30:00.000Z'
+                      acceptedAt: '2024-03-16T14:05:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /users/{id}/friends/{friendId}:
+    delete:
+      tags:
+        - Utilisateurs
+      summary: Supprimer un ami
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/FriendId'
+      responses:
+        '204':
+          description: Amitié supprimée
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /books:
+    get:
+      tags:
+        - Livres
+      summary: Lister les livres
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+          description: Nombre maximum de livres à retourner
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Décalage pour la pagination
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Filtrer les livres par titre, auteur ou ISBN
+      responses:
+        '200':
+          description: Liste paginée des livres
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  books:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Book'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+              examples:
+                paginated:
+                  value:
+                    books:
+                      - id: 1
+                        title: Le Petit Prince
+                        isbn: '9780156013987'
+                        edition: Gallimard
+                        volume: '1'
+                        summary: Conte poétique et philosophique raconté par un aviateur.
+                        createdAt: '2024-01-01T00:00:00.000Z'
+                        updatedAt: '2024-01-01T00:00:00.000Z'
+                      - id: 2
+                        title: 1984
+                        isbn: '9780451524935'
+                        edition: Secker & Warburg
+                        volume: '1'
+                        summary: Dystopie décrivant un régime totalitaire.
+                        createdAt: '2024-01-05T00:00:00.000Z'
+                        updatedAt: '2024-01-05T00:00:00.000Z'
+                    pagination:
+                      limit: 25
+                      offset: 0
+                      count: 2
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Livres
+      summary: Créer un livre
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreateRequest'
+            examples:
+              create:
+                value:
+                  title: Fondation
+                  isbn: '9782070360536'
+                  edition: Folio SF
+                  volume: '1'
+                  summary: Cycle de science-fiction d'Isaac Asimov.
+                  authorIds: [1, 2]
+                  genreIds: [1, 3]
+      responses:
+        '201':
+          description: Livre créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  book:
+                    $ref: '#/components/schemas/Book'
+              examples:
+                created:
+                  value:
+                    book:
+                      id: 10
+                      title: Fondation
+                      isbn: '9782070360536'
+                      edition: Folio SF
+                      volume: '1'
+                      summary: Cycle de science-fiction d'Isaac Asimov.
+                      authors:
+                        - id: 1
+                          firstName: Isaac
+                          lastName: Asimov
+                      genres:
+                        - id: 3
+                          name: Science-fiction
+                      createdAt: '2024-03-20T11:45:00.000Z'
+                      updatedAt: '2024-03-20T11:45:00.000Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /books/{id}:
+    get:
+      tags:
+        - Livres
+      summary: Récupérer un livre
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        '200':
+          description: Livre trouvé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  book:
+                    $ref: '#/components/schemas/Book'
+              examples:
+                book:
+                  value:
+                    book:
+                      id: 1
+                      title: Le Petit Prince
+                      isbn: '9780156013987'
+                      edition: Gallimard
+                      volume: '1'
+                      summary: Conte poétique et philosophique raconté par un aviateur.
+                      authors:
+                        - id: 1
+                          firstName: Antoine
+                          lastName: de Saint-Exupéry
+                      genres:
+                        - id: 1
+                          name: Fiction
+                        - id: 3
+                          name: Philosophie
+                      createdAt: '2024-01-01T00:00:00.000Z'
+                      updatedAt: '2024-01-01T00:00:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Livres
+      summary: Mettre à jour un livre
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookUpdateRequest'
+            examples:
+              update:
+                value:
+                  title: Le Petit Prince (édition illustrée)
+                  authorIds: [1]
+                  genreIds: [1, 3]
+      responses:
+        '200':
+          description: Livre mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  book:
+                    $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Livres
+      summary: Supprimer un livre
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        '204':
+          description: Livre supprimé
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /books/{id}/authors:
+    get:
+      tags:
+        - Livres
+      summary: Lister les auteurs d'un livre
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        '200':
+          description: Auteurs associés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Author'
+              examples:
+                authors:
+                  value:
+                    authors:
+                      - id: 1
+                        firstName: Antoine
+                        lastName: de Saint-Exupéry
+                        biography: Aviateur et écrivain français.
+                        createdAt: '2023-12-10T09:00:00.000Z'
+                        updatedAt: '2023-12-10T09:00:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /books/{id}/genres:
+    get:
+      tags:
+        - Livres
+      summary: Lister les genres d'un livre
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        '200':
+          description: Genres associés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  genres:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Genre'
+              examples:
+                genres:
+                  value:
+                    genres:
+                      - id: 1
+                        name: Fiction
+                        createdAt: '2023-12-01T00:00:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /authors:
+    get:
+      tags:
+        - Auteurs
+      summary: Lister les auteurs
+      responses:
+        '200':
+          description: Liste des auteurs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Author'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Auteurs
+      summary: Créer un auteur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorCreateRequest'
+            examples:
+              create:
+                value:
+                  firstName: Ursula
+                  lastName: Le Guin
+                  biography: Autrice américaine de science-fiction.
+      responses:
+        '201':
+          description: Auteur créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  author:
+                    $ref: '#/components/schemas/Author'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /authors/{id}:
+    get:
+      tags:
+        - Auteurs
+      summary: Récupérer un auteur
+      parameters:
+        - $ref: '#/components/parameters/AuthorId'
+      responses:
+        '200':
+          description: Auteur trouvé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  author:
+                    $ref: '#/components/schemas/Author'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Auteurs
+      summary: Mettre à jour un auteur
+      parameters:
+        - $ref: '#/components/parameters/AuthorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorUpdateRequest'
+      responses:
+        '200':
+          description: Auteur mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  author:
+                    $ref: '#/components/schemas/Author'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Auteurs
+      summary: Supprimer un auteur
+      parameters:
+        - $ref: '#/components/parameters/AuthorId'
+      responses:
+        '204':
+          description: Auteur supprimé
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /authors/{id}/books:
+    get:
+      tags:
+        - Auteurs
+      summary: Lister les livres d'un auteur
+      parameters:
+        - $ref: '#/components/parameters/AuthorId'
+      responses:
+        '200':
+          description: Livres associés à l'auteur
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  books:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Book'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /genres:
+    get:
+      tags:
+        - Genres
+      summary: Lister les genres
+      responses:
+        '200':
+          description: Liste des genres
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  genres:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Genre'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Genres
+      summary: Créer un genre
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenreCreateRequest'
+            examples:
+              create:
+                value:
+                  name: Fantasy
+      responses:
+        '201':
+          description: Genre créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  genre:
+                    $ref: '#/components/schemas/Genre'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /genres/{id}/books:
+    get:
+      tags:
+        - Genres
+      summary: Lister les livres associés à un genre
+      parameters:
+        - $ref: '#/components/parameters/GenreId'
+      responses:
+        '200':
+          description: Livres du genre
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  books:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Book'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /genres/{id}:
+    delete:
+      tags:
+        - Genres
+      summary: Supprimer un genre
+      parameters:
+        - $ref: '#/components/parameters/GenreId'
+      responses:
+        '204':
+          description: Genre supprimé
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /library:
+    get:
+      tags:
+        - Bibliothèque
+      summary: Lister les livres de ma bibliothèque
+      responses:
+        '200':
+          description: Livres de la bibliothèque personnelle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  books:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LibraryEntry'
+              examples:
+                library:
+                  value:
+                    books:
+                      - id: 1
+                        title: Le Petit Prince
+                        isbn: '9780156013987'
+                        edition: Gallimard
+                        volume: '1'
+                        addedAt: '2024-03-01T12:00:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /library/{bookId}:
+    post:
+      tags:
+        - Bibliothèque
+      summary: Ajouter un livre à ma bibliothèque
+      parameters:
+        - $ref: '#/components/parameters/BookIdPath'
+      responses:
+        '201':
+          description: Livre ajouté
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: '#/components/schemas/LibraryEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Bibliothèque
+      summary: Retirer un livre de ma bibliothèque
+      parameters:
+        - $ref: '#/components/parameters/BookIdPath'
+      responses:
+        '204':
+          description: Livre retiré
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /wishlist:
+    get:
+      tags:
+        - Wishlist
+      summary: Lister les livres de ma liste de souhaits
+      responses:
+        '200':
+          description: Livres de la wishlist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  books:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WishlistEntry'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /wishlist/{bookId}:
+    post:
+      tags:
+        - Wishlist
+      summary: Ajouter un livre à ma wishlist
+      parameters:
+        - $ref: '#/components/parameters/BookIdPath'
+      responses:
+        '201':
+          description: Livre ajouté à la wishlist
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: '#/components/schemas/WishlistEntry'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Wishlist
+      summary: Retirer un livre de ma wishlist
+      parameters:
+        - $ref: '#/components/parameters/BookIdPath'
+      responses:
+        '204':
+          description: Livre retiré de la wishlist
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /books/{bookId}/reviews:
+    get:
+      tags:
+        - Avis
+      summary: Lister les avis d'un livre
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        '200':
+          description: Avis associés au livre
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Avis
+      summary: Créer un avis pour un livre
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreateRequest'
+            examples:
+              create:
+                value:
+                  rating: 5
+                  comment: Un coup de coeur absolu.
+      responses:
+        '201':
+          description: Avis créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  review:
+                    $ref: '#/components/schemas/Review'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /reviews/{id}:
+    put:
+      tags:
+        - Avis
+      summary: Mettre à jour un avis
+      parameters:
+        - $ref: '#/components/parameters/ReviewId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewUpdateRequest'
+      responses:
+        '200':
+          description: Avis mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  review:
+                    $ref: '#/components/schemas/Review'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Avis
+      summary: Supprimer un avis
+      parameters:
+        - $ref: '#/components/parameters/ReviewId'
+      responses:
+        '204':
+          description: Avis supprimé
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Fournir le jeton JWT obtenu lors de la connexion via l'en-tête `Authorization: Bearer <token>`.
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant de l'utilisateur
+    FriendId:
+      name: friendId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant de l'ami ciblé
+    BookId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant du livre
+    BookIdPath:
+      name: bookId
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant du livre
+    AuthorId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant de l'auteur
+    GenreId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant du genre
+    ReviewId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant de l'avis
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            badRequest:
+              value:
+                message: Missing registration fields
+    Unauthorized:
+      description: Authentification requise ou invalide
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorized:
+              value:
+                message: Missing bearer token
+    Forbidden:
+      description: Action non autorisée
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            forbidden:
+              value:
+                message: You are not allowed to perform this action
+    NotFound:
+      description: Ressource non trouvée
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notFound:
+              value:
+                message: Resource not found
+    InternalError:
+      description: Erreur interne du serveur
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            internal:
+              value:
+                message: Internal server error
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        firstName:
+          type: string
+          example: Alice
+        lastName:
+          type: string
+          example: Martin
+        email:
+          type: string
+          format: email
+          example: alice@biblio.test
+        createdAt:
+          type: string
+          format: date-time
+          example: '2024-01-10T08:00:00.000Z'
+      required:
+        - id
+        - firstName
+        - lastName
+        - email
+        - createdAt
+    Friend:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 2
+        firstName:
+          type: string
+          example: Benoit
+        lastName:
+          type: string
+          example: Durand
+        email:
+          type: string
+          format: email
+          example: benoit@biblio.test
+        status:
+          type: string
+          description: Statut de la relation
+          enum:
+            - pending
+            - accepted
+            - rejected
+          example: accepted
+        since:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2024-02-01T12:00:00.000Z'
+      required:
+        - id
+        - firstName
+        - lastName
+        - email
+        - status
+    Friendship:
+      type: object
+      properties:
+        requesterId:
+          type: integer
+          example: 1
+        addresseeId:
+          type: integer
+          example: 2
+        status:
+          type: string
+          enum:
+            - pending
+            - accepted
+            - rejected
+          example: pending
+        requestedAt:
+          type: string
+          format: date-time
+          example: '2024-03-15T09:30:00.000Z'
+        acceptedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2024-03-16T14:05:00.000Z'
+      required:
+        - requesterId
+        - addresseeId
+        - status
+        - requestedAt
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Le Petit Prince
+        isbn:
+          type: string
+          example: '9780156013987'
+        edition:
+          type: string
+          example: Gallimard
+        volume:
+          type: string
+          nullable: true
+          example: '1'
+        summary:
+          type: string
+          nullable: true
+          example: Conte poétique et philosophique raconté par un aviateur.
+        authors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Author'
+        genres:
+          type: array
+          items:
+            $ref: '#/components/schemas/Genre'
+        createdAt:
+          type: string
+          format: date-time
+          example: '2024-01-01T00:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2024-01-01T00:00:00.000Z'
+      required:
+        - id
+        - title
+        - createdAt
+        - updatedAt
+    BookCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        isbn:
+          type: string
+        edition:
+          type: string
+        volume:
+          type: string
+        summary:
+          type: string
+        authorIds:
+          type: array
+          items:
+            type: integer
+        genreIds:
+          type: array
+          items:
+            type: integer
+      required:
+        - title
+    BookUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        isbn:
+          type: string
+        edition:
+          type: string
+        volume:
+          type: string
+        summary:
+          type: string
+        authorIds:
+          type: array
+          items:
+            type: integer
+        genreIds:
+          type: array
+          items:
+            type: integer
+    Author:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        firstName:
+          type: string
+          example: Antoine
+        lastName:
+          type: string
+          example: de Saint-Exupéry
+        biography:
+          type: string
+          nullable: true
+          example: Aviateur et écrivain français, auteur du Petit Prince.
+        createdAt:
+          type: string
+          format: date-time
+          example: '2023-12-10T09:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2023-12-10T09:00:00.000Z'
+      required:
+        - id
+        - firstName
+        - lastName
+        - createdAt
+        - updatedAt
+    AuthorCreateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        biography:
+          type: string
+      required:
+        - firstName
+        - lastName
+    AuthorUpdateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        biography:
+          type: string
+    Genre:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Fiction
+        createdAt:
+          type: string
+          format: date-time
+          example: '2023-12-01T00:00:00.000Z'
+      required:
+        - id
+        - name
+        - createdAt
+    GenreCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        userId:
+          type: integer
+          example: 2
+        bookId:
+          type: integer
+          example: 1
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+        comment:
+          type: string
+          nullable: true
+          example: Un classique touchant qui fait réfléchir.
+        createdAt:
+          type: string
+          format: date-time
+          example: '2024-03-12T10:00:00.000Z'
+        updatedAt:
+          type: string
+          format: date-time
+          example: '2024-03-12T10:00:00.000Z'
+      required:
+        - id
+        - userId
+        - bookId
+        - rating
+        - createdAt
+        - updatedAt
+    ReviewCreateRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+      required:
+        - rating
+    ReviewUpdateRequest:
+      type: object
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+    LibraryEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Le Petit Prince
+        isbn:
+          type: string
+          example: '9780156013987'
+        edition:
+          type: string
+          example: Gallimard
+        volume:
+          type: string
+          nullable: true
+          example: '1'
+        addedAt:
+          type: string
+          format: date-time
+          example: '2024-03-01T12:00:00.000Z'
+      required:
+        - id
+        - title
+        - addedAt
+    WishlistEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        title:
+          type: string
+          example: Animal Farm
+        isbn:
+          type: string
+          example: '9780451526342'
+        edition:
+          type: string
+          example: Secker & Warburg
+        volume:
+          type: string
+          nullable: true
+        addedAt:
+          type: string
+          format: date-time
+          example: '2024-03-10T08:35:00.000Z'
+      required:
+        - id
+        - title
+        - addedAt
+    RegisterRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required:
+        - firstName
+        - lastName
+        - email
+        - password
+    AuthRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required:
+        - email
+        - password
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Jeton JWT
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - token
+        - user
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: integer
+          example: 25
+        offset:
+          type: integer
+          example: 0
+        count:
+          type: integer
+          example: 25
+      required:
+        - limit
+        - offset
+        - count
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Resource not found
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
