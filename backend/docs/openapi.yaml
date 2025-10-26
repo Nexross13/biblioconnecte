@@ -22,6 +22,7 @@ tags:
   - name: Bibliothèque
   - name: Wishlist
   - name: Avis
+  - name: Statistiques
 security:
   - bearerAuth: []
 paths:
@@ -1093,6 +1094,53 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /stats/highlights:
+    get:
+      tags:
+        - Statistiques
+      summary: Récupérer les indicateurs clés
+      description: Retourne le lecteur le plus actif, le livre le mieux noté et les cinq derniers ouvrages ajoutés.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Indicateurs calculés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HighlightsResponse'
+              examples:
+                highlights:
+                  value:
+                    topReader:
+                      user:
+                        id: 1
+                        firstName: Alice
+                        lastName: Martin
+                        email: alice@biblio.test
+                        createdAt: '2024-01-10T08:00:00.000Z'
+                      totalBooks: 12
+                    topRatedBook:
+                      book:
+                        id: 2
+                        title: 1984
+                        summary: Dystopie décrivant un régime totalitaire.
+                        createdAt: '2024-01-05T00:00:00.000Z'
+                      averageRating: 4.8
+                      totalReviews: 5
+                    latestBooks:
+                      - id: 10
+                        title: Fondations
+                        summary: Cycle de science-fiction d'Isaac Asimov.
+                        createdAt: '2024-04-01T10:00:00.000Z'
+                      - id: 9
+                        title: Le Comte de Monte-Cristo
+                        summary: Roman d'aventure d'Alexandre Dumas.
+                        createdAt: '2024-03-28T14:20:00.000Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     bearerAuth:
@@ -1640,3 +1688,43 @@ components:
           type: object
           additionalProperties: true
           nullable: true
+    HighlightsResponse:
+      type: object
+      properties:
+        topReader:
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+                totalBooks:
+                  type: integer
+                  example: 12
+              required:
+                - user
+                - totalBooks
+        topRatedBook:
+          oneOf:
+            - type: 'null'
+            - type: object
+              properties:
+                book:
+                  $ref: '#/components/schemas/Book'
+                averageRating:
+                  type: number
+                  format: float
+                  example: 4.8
+                totalReviews:
+                  type: integer
+                  example: 5
+              required:
+                - book
+                - averageRating
+                - totalReviews
+        latestBooks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+      required:
+        - latestBooks

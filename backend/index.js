@@ -17,6 +17,7 @@ const genreRoutes = require('./routes/genres');
 const libraryRoutes = require('./routes/library');
 const wishlistRoutes = require('./routes/wishlist');
 const reviewRoutes = require('./routes/reviews');
+const statsRoutes = require('./routes/stats');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -72,6 +73,7 @@ app.use('/api/v1/genres', genreRoutes);
 app.use('/api/v1/library', libraryRoutes);
 app.use('/api/v1/wishlist', wishlistRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/stats', statsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Resource not found' });
