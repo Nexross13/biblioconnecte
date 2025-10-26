@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
@@ -5,10 +6,33 @@ import clsx from 'clsx'
 import { addBookToLibrary, removeBookFromLibrary } from '../api/library'
 import { addBookToWishlist, removeBookFromWishlist } from '../api/wishlist'
 import useAuth from '../hooks/useAuth'
+import { ASSETS_BASE_URL } from '../api/axios'
+
+const PLACEHOLDER_COVER = '/placeholder-book.svg'
+const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
+  const coverCandidates = useMemo(() => {
+    if (!book?.isbn) {
+      return []
+    }
+    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BASE_URL}/${book.isbn}.${ext}`)
+  }, [book?.isbn])
+
+  const [coverSrc, setCoverSrc] = useState(() => coverCandidates[0] || PLACEHOLDER_COVER)
+  const [candidateIndex, setCandidateIndex] = useState(0)
+
+  useEffect(() => {
+    if (!coverCandidates.length) {
+      setCoverSrc(PLACEHOLDER_COVER)
+      setCandidateIndex(0)
+      return
+    }
+    setCoverSrc(coverCandidates[0])
+    setCandidateIndex(0)
+  }, [coverCandidates])
 
   const libraryMutation = useMutation({
     mutationFn: ({ action, bookId }) =>
@@ -63,6 +87,23 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
 
   return (
     <article className="card flex h-full flex-col gap-4">
+      <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+        <img
+          src={coverSrc}
+          alt={`Couverture de ${book.title}`}
+          onError={(event) => {
+            if (candidateIndex < coverCandidates.length - 1) {
+              const nextIndex = candidateIndex + 1
+              setCandidateIndex(nextIndex)
+              setCoverSrc(coverCandidates[nextIndex])
+              return
+            }
+            event.currentTarget.src = PLACEHOLDER_COVER
+          }}
+          loading="lazy"
+          className="h-48 w-full object-cover"
+        />
+      </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between">
           <h3 className="text-lg font-semibold text-primary">{book.title}</h3>

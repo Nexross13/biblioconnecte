@@ -27,6 +27,7 @@ app.use(
   helmet({
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   }),
 );
 app.use(cors());
@@ -60,6 +61,13 @@ if (openApiDocument) {
     }),
   );
 }
+
+app.use(
+  '/assets/books',
+  express.static(path.join(__dirname, 'assets', 'books'), {
+    fallthrough: true,
+  }),
+);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -41,6 +41,7 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
   - `config/` : configuration de la base de données et variables d’environnement.
   - `controllers/`, `routes/`, `models/`, `middleware/`, `utils/` : logique métier et couches de l’API.
   - `data/` : ressources d’intégration (fixtures, seeders ou scripts SQL).
+  - `assets/books/` : couvertures de livres (fichier `.jpg`, `.jpeg`, `.png` ou `.webp` nommé avec l’ISBN, ex. `9780451524935.jpg`).
 - `frontend/` : application React (voir section dédiée).
 
 ### Prérequis
@@ -65,6 +66,7 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
 ### Documentation API
 - La spécification OpenAPI est disponible dans `backend/docs/openapi.yaml`.
 - Une interface Swagger UI est exposée sur `http://localhost:3000/api-docs` (après `npm run dev` ou `npm start`).
+- Les couvertures importées sont servies via `http://localhost:3000/assets/books/<ISBN>.(jpg|jpeg|png|webp)`.
 
 ### Scripts npm (backend)
 Depuis le dossier `backend/` :

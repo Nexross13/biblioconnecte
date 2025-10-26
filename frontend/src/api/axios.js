@@ -1,6 +1,8 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'
+const API_ROOT = API_BASE_URL.replace(/\/?api\/v1\/?$/, '')
+const ASSETS_BASE_URL = `${API_ROOT}/assets/books`
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -28,4 +30,4 @@ apiClient.interceptors.response.use(
 )
 
 export default apiClient
-export { API_BASE_URL }
+export { API_BASE_URL, API_ROOT, ASSETS_BASE_URL }

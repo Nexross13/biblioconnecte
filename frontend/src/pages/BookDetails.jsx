@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
@@ -16,6 +16,10 @@ import ReviewCard from '../components/ReviewCard.jsx'
 import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
 import getAverageRating from '../utils/getAverageRating'
+import { ASSETS_BASE_URL } from '../api/axios'
+
+const PLACEHOLDER_COVER = '/placeholder-book.svg'
+const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 const BookDetails = () => {
   const { id } = useParams()
@@ -58,6 +62,27 @@ const BookDetails = () => {
       },
     ],
   })
+
+  const coverCandidates = useMemo(() => {
+    const isbn = bookQuery.data?.isbn
+    if (!isbn) {
+      return []
+    }
+    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BASE_URL}/${isbn}.${ext}`)
+  }, [bookQuery.data?.isbn])
+
+  const [coverSrc, setCoverSrc] = useState(() => coverCandidates[0] || PLACEHOLDER_COVER)
+  const [candidateIndex, setCandidateIndex] = useState(0)
+
+  useEffect(() => {
+    if (!coverCandidates.length) {
+      setCoverSrc(PLACEHOLDER_COVER)
+      setCandidateIndex(0)
+      return
+    }
+    setCoverSrc(coverCandidates[0])
+    setCandidateIndex(0)
+  }, [coverCandidates])
 
   const libraryMutation = useMutation({
     mutationFn: ({ action }) =>
@@ -123,6 +148,7 @@ const BookDetails = () => {
 
   const inLibrary = libraryQuery.data?.some((item) => item.id === book.id) ?? false
   const inWishlist = wishlistQuery.data?.some((item) => item.id === book.id) ?? false
+
   const ensureAuthenticated = () => {
     if (!isAuthenticated) {
       toast.error('Connectez-vous pour réaliser cette action')
@@ -133,36 +159,56 @@ const BookDetails = () => {
 
   return (
     <section className="space-y-8">
-      <header className="card space-y-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-primary">{book.title}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-300">{book.summary}</p>
-            <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-300">
-              {book.authors?.map((author) => (
-                <span
-                  key={author.id}
-                  className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-700"
-                >
-                  {author.firstName} {author.lastName}
-                </span>
-              ))}
-              {book.genres?.map((genre) => (
-                <span
-                  key={genre.id}
-                  className="rounded-full bg-primary/10 px-3 py-1 text-primary dark:bg-primary/20"
-                >
-                  {genre.name}
-                </span>
-              ))}
+      <header className="card space-y-6">
+        <div className="flex flex-col gap-6 md:flex-row">
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800 md:w-64">
+            <img
+              src={coverSrc}
+              alt={`Couverture de ${book.title}`}
+              onError={(event) => {
+                if (candidateIndex < coverCandidates.length - 1) {
+                  const nextIndex = candidateIndex + 1
+                  setCandidateIndex(nextIndex)
+                  setCoverSrc(coverCandidates[nextIndex])
+                  return
+                }
+                event.currentTarget.src = PLACEHOLDER_COVER
+              }}
+              className="aspect-[3/4] w-full object-cover"
+            />
+          </div>
+          <div className="flex-1 space-y-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-primary">{book.title}</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-300">{book.summary}</p>
+                <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-300">
+                  {book.authors?.map((author) => (
+                    <span
+                      key={author.id}
+                      className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-700"
+                    >
+                      {author.firstName} {author.lastName}
+                    </span>
+                  ))}
+                  {book.genres?.map((genre) => (
+                    <span
+                      key={genre.id}
+                      className="rounded-full bg-primary/10 px-3 py-1 text-primary dark:bg-primary/20"
+                    >
+                      {genre.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {averageRating && (
+                <div className="rounded-2xl bg-amber-400/80 px-4 py-3 text-center text-amber-900 shadow">
+                  <p className="text-xs uppercase tracking-wide">Note moyenne</p>
+                  <p className="text-2xl font-bold">⭐ {averageRating.toFixed(1)}</p>
+                </div>
+              )}
             </div>
           </div>
-          {averageRating && (
-            <div className="rounded-2xl bg-amber-400/80 px-4 py-3 text-center text-amber-900 shadow">
-              <p className="text-xs uppercase tracking-wide">Note moyenne</p>
-              <p className="text-2xl font-bold">⭐ {averageRating.toFixed(1)}</p>
-            </div>
-          )}
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <button
