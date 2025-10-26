@@ -50,6 +50,10 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
 - Ne jamais committer de secrets ; conserver les fichiers `.env.local` en local uniquement.
 - Les données d’exemple ou scripts SQL doivent être placés dans `backend/resources/`.
 
+## Documentation API
+- La spécification OpenAPI est disponible dans `backend/docs/openapi.yaml`.
+- Une interface Swagger UI est exposée sur `http://localhost:3000/api-docs` (après `npm run dev` ou `npm start`).
+
 ## Scripts npm
 Depuis le dossier `backend/` :
 - `npm run dev` : lance le serveur avec `nodemon` pour rechargement à chaud (`index.js`).
