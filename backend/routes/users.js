@@ -68,6 +68,10 @@ const profileImageUpload = multer({
 });
 
 router.get('/', authenticate, userController.listUsers);
+router.get('/:id/friends/requests', authenticate, userController.listFriendRequests);
+router.post('/:id/friends/:friendId/reject', authenticate, userController.rejectFriend);
+router.get('/:id/library', authenticate, userController.getUserLibrary);
+router.get('/:id/wishlist', authenticate, userController.getUserWishlist);
 router.get('/:id', authenticate, userController.getUserById);
 router.put('/:id', authenticate, profileImageUpload.single('profileImage'), userController.updateProfile);
 router.get('/:id/friends', authenticate, userController.listFriends);

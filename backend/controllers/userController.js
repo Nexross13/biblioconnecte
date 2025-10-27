@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const userModel = require('../models/userModel');
 const friendshipModel = require('../models/friendshipModel');
+const libraryModel = require('../models/libraryModel');
 const {
   getUsers: getMockUsers,
   getUserById: getMockUserById,
@@ -183,6 +184,136 @@ const removeFriend = async (req, res, next) => {
   }
 };
 
+const listFriendRequests = async (req, res, next) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId)) {
+      const err = new Error('Invalid user identifier');
+      err.status = 400;
+      throw err;
+    }
+    ensureSelfAction(req, userId);
+
+    if (process.env.USE_MOCKS === 'true') {
+      const { getFriendships, getUserById } = require('../data/mockData');
+      const incoming = getFriendships()
+        .filter((friendship) => friendship.status === 'pending' && friendship.addresseeId === userId)
+        .map((friendship) => {
+          const requester = getUserById(friendship.requesterId);
+          return requester
+            ? {
+                requesterId: requester.id,
+                firstName: requester.firstName,
+                lastName: requester.lastName,
+                email: requester.email,
+                requestedAt: friendship.requestedAt,
+              }
+            : null;
+        })
+        .filter(Boolean);
+      return res.json({ requests: incoming });
+    }
+
+    const requests = await friendshipModel.listIncomingRequests(userId);
+    res.json({ requests });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const ensureFriendshipOrSelf = async (authUserId, targetUserId) => {
+  if (Number(authUserId) === Number(targetUserId)) {
+    return true;
+  }
+
+  if (process.env.USE_MOCKS === 'true') {
+    const { getFriendsOfUser } = require('../data/mockData');
+    return getFriendsOfUser(authUserId).some((friend) => Number(friend.id) === Number(targetUserId));
+  }
+
+  return friendshipModel.isAcceptedFriend({ userId: authUserId, friendId: targetUserId });
+};
+
+const rejectFriend = async (req, res, next) => {
+  try {
+    const userId = Number(req.params.id);
+    const friendId = Number(req.params.friendId);
+
+    if (!Number.isInteger(userId) || !Number.isInteger(friendId)) {
+      const err = new Error('Invalid identifier');
+      err.status = 400;
+      throw err;
+    }
+
+    ensureSelfAction(req, userId);
+
+    if (process.env.USE_MOCKS === 'true') {
+      return res.status(204).send();
+    }
+
+    await friendshipModel.removeFriendship({ userId, friendId });
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getUserLibrary = async (req, res, next) => {
+  try {
+    const targetUserId = Number(req.params.id);
+    if (!Number.isInteger(targetUserId)) {
+      const err = new Error('Invalid user identifier');
+      err.status = 400;
+      throw err;
+    }
+
+    const isAllowed = await ensureFriendshipOrSelf(req.user.id, targetUserId);
+    if (!isAllowed) {
+      const err = new Error('Only friends can view this library');
+      err.status = 403;
+      throw err;
+    }
+
+    if (process.env.USE_MOCKS === 'true') {
+      const { getLibraryItems } = require('../data/mockData');
+      return res.json({ books: getLibraryItems(targetUserId) });
+    }
+
+    const books = await libraryModel.listLibraryBooks(targetUserId);
+    res.json({ books });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getUserWishlist = async (req, res, next) => {
+  try {
+    const targetUserId = Number(req.params.id);
+    if (!Number.isInteger(targetUserId)) {
+      const err = new Error('Invalid user identifier');
+      err.status = 400;
+      throw err;
+    }
+
+    const isAllowed = await ensureFriendshipOrSelf(req.user.id, targetUserId);
+    if (!isAllowed) {
+      const err = new Error('Only friends can view this wishlist');
+      err.status = 403;
+      throw err;
+    }
+
+    if (process.env.USE_MOCKS === 'true') {
+      const { getWishlistItems } = require('../data/mockData');
+      return res.json({ books: getWishlistItems(targetUserId) });
+    }
+
+    const books = await libraryModel.listWishlistBooks(targetUserId);
+    res.json({ books });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateProfile = async (req, res, next) => {
   try {
     const userId = Number(req.params.id);
@@ -240,8 +371,12 @@ module.exports = {
   listUsers,
   getUserById,
   listFriends,
+  listFriendRequests,
   requestFriend,
   acceptFriend,
   removeFriend,
+  rejectFriend,
   updateProfile,
+  getUserLibrary,
+  getUserWishlist,
 };
