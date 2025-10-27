@@ -28,3 +28,21 @@ export const acceptFriend = async ({ userId, friendId }) => {
 export const deleteFriend = async ({ userId, friendId }) => {
   await apiClient.delete(`/users/${userId}/friends/${friendId}`)
 }
+
+export const updateProfile = async (userId, payload) => {
+  let dataToSend = payload
+
+  if (!(payload instanceof FormData)) {
+    dataToSend = new FormData()
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        dataToSend.append(key, value)
+      }
+    })
+  }
+
+  const { data } = await apiClient.put(`/users/${userId}`, dataToSend, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data.user
+}

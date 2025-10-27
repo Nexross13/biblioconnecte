@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const userModel = require('../models/userModel');
 const friendshipModel = require('../models/friendshipModel');
 const {
@@ -182,6 +183,59 @@ const removeFriend = async (req, res, next) => {
   }
 };
 
+const updateProfile = async (req, res, next) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId)) {
+      const err = new Error('Invalid user identifier');
+      err.status = 400;
+      throw err;
+    }
+    ensureSelfAction(req, userId);
+
+    const firstName = req.body?.firstName?.trim();
+    const lastName = req.body?.lastName?.trim();
+    const email = req.body?.email?.trim();
+    const passwordInput = typeof req.body?.password === 'string' ? req.body.password : undefined;
+    const trimmedPassword = passwordInput?.trim();
+
+    if (!firstName || !lastName || !email) {
+      const err = new Error('firstName, lastName and email are required');
+      err.status = 400;
+      throw err;
+    }
+
+    if (trimmedPassword && trimmedPassword.length < 8) {
+      const err = new Error('Password must contain at least 8 characters');
+      err.status = 400;
+      throw err;
+    }
+
+    if (process.env.USE_MOCKS === 'true') {
+      return res.json({
+        user: {
+          id: userId,
+          firstName,
+          lastName,
+          email,
+          createdAt: new Date().toISOString(),
+        },
+      });
+    }
+
+    const updatedUser = await userModel.updateUser(userId, { firstName, lastName, email });
+
+    if (trimmedPassword) {
+      const passwordHash = await bcrypt.hash(trimmedPassword, 10);
+      await userModel.updateUserPassword(userId, passwordHash);
+    }
+
+    res.json({ user: updatedUser });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listUsers,
   getUserById,
@@ -189,4 +243,5 @@ module.exports = {
   requestFriend,
   acceptFriend,
   removeFriend,
+  updateProfile,
 };

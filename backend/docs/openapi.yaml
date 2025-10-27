@@ -214,6 +214,57 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Utilisateurs
+      summary: Mettre à jour le profil d'un utilisateur
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                profileImage:
+                  type: string
+                  format: binary
+              required:
+                - firstName
+                - lastName
+                - email
+      responses:
+        '200':
+          description: Profil mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /users/{id}/friends:
     get:
       tags:
@@ -704,7 +755,7 @@ paths:
           $ref: '#/components/responses/InternalError'
     put:
       tags:
-        - Auteurs
+        - Utilisateurs
       summary: Mettre à jour un auteur
       parameters:
         - $ref: '#/components/parameters/AuthorId'
@@ -716,18 +767,20 @@ paths:
               $ref: '#/components/schemas/AuthorUpdateRequest'
       responses:
         '200':
-          description: Auteur mis à jour
+          description: Profil mis à jour
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  author:
-                    $ref: '#/components/schemas/Author'
+                  user:
+                    $ref: '#/components/schemas/User'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':

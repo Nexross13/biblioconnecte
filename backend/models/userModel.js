@@ -47,6 +47,20 @@ const findById = async (id) => {
   return mapUser(result.rows[0]);
 };
 
+const updateUser = async (id, { firstName, lastName, email }) => {
+  const result = await query(
+    `UPDATE users
+     SET first_name = $2,
+         last_name = $3,
+         email = $4,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, first_name, last_name, email, created_at`,
+    [id, firstName, lastName, email],
+  );
+  return mapUser(result.rows[0]);
+};
+
 const listUsers = async () => {
   const result = await query(
     `SELECT id, first_name, last_name, email, created_at
@@ -56,9 +70,21 @@ const listUsers = async () => {
   return result.rows.map(mapUser);
 };
 
+const updateUserPassword = async (id, passwordHash) => {
+  await query(
+    `UPDATE users
+     SET password_hash = $2,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [id, passwordHash],
+  );
+};
+
 module.exports = {
   createUser,
   findByEmail,
   findById,
+  updateUser,
+  updateUserPassword,
   listUsers,
 };
