@@ -46,3 +46,22 @@ export const updateProfile = async (userId, payload) => {
   })
   return data.user
 }
+
+export const fetchFriendRequests = async (userId) => {
+  const { data } = await apiClient.get(`/users/${userId}/friends/requests`)
+  return data.requests
+}
+
+export const rejectFriendRequest = async ({ userId, friendId }) => {
+  await apiClient.post(`/users/${userId}/friends/${friendId}/reject`)
+}
+
+export const fetchUserLibraryById = async (userId) => {
+  const { data } = await apiClient.get(`/users/${userId}/library`)
+  return data.books
+}
+
+export const fetchUserWishlistById = async (userId) => {
+  const { data } = await apiClient.get(`/users/${userId}/wishlist`)
+  return data.books
+}

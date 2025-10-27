@@ -9,6 +9,7 @@ import Wishlist from './pages/Wishlist.jsx'
 import BookDetails from './pages/BookDetails.jsx'
 import Profile from './pages/Profile.jsx'
 import Friends from './pages/Friends.jsx'
+import FriendCollection from './pages/FriendCollection.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import NotFound from './pages/NotFound.jsx'
 
@@ -38,6 +39,14 @@ const App = () => (
         element={
           <ProtectedRoute>
             <Friends />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/friends/:id/collection"
+        element={
+          <ProtectedRoute>
+            <FriendCollection />
           </ProtectedRoute>
         }
       />
