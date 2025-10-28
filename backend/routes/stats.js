@@ -5,5 +5,6 @@ const { authenticate } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 router.get('/highlights', authenticate, statsController.getHighlights);
+router.get('/public-overview', statsController.getPublicOverview);
 
 module.exports = router;
