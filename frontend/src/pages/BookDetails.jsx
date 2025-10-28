@@ -25,7 +25,8 @@ const BookDetails = () => {
   const { id } = useParams()
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
-  const [rating, setRating] = useState(5)
+  const [rating, setRating] = useState(0)
+  const [hoverRating, setHoverRating] = useState(null)
   const [comment, setComment] = useState('')
 
   const bookQuery = useQuery({
@@ -160,28 +161,30 @@ const BookDetails = () => {
   return (
     <section className="space-y-8">
       <header className="card space-y-6">
-        <div className="flex flex-col gap-6 md:flex-row">
-          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800 md:w-64">
-            <img
-              src={coverSrc}
-              alt={`Couverture de ${book.title}`}
-              onError={(event) => {
-                if (candidateIndex < coverCandidates.length - 1) {
-                  const nextIndex = candidateIndex + 1
-                  setCandidateIndex(nextIndex)
-                  setCoverSrc(coverCandidates[nextIndex])
-                  return
-                }
-                event.currentTarget.src = PLACEHOLDER_COVER
-              }}
-              className="aspect-[3/4] w-full object-cover"
-            />
-          </div>
-          <div className="flex-1 space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-primary">{book.title}</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-300">{book.summary}</p>
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div className="flex flex-col gap-6 md:flex-row md:flex-1">
+            <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800 md:w-64">
+              <img
+                src={coverSrc}
+                alt={`Couverture de ${book.title}`}
+                onError={(event) => {
+                  if (candidateIndex < coverCandidates.length - 1) {
+                    const nextIndex = candidateIndex + 1
+                    setCandidateIndex(nextIndex)
+                    setCoverSrc(coverCandidates[nextIndex])
+                    return
+                  }
+                  event.currentTarget.src = PLACEHOLDER_COVER
+                }}
+                className="aspect-[3/4] w-full object-cover"
+              />
+            </div>
+            <div className="flex-1 space-y-4">
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold text-primary">{book.title}</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-300">{book.summary}</p>
+                </div>
                 <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-300">
                   {book.authors?.map((author) => (
                     <span
@@ -191,12 +194,28 @@ const BookDetails = () => {
                       {author.firstName} {author.lastName}
                     </span>
                   ))}
+                  {book.authorNames?.map((name, index) => (
+                    <span
+                      key={`author-name-${index}`}
+                      className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-700"
+                    >
+                      {name}
+                    </span>
+                  ))}
                   {book.genres?.map((genre) => (
                     <span
                       key={genre.id}
                       className="rounded-full bg-primary/10 px-3 py-1 text-primary dark:bg-primary/20"
                     >
                       {genre.name}
+                    </span>
+                  ))}
+                  {book.genreNames?.map((name, index) => (
+                    <span
+                      key={`genre-name-${index}`}
+                      className="rounded-full bg-primary/10 px-3 py-1 text-primary dark:bg-primary/20"
+                    >
+                      {name}
                     </span>
                   ))}
                 </div>
@@ -209,42 +228,44 @@ const BookDetails = () => {
               )}
             </div>
           </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <button
-            type="button"
-            className="btn"
-            onClick={() =>
-              ensureAuthenticated() &&
-              libraryMutation.mutate({
-                action: inLibrary ? 'remove' : 'add',
-              })
-            }
-            disabled={libraryMutation.isPending}
-          >
-            {libraryMutation.isPending
-              ? 'Mise à jour...'
-              : inLibrary
-              ? 'Retirer de ma bibliothèque'
-              : 'Ajouter à ma bibliothèque'}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() =>
-              ensureAuthenticated() &&
-              wishlistMutation.mutate({
-                action: inWishlist ? 'remove' : 'add',
-              })
-            }
-            disabled={wishlistMutation.isPending}
-          >
-            {wishlistMutation.isPending
-              ? 'Mise à jour...'
-              : inWishlist
-              ? 'Retirer de ma wishlist'
-              : 'Ajouter à ma wishlist'}
-          </button>
+          <div className="flex flex-col gap-3 self-start">
+            <button
+              type="button"
+              className={`btn ${inLibrary ? 'bg-rose-500 hover:bg-rose-600' : ''}`}
+              onClick={() =>
+                ensureAuthenticated() &&
+                libraryMutation.mutate({
+                  action: inLibrary ? 'remove' : 'add',
+                })
+              }
+              disabled={libraryMutation.isPending}
+            >
+              {libraryMutation.isPending
+                ? 'Mise à jour...'
+                : inLibrary
+                ? 'Retirer de ma bibliothèque'
+                : 'Ajouter à ma bibliothèque'}
+            </button>
+            {!inLibrary && (
+              <button
+                type="button"
+                className={`btn-secondary ${inWishlist ? 'bg-rose-500 text-white hover:bg-rose-600' : ''}`}
+                onClick={() =>
+                  ensureAuthenticated() &&
+                  wishlistMutation.mutate({
+                    action: inWishlist ? 'remove' : 'add',
+                  })
+                }
+                disabled={wishlistMutation.isPending}
+              >
+                {wishlistMutation.isPending
+                  ? 'Mise à jour...'
+                  : inWishlist
+                  ? 'Retirer de ma wishlist'
+                  : 'Ajouter à ma wishlist'}
+              </button>
+            )}
+          </div>
         </div>
         <dl className="grid gap-3 text-xs text-slate-500 dark:text-slate-300 md:grid-cols-3">
           <div>
@@ -304,14 +325,28 @@ const BookDetails = () => {
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
                   Note (1 à 5)
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  className="input"
-                  value={rating}
-                  onChange={(event) => setRating(Number(event.target.value))}
-                />
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }, (_, index) => {
+                    const value = index + 1
+                    const isActive = (hoverRating ?? rating) >= value
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`text-2xl transition ${
+                          isActive ? 'text-amber-400' : 'text-slate-300 dark:text-slate-600'
+                        }`}
+                        onMouseEnter={() => setHoverRating(value)}
+                        onMouseLeave={() => setHoverRating(null)}
+                        onClick={() => setRating(value)}
+                        aria-label={`Attribuer la note de ${value} sur 5`}
+                      >
+                        {isActive ? '★' : '☆'}
+                      </button>
+                    )
+                  })}
+                </div>
+                <input type="hidden" name="rating" value={rating} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-600 dark:text-slate-300">

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
@@ -11,6 +11,9 @@ import {
   UsersIcon,
   PencilSquareIcon,
   BookmarkIcon,
+  TrophyIcon,
+  UserGroupIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline'
 import BookCard from '../components/BookCard.jsx'
 import Loader from '../components/Loader.jsx'
@@ -20,10 +23,15 @@ import { fetchWishlist } from '../api/wishlist'
 import { fetchHighlights, fetchPublicOverview } from '../api/stats'
 import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
+import { ASSETS_BOOKS_BASE_URL, ASSETS_PROFILE_BASE_URL } from '../api/axios'
 
 const statNumberFormatter = new Intl.NumberFormat('fr-FR')
 const formatStatValue = (value) =>
   Number.isFinite(value) ? statNumberFormatter.format(value) : '—'
+const PLACEHOLDER_AVATAR = '/placeholder-user.svg'
+const PLACEHOLDER_COVER = '/placeholder-book.svg'
+const AVATAR_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
+const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 const Home = () => {
   const { isAuthenticated } = useAuth()
@@ -69,6 +77,51 @@ const Home = () => {
     [wishlistQuery.data],
   )
 
+  const topReader = highlightsQuery.data?.topReader ?? null
+  const topRatedBook = highlightsQuery.data?.topRatedBook ?? null
+
+  const topReaderAvatarCandidates = useMemo(() => {
+    const userId = topReader?.user?.id
+    if (!userId) {
+      return []
+    }
+    return AVATAR_EXTENSIONS.map((extension) => `${ASSETS_PROFILE_BASE_URL}/${userId}.${extension}`)
+  }, [topReader?.user?.id])
+
+  const [topReaderAvatarSrc, setTopReaderAvatarSrc] = useState(PLACEHOLDER_AVATAR)
+  const [topReaderAvatarIndex, setTopReaderAvatarIndex] = useState(0)
+
+  useEffect(() => {
+    if (!topReaderAvatarCandidates.length) {
+      setTopReaderAvatarSrc(PLACEHOLDER_AVATAR)
+      setTopReaderAvatarIndex(0)
+      return
+    }
+    setTopReaderAvatarSrc(topReaderAvatarCandidates[0])
+    setTopReaderAvatarIndex(0)
+  }, [topReaderAvatarCandidates])
+
+  const topRatedCoverCandidates = useMemo(() => {
+    const isbn = topRatedBook?.book?.isbn
+    if (!isbn) {
+      return []
+    }
+    return COVER_EXTENSIONS.map((extension) => `${ASSETS_BOOKS_BASE_URL}/${isbn}.${extension}`)
+  }, [topRatedBook?.book?.isbn])
+
+  const [topRatedCoverSrc, setTopRatedCoverSrc] = useState(PLACEHOLDER_COVER)
+  const [topRatedCoverIndex, setTopRatedCoverIndex] = useState(0)
+
+  useEffect(() => {
+    if (!topRatedCoverCandidates.length) {
+      setTopRatedCoverSrc(PLACEHOLDER_COVER)
+      setTopRatedCoverIndex(0)
+      return
+    }
+    setTopRatedCoverSrc(topRatedCoverCandidates[0])
+    setTopRatedCoverIndex(0)
+  }, [topRatedCoverCandidates])
+
   const counts = !isAuthenticated ? publicOverviewQuery.data?.counts ?? {} : {}
   const activity = !isAuthenticated ? publicOverviewQuery.data?.activity ?? {} : {}
   const popularGenres = !isAuthenticated ? publicOverviewQuery.data?.popularGenres ?? [] : []
@@ -105,7 +158,7 @@ const Home = () => {
           />
           <button
             type="submit"
-            className="btn bg-white text-primary hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-white/50 disabled:text-primary/60"
+            className="btn ml-2 bg-white text-primary hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-white/50 disabled:text-primary/60"
             disabled={!isAuthenticated}
           >
             Rechercher
@@ -546,21 +599,43 @@ const Home = () => {
         ) : (
           <>
             <section className="grid gap-6 md:grid-cols-2">
-              <div className="card space-y-2">
-                <h2 className="text-xl font-semibold text-primary">Lecteur le plus actif</h2>
-                {highlightsQuery.data?.topReader ? (
-                  <div className="space-y-2">
-                    <p className="text-lg font-semibold text-slate-700 dark:text-slate-100">
-                      {highlightsQuery.data.topReader.user.firstName}{' '}
-                      {highlightsQuery.data.topReader.user.lastName}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-300">
-                      {highlightsQuery.data.topReader.totalBooks} livres enregistrés dans sa
-                      bibliothèque.
-                    </p>
-                    <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary dark:bg-primary/20">
-                      {highlightsQuery.data.topReader.user.email}
-                    </span>
+              <div className="card space-y-4">
+                <h2 className="text-xl font-semibold text-primary">
+                  <span className="inline-flex items-center gap-2">
+                    <UserGroupIcon className="h-5 w-5 text-primary" aria-hidden="true" />
+                    Lecteur le plus actif
+                  </span>
+                </h2>
+                {topReader ? (
+                  <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-slate-700 dark:bg-slate-900/60 md:flex-row md:items-center">
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-primary/10 dark:border-primary/40 dark:bg-primary/20 md:mx-0">
+                      <img
+                        src={topReaderAvatarSrc}
+                        alt={`Avatar de ${topReader.user.firstName} ${topReader.user.lastName}`}
+                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          if (topReaderAvatarIndex < topReaderAvatarCandidates.length - 1) {
+                            const nextIndex = topReaderAvatarIndex + 1
+                            setTopReaderAvatarIndex(nextIndex)
+                            setTopReaderAvatarSrc(topReaderAvatarCandidates[nextIndex])
+                            return
+                          }
+                          event.currentTarget.src = PLACEHOLDER_AVATAR
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2 text-left">
+                      <p className="text-lg font-semibold text-slate-700 dark:text-slate-100">
+                        {topReader.user.firstName} {topReader.user.lastName}
+                      </p>
+                      <p className="text-sm text-slate-500 dark:text-slate-300">
+                        {formatStatValue(topReader.totalBooks)} livres enregistrés dans sa
+                        bibliothèque.
+                      </p>
+                      <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary dark:bg-primary/20">
+                        {topReader.user.email}
+                      </span>
+                    </div>
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500 dark:text-slate-300">
@@ -569,31 +644,54 @@ const Home = () => {
                 )}
               </div>
 
-              <div className="card space-y-2">
-                <h2 className="text-xl font-semibold text-primary">Livre le mieux noté</h2>
-                {highlightsQuery.data?.topRatedBook ? (
-                  <div className="space-y-3">
-                    <Link
-                      to={`/books/${highlightsQuery.data.topRatedBook.book.id}`}
-                      className="text-lg font-semibold text-slate-700 hover:text-primary dark:text-slate-100"
-                    >
-                      {highlightsQuery.data.topRatedBook.book.title}
-                    </Link>
-                    <p className="text-sm text-slate-500 dark:text-slate-300">
-                      Note moyenne :
-                      <span className="ml-1 font-semibold text-primary">
-                        ⭐
-                        {highlightsQuery.data.topRatedBook.averageRating?.toFixed
-                          ? ` ${highlightsQuery.data.topRatedBook.averageRating.toFixed(2)}`
-                          : ` ${highlightsQuery.data.topRatedBook.averageRating}`}
-                      </span>
-                      ({highlightsQuery.data.topRatedBook.totalReviews} avis)
-                    </p>
-                    {highlightsQuery.data.topRatedBook.book.summary && (
-                      <p className="text-sm text-slate-500 dark:text-slate-300 line-clamp-3">
-                        {highlightsQuery.data.topRatedBook.book.summary}
+              <div className="card space-y-4">
+                <h2 className="text-xl font-semibold text-primary">
+                  <span className="inline-flex items-center gap-2">
+                    <TrophyIcon className="h-5 w-5 text-primary" aria-hidden="true" />
+                    Livre le mieux noté
+                  </span>
+                </h2>
+                {topRatedBook ? (
+                  <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-slate-700 dark:bg-slate-900/60 md:flex-row md:items-center">
+                    <div className="relative flex h-32 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                      <img
+                        src={topRatedCoverSrc}
+                        alt={`Couverture de ${topRatedBook.book.title}`}
+                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          if (topRatedCoverIndex < topRatedCoverCandidates.length - 1) {
+                            const nextIndex = topRatedCoverIndex + 1
+                            setTopRatedCoverIndex(nextIndex)
+                            setTopRatedCoverSrc(topRatedCoverCandidates[nextIndex])
+                            return
+                          }
+                          event.currentTarget.src = PLACEHOLDER_COVER
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2 text-left">
+                      <Link
+                        to={`/books/${topRatedBook.book.id}`}
+                        className="text-lg font-semibold text-slate-700 hover:text-primary dark:text-slate-100"
+                      >
+                        {topRatedBook.book.title}
+                      </Link>
+                      <p className="text-sm text-slate-500 dark:text-slate-300">
+                        Note moyenne :
+                        <span className="ml-1 font-semibold text-primary">
+                          ⭐
+                          {topRatedBook.averageRating?.toFixed
+                            ? ` ${topRatedBook.averageRating.toFixed(2)}`
+                            : ` ${topRatedBook.averageRating}`}
+                        </span>
+                        ({formatStatValue(topRatedBook.totalReviews)} avis)
                       </p>
-                    )}
+                      {topRatedBook.book.summary && (
+                        <p className="text-sm text-slate-500 dark:text-slate-300 line-clamp-3">
+                          {topRatedBook.book.summary}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500 dark:text-slate-300">
@@ -605,7 +703,12 @@ const Home = () => {
 
             <section className="card space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-primary">Dernières parutions</h2>
+                <h2 className="text-xl font-semibold text-primary">
+                  <span className="inline-flex items-center gap-2">
+                    <ClockIcon className="h-5 w-5 text-primary" aria-hidden="true" />
+                    Dernières parutions
+                  </span>
+                </h2>
                 <span className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
                   5 derniers ajouts
                 </span>

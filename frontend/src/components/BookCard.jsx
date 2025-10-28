@@ -11,6 +11,28 @@ import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
+const getAuthorList = (book) => {
+  if (Array.isArray(book.authors) && book.authors.length) {
+    return book.authors
+      .map((author) => [author.firstName, author.lastName].filter(Boolean).join(' ').trim())
+      .filter((value) => Boolean(value && value !== '0'))
+  }
+  if (Array.isArray(book.authorNames) && book.authorNames.length) {
+    return book.authorNames.filter((value) => Boolean(value && value !== '0'))
+  }
+  return []
+}
+
+const getGenreList = (book) => {
+  if (Array.isArray(book.genres) && book.genres.length) {
+    return book.genres.map((genre) => genre.name).filter((value) => Boolean(value && value !== '0'))
+  }
+  if (Array.isArray(book.genreNames) && book.genreNames.length) {
+    return book.genreNames.filter((value) => Boolean(value && value !== '0'))
+  }
+  return []
+}
+
 const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
   const { isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
@@ -23,6 +45,8 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
 
   const [coverSrc, setCoverSrc] = useState(() => coverCandidates[0] || PLACEHOLDER_COVER)
   const [candidateIndex, setCandidateIndex] = useState(0)
+  const authorNames = useMemo(() => getAuthorList(book), [book])
+  const genreNames = useMemo(() => getGenreList(book), [book])
 
   useEffect(() => {
     if (!coverCandidates.length) {
@@ -40,9 +64,15 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['library'] })
       queryClient.invalidateQueries({ queryKey: ['books'] })
+      if (variables.action === 'add') {
+        queryClient.invalidateQueries({ queryKey: ['wishlist'] })
+        queryClient.setQueryData(['wishlist'], (previous) =>
+          Array.isArray(previous) ? previous.filter((item) => item.id !== variables.bookId) : previous,
+        )
+      }
       toast.success(
         variables.action === 'add'
-          ? 'Livre ajouté à votre bibliothèque'
+          ? 'Livre ajouté à votre bibliothèque (retiré de vos souhaits)'
           : 'Livre retiré de votre bibliothèque',
       )
     },
@@ -54,6 +84,7 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
       action === 'add' ? addBookToWishlist(bookId) : removeBookFromWishlist(bookId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['wishlist'] })
+      queryClient.invalidateQueries({ queryKey: ['library'] })
       toast.success(
         variables.action === 'add'
           ? 'Livre ajouté à la wishlist'
@@ -85,6 +116,15 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
     })
   }
 
+  const averageRating =
+    book.averageRating !== null && book.averageRating !== undefined
+      ? Number(book.averageRating)
+      : null
+  const reviewCount =
+    typeof book.reviewCount === 'number' && !Number.isNaN(book.reviewCount)
+      ? book.reviewCount
+      : 0
+
   return (
     <article className="card flex h-full flex-col gap-4">
       <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
@@ -105,32 +145,33 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-2">
           <h3 className="text-lg font-semibold text-primary">{book.title}</h3>
-          {book.averageRating && (
+          {averageRating !== null && !Number.isNaN(averageRating) && reviewCount > 0 && (
             <span className="rounded-full bg-amber-400/90 px-3 py-1 text-xs font-semibold text-amber-900">
-              ⭐ {book.averageRating.toFixed(1)}
+              ⭐ {averageRating.toFixed(1)}
             </span>
           )}
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-300 line-clamp-3">{book.summary}</p>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-300">
-        {book.authors?.map((author) => (
-          <span key={author.id} className="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-700">
-            {author.firstName} {author.lastName}
-          </span>
-        ))}
-        {book.genres?.map((genre) => (
-          <span
-            key={genre.id}
-            className="rounded-full bg-primary/10 px-3 py-1 text-primary dark:bg-primary/20"
-          >
-            {genre.name}
-          </span>
-        ))}
-      </div>
+      {authorNames.length > 0 || genreNames.length > 0 ? (
+        <div className="flex flex-col gap-2 text-xs text-slate-500 dark:text-slate-300">
+          {authorNames.length > 0 ? (
+            <p>
+              <span className="font-semibold text-slate-600 dark:text-slate-200">Auteur(s) :</span>{' '}
+              {authorNames.join(', ')}
+            </p>
+          ) : null}
+          {genreNames.length > 0 ? (
+            <p>
+              <span className="font-semibold text-slate-600 dark:text-slate-200">Genres :</span>{' '}
+              {genreNames.join(', ')}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-auto flex flex-col gap-3">
         <Link to={`/books/${book.id}`} className="btn w-full text-center">
@@ -143,7 +184,7 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
             className={clsx(
               'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition',
               inLibrary
-                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                ? 'bg-rose-500 text-white hover:bg-rose-600'
                 : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600',
             )}
             disabled={libraryMutation.isPending}
@@ -154,23 +195,25 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
               ? 'Retirer de ma bibliothèque'
               : 'Ajouter à ma bibliothèque'}
           </button>
-          <button
-            type="button"
-            onClick={handleWishlist}
-            className={clsx(
-              'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition',
-              inWishlist
-                ? 'bg-rose-500 text-white hover:bg-rose-600'
-                : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600',
-            )}
-            disabled={wishlistMutation.isPending}
-          >
-            {wishlistMutation.isPending
-              ? 'En cours...'
-              : inWishlist
-              ? 'Retirer de mes souhaits'
-              : 'Ajouter à mes souhaits'}
-          </button>
+          {!inLibrary && (
+            <button
+              type="button"
+              onClick={handleWishlist}
+              className={clsx(
+                'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition',
+                inWishlist
+                  ? 'bg-rose-500 text-white hover:bg-rose-600'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600',
+              )}
+              disabled={wishlistMutation.isPending}
+            >
+              {wishlistMutation.isPending
+                ? 'En cours...'
+                : inWishlist
+                ? 'Retirer de mes souhaits'
+                : 'Ajouter à mes souhaits'}
+            </button>
+          )}
         </div>
       </div>
     </article>

@@ -21,6 +21,8 @@ const BookProposalDetails = () => {
 
   const [coverSrc, setCoverSrc] = useState(PLACEHOLDER_COVER)
   const [candidateIndex, setCandidateIndex] = useState(0)
+  const proposal = proposalQuery.data ?? null
+  const isPending = proposal?.status === 'pending'
 
   const invalidateLists = async () => {
     await Promise.all([
@@ -56,42 +58,21 @@ const BookProposalDetails = () => {
     },
   })
 
-  if (proposalQuery.isLoading) {
-    return <Loader label="Chargement de la proposition..." />
-  }
-
-  if (proposalQuery.isError || !proposalQuery.data) {
-    return (
-      <section className="space-y-4">
-        <h1 className="text-2xl font-semibold text-primary">Proposition introuvable</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-300">
-          Cette proposition n’existe pas ou vous n’y avez pas accès.
-        </p>
-      </section>
-    )
-  }
-
-  const proposal = proposalQuery.data
-  const isPending = proposal.status === 'pending'
-  const submittedFullName = `${proposal.submittedBy?.firstName ?? 'Utilisateur'} ${
-    proposal.submittedBy?.lastName ?? ''
-  }`.trim()
-
   const coverCandidates = useMemo(() => {
     const candidates = []
-    if (proposal.coverImagePath) {
+    if (proposal?.coverImagePath) {
       const normalized = proposal.coverImagePath.startsWith('/')
         ? proposal.coverImagePath
         : `/${proposal.coverImagePath}`
       candidates.push(normalized)
     }
-    if (proposal.isbn) {
+    if (proposal?.isbn) {
       COVER_EXTENSIONS.forEach((ext) => {
         candidates.push(`${ASSETS_BOOKS_BASE_URL}/${proposal.isbn}.${ext}`)
       })
     }
     return candidates
-  }, [proposal.coverImagePath, proposal.isbn])
+  }, [proposal?.coverImagePath, proposal?.isbn])
 
   useEffect(() => {
     if (!coverCandidates.length) {
@@ -102,6 +83,35 @@ const BookProposalDetails = () => {
     setCoverSrc(coverCandidates[0])
     setCandidateIndex(0)
   }, [coverCandidates])
+
+  if (proposalQuery.isLoading) {
+    return <Loader label="Chargement de la proposition..." />
+  }
+
+  if (proposalQuery.isError || !proposal) {
+    return (
+      <section className="space-y-4">
+        <h1 className="text-2xl font-semibold text-primary">Proposition introuvable</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-300">
+          Cette proposition n’existe pas ou vous n’y avez pas accès.
+        </p>
+      </section>
+    )
+  }
+
+  const submittedFullName = `${proposal.submittedBy?.firstName ?? 'Utilisateur'} ${
+    proposal.submittedBy?.lastName ?? ''
+  }`.trim()
+
+  const releaseDateLabel = proposal.releaseDate
+    ? (() => {
+        const date = new Date(proposal.releaseDate)
+        if (Number.isNaN(date.getTime())) {
+          return proposal.releaseDate
+        }
+        return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(date)
+      })()
+    : null
 
   return (
     <section className="space-y-6">
@@ -153,6 +163,14 @@ const BookProposalDetails = () => {
                     Tome / Volume
                   </dt>
                   <dd>{proposal.volume}</dd>
+                </div>
+              )}
+              {releaseDateLabel && (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Date de sortie
+                  </dt>
+                  <dd>{releaseDateLabel}</dd>
                 </div>
               )}
               {proposal.authorNames?.length ? (

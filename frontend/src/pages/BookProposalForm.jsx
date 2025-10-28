@@ -19,6 +19,7 @@ const initialState = {
   isbn: '',
   edition: '',
   volume: '',
+  releaseDate: '',
   summary: '',
 }
 
@@ -247,6 +248,7 @@ const BookProposalForm = () => {
       isbn: formValues.isbn.trim() || null,
       edition: formValues.edition.trim() || null,
       volume: formValues.volume.trim() || null,
+      releaseDate: formValues.releaseDate.trim() || null,
       summary: formValues.summary.trim() || null,
       authorNames: authors,
       genreNames: genres,
@@ -273,7 +275,7 @@ const BookProposalForm = () => {
       <form className="card space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <label htmlFor="title" className="text-sm font-semibold text-primary">
-            Titre *
+            Titre
           </label>
           <input
             id="title"
@@ -329,9 +331,24 @@ const BookProposalForm = () => {
               id="volume"
               name="volume"
               type="text"
-              className="input"
+              className="input h-10"
               placeholder="Ex. Tome 1"
               value={formValues.volume}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="releaseDate" className="text-sm font-semibold text-primary">
+              Date de sortie
+            </label>
+            <input
+              id="releaseDate"
+              name="releaseDate"
+              type="date"
+              className="input h-10"
+              placeholder="AAAA-MM-JJ"
+              value={formValues.releaseDate}
               onChange={handleChange}
             />
           </div>
@@ -352,7 +369,7 @@ const BookProposalForm = () => {
         </div>
 
         <div className="space-y-2">
-          <span className="text-sm font-semibold text-primary">Auteur(s) *</span>
+          <span className="text-sm font-semibold text-primary">Auteur(s)</span>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <button
               type="button"
@@ -396,7 +413,7 @@ const BookProposalForm = () => {
         </div>
 
         <div className="space-y-2">
-          <span className="text-sm font-semibold text-primary">Genre(s) *</span>
+          <span className="text-sm font-semibold text-primary">Genre(s)</span>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <button
               type="button"
