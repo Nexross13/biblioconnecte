@@ -120,6 +120,7 @@ const mapMockProposal = (proposal) => {
     updatedAt: proposal.updatedAt,
     decidedAt: proposal.decidedAt || null,
     rejectionReason: proposal.rejectionReason || null,
+    releaseDate: proposal.releaseDate || null,
     authorNames: proposal.authorNames || [],
     genreNames: proposal.genreNames || [],
     coverImagePath: proposal.coverImagePath || null,
@@ -134,7 +135,7 @@ const mapMockProposal = (proposal) => {
 
 const createProposal = async (req, res, next) => {
   try {
-    const { title, isbn, edition, volume, summary } = req.body;
+    const { title, isbn, edition, volume, summary, releaseDate: rawReleaseDate } = req.body;
     if (!title) {
       const err = new Error('Title is required');
       err.status = 400;
@@ -150,6 +151,22 @@ const createProposal = async (req, res, next) => {
       const err = new Error('Authenticated user required');
       err.status = 401;
       throw err;
+    }
+
+    let releaseDate = null;
+    if (rawReleaseDate !== undefined && rawReleaseDate !== null && String(rawReleaseDate).trim()) {
+      const normalized = String(rawReleaseDate).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+        releaseDate = normalized;
+      } else {
+        const parsed = new Date(normalized);
+        if (Number.isNaN(parsed.getTime())) {
+          const err = new Error('Invalid release date');
+          err.status = 400;
+          throw err;
+        }
+        releaseDate = parsed.toISOString().slice(0, 10);
+      }
     }
 
     const authorNames = normalizeStringArray(req.body.authorNames || req.body.authors);
@@ -174,6 +191,7 @@ const createProposal = async (req, res, next) => {
         edition,
         volume,
         summary,
+        releaseDate,
         submittedBy,
         authorNames,
         genreNames,
@@ -192,6 +210,7 @@ const createProposal = async (req, res, next) => {
         edition,
         volume,
         summary,
+        publicationDate: releaseDate,
         submittedBy,
         authorNames,
         genreNames,

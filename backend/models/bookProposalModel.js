@@ -11,6 +11,27 @@ const ensureDirectory = async (dir) => {
   await fsPromises.mkdir(dir, { recursive: true });
 };
 
+const normalizeDate = (value) => {
+  if (!value) {
+    return null;
+  }
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+  const stringValue = String(value);
+  if (!stringValue.length) {
+    return null;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(stringValue)) {
+    return stringValue.slice(0, 10);
+  }
+  const parsed = new Date(stringValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return stringValue;
+  }
+  return parsed.toISOString().slice(0, 10);
+};
+
 const mapUser = (row, idKey, firstNameKey, lastNameKey, emailKey) => {
   const id = row?.[idKey];
   if (!id) {
@@ -31,6 +52,7 @@ const mapProposal = (row) =>
     isbn: row.isbn,
     edition: row.edition,
     volume: row.volume,
+    releaseDate: normalizeDate(row.publication_date),
     summary: row.summary,
     status: row.status,
     submittedAt: row.submitted_at,
@@ -65,6 +87,7 @@ const baseSelect = `
     bp.isbn,
     bp.edition,
     bp.volume,
+    bp.publication_date,
     bp.summary,
     bp.status,
     bp.submitted_by,
@@ -93,16 +116,28 @@ const createProposal = async ({
   edition,
   volume,
   summary,
+  publicationDate = null,
   submittedBy,
   authorNames = [],
   genreNames = [],
   coverImagePath = null,
 }) => {
   const result = await query(
-    `INSERT INTO book_proposals (title, isbn, edition, volume, summary, status, submitted_by, author_names, genre_names, cover_image_path)
-     VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
-     RETURNING id, title, isbn, edition, volume, summary, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
-    [title, isbn, edition, volume, summary, submittedBy, authorNames, genreNames, coverImagePath],
+    `INSERT INTO book_proposals (title, isbn, edition, volume, summary, publication_date, status, submitted_by, author_names, genre_names, cover_image_path)
+     VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10)
+     RETURNING id, title, isbn, edition, volume, summary, publication_date, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
+    [
+      title,
+      isbn,
+      edition,
+      volume,
+      summary,
+      publicationDate,
+      submittedBy,
+      authorNames,
+      genreNames,
+      coverImagePath,
+    ],
   );
   return mapProposal(result.rows[0]);
 };
@@ -169,7 +204,7 @@ const approveProposal = async (id, { decidedBy }) => {
   try {
     await client.query('BEGIN');
     const proposalResult = await client.query(
-      `SELECT id, title, isbn, edition, volume, summary, status, author_names, genre_names, cover_image_path
+      `SELECT id, title, isbn, edition, volume, summary, publication_date, status, author_names, genre_names, cover_image_path
        FROM book_proposals
        WHERE id = $1
        FOR UPDATE`,
@@ -187,10 +222,17 @@ const approveProposal = async (id, { decidedBy }) => {
     }
 
     const bookResult = await client.query(
-      `INSERT INTO books (title, isbn, edition, volume, summary)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, title, isbn, edition, volume, summary, created_at, updated_at`,
-      [proposal.title, proposal.isbn, proposal.edition, proposal.volume, proposal.summary],
+      `INSERT INTO books (title, isbn, edition, volume, publication_date, summary)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, title, isbn, edition, volume, publication_date, summary, created_at, updated_at`,
+      [
+        proposal.title,
+        proposal.isbn,
+        proposal.edition,
+        proposal.volume,
+        proposal.publication_date,
+        proposal.summary,
+      ],
     );
 
     const updatedProposalResult = await client.query(
@@ -201,7 +243,7 @@ const approveProposal = async (id, { decidedBy }) => {
            rejection_reason = NULL,
            updated_at = NOW()
        WHERE id = $1
-       RETURNING id, title, isbn, edition, volume, summary, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
+       RETURNING id, title, isbn, edition, volume, summary, publication_date, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
       [id, decidedBy],
     );
 
@@ -213,6 +255,7 @@ const approveProposal = async (id, { decidedBy }) => {
       isbn: bookRow.isbn,
       edition: bookRow.edition,
       volume: bookRow.volume,
+      releaseDate: normalizeDate(bookRow.publication_date),
       summary: bookRow.summary,
       createdAt: bookRow.created_at,
       updatedAt: bookRow.updated_at,

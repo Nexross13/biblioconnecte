@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS books (
   isbn       VARCHAR(20) UNIQUE,
   edition    VARCHAR(150),
   volume     VARCHAR(50),
+  publication_date DATE,
   summary    TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -132,7 +133,11 @@ CREATE TABLE IF NOT EXISTS book_proposals (
   isbn             VARCHAR(20),
   edition          VARCHAR(150),
   volume           VARCHAR(50),
+  publication_date DATE,
   summary          TEXT,
+  author_names     TEXT[] NOT NULL DEFAULT '{}',
+  genre_names      TEXT[] NOT NULL DEFAULT '{}',
+  cover_image_path TEXT,
   status           VARCHAR(20) NOT NULL DEFAULT 'pending'
                    CHECK (status IN ('pending', 'approved', 'rejected')),
   submitted_by     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -326,3 +331,105 @@ VALUES
 ('Erin', 'Morgenstern', 'Auteure américaine du roman "Le Cirque des rêves".'),
 ('Donna', 'Tartt', 'Romancière américaine, prix Pulitzer pour "Le Chardonneret".'),
 ('Elena', 'Ferrante', 'Auteure italienne anonyme, connue pour "L’amie prodigieuse".');
+
+-- =====================================================================
+-- SEED : BOOKS
+-- =====================================================================
+
+INSERT INTO books (title, isbn, edition, volume, publication_date, summary)
+VALUES
+('L’Étranger', '9782070360024', 'Gallimard', NULL, '1942-05-19', 'Roman philosophique d’Albert Camus explorant l’absurdité de la condition humaine.'),
+('1984', '9780451524935', 'Secker & Warburg', NULL, '1949-06-08', 'Roman dystopique où le gouvernement contrôle la pensée et la vérité.'),
+('Orgueil et Préjugés', '9780141439518', 'Penguin Classics', NULL, '1813-01-28', 'Comédie romantique et critique sociale de la noblesse anglaise.'),
+('Vingt mille lieues sous les mers', '9782253006329', 'Hetzel', NULL, '1870-06-20', 'Aventure sous-marine avec le capitaine Nemo à bord du Nautilus.'),
+('Les Misérables', '9782070409181', 'Gallimard', NULL, '1862-04-03', 'Roman social et historique explorant la justice, la misère et la rédemption.'),
+('Crime et Châtiment', '9782070360025', 'Gallimard', NULL, '1866-01-01', 'Chef-d’œuvre de la littérature russe sur la culpabilité et la morale.'),
+('Frankenstein', '9780143131847', 'Penguin Classics', NULL, '1818-01-01', 'Roman gothique sur la création de la vie et la responsabilité scientifique.'),
+('Les Aventures de Sherlock Holmes', '9780007350858', 'HarperCollins', NULL, '1892-10-14', 'Recueil d’enquêtes du détective emblématique créé par Conan Doyle.'),
+('Le Comte de Monte-Cristo', '9782253009405', 'Calmann-Lévy', NULL, '1845-08-28', 'Roman d’aventure et de vengeance d’Alexandre Dumas.'),
+('Le Seigneur des Anneaux : La Communauté de l’Anneau', '9780261102385', 'Allen & Unwin', '1', '1954-07-29', 'Premier tome de la trilogie de J. R. R. Tolkien sur la quête de l’anneau unique.'),
+('Harry Potter à l’école des sorciers', '9780747532699', 'Bloomsbury', '1', '1997-06-26', 'Premier tome de la célèbre saga de J. K. Rowling.'),
+('Le Nom du vent', '9788401337208', 'DAW Books', '1', '2007-03-27', 'Roman de fantasy suivant le parcours de Kvothe, un héros légendaire.'),
+('Mistborn : L’Empire Ultime', '9780765311788', 'Tor Books', '1', '2006-07-17', 'Roman de fantasy épique dans un monde gouverné par un tyran immortel.'),
+('Game of Thrones', '9780553573404', 'Bantam Spectra', '1', '1996-08-06', 'Premier tome de la saga de fantasy "Le Trône de fer" de George R. R. Martin.'),
+('Fahrenheit 451', '9781451673319', 'Ballantine Books', NULL, '1953-10-19', 'Roman d’anticipation dénonçant la censure et la perte de la culture.'),
+('Fondation', '9782070378570', 'Gallimard', '1', '1951-01-01', 'Cycle de science-fiction d’Isaac Asimov sur la chute d’un empire galactique.'),
+('L’Alchimiste', '9780061122415', 'HarperOne', NULL, '1988-01-01', 'Conte philosophique sur la quête de soi et le destin.'),
+('Shining', '9780307743657', 'Doubleday', NULL, '1977-01-28', 'Roman d’horreur psychologique dans un hôtel isolé enneigé.'),
+('La Servante écarlate', '9780385490818', 'McClelland & Stewart', NULL, '1985-09-01', 'Roman dystopique sur une société totalitaire et patriarcale.'),
+('Les Cerfs-volants de Kaboul', '9781594631931', 'Riverhead Books', NULL, '2003-05-29', 'Roman poignant sur l’amitié et la rédemption en Afghanistan.');
+
+-- =====================================================================
+-- SEED : BOOK_AUTHORS
+-- =====================================================================
+
+INSERT INTO book_authors (book_id, author_id)
+VALUES
+(1, 1),   -- L'Étranger → Albert Camus
+(2, 2),   -- 1984 → George Orwell
+(3, 3),   -- Orgueil et Préjugés → Jane Austen
+(4, 4),   -- 20 000 lieues → Jules Verne
+(5, 5),   -- Les Misérables → Victor Hugo
+(6, 6),   -- Crime et Châtiment → Dostoïevski
+(7, 8),   -- Frankenstein → Mary Shelley
+(8, 9),   -- Sherlock Holmes → Conan Doyle
+(9, 5),   -- Monte Cristo → Victor Hugo (ou Dumas)
+(10, 18), -- LOTR → Tolkien
+(11, 17), -- Harry Potter → Rowling
+(12, 30), -- Le Nom du vent → Rothfuss
+(13, 31), -- Mistborn → Sanderson
+(14, 16), -- Game of Thrones → GRR Martin
+(15, 21), -- Fahrenheit 451 → Bradbury
+(16, 20), -- Fondation → Asimov
+(17, 35), -- L’Alchimiste → Coelho
+(18, 19), -- Shining → Stephen King
+(19, 27), -- La Servante écarlate → Margaret Atwood
+(20, 36); -- Les Cerfs-volants de Kaboul → Khaled Hosseini
+
+-- =====================================================================
+-- SEED : BOOK_GENRES
+-- =====================================================================
+
+INSERT INTO book_genres (book_id, genre_id)
+VALUES
+-- Romans philosophiques, classiques, dystopiques...
+(1, 1),   -- L'Étranger → Roman contemporain
+(1, 13),  -- L'Étranger → Philosophie
+(2, 4),   -- 1984 → Dystopie
+(2, 15),  -- 1984 → Science-fiction
+(3, 10),  -- Orgueil et Préjugés → Romance
+(3, 1),   -- Orgueil et Préjugés → Roman classique
+(4, 9),   -- 20 000 lieues sous les mers → Aventure
+(4, 15),  -- 20 000 lieues sous les mers → Science-fiction
+(5, 1),   -- Les Misérables → Roman historique
+(5, 11),  -- Les Misérables → Drame
+(6, 1),   -- Crime et Châtiment → Roman psychologique
+(6, 11),  -- Crime et Châtiment → Drame
+(7, 7),   -- Frankenstein → Fantastique
+(7, 15),  -- Frankenstein → Science-fiction
+(8, 3),   -- Sherlock Holmes → Policier
+(8, 9),   -- Sherlock Holmes → Aventure
+(9, 9),   -- Monte Cristo → Aventure
+(9, 1),   -- Monte Cristo → Roman classique
+(10, 6),  -- Le Seigneur des Anneaux → Fantasy
+(10, 9),  -- Le Seigneur des Anneaux → Aventure
+(11, 6),  -- Harry Potter → Fantasy
+(11, 9),  -- Harry Potter → Aventure
+(12, 6),  -- Le Nom du vent → Fantasy
+(12, 9),  -- Le Nom du vent → Aventure
+(13, 6),  -- Mistborn → Fantasy
+(13, 15), -- Mistborn → Science-fiction
+(14, 6),  -- Game of Thrones → Fantasy
+(14, 1),  -- Game of Thrones → Roman historique
+(15, 15), -- Fahrenheit 451 → Science-fiction
+(15, 4),  -- Fahrenheit 451 → Dystopie
+(16, 15), -- Fondation → Science-fiction
+(16, 13), -- Fondation → Philosophie
+(17, 1),  -- L’Alchimiste → Roman initiatique
+(17, 13), -- L’Alchimiste → Développement personnel
+(18, 8),  -- Shining → Horreur
+(18, 7),  -- Shining → Fantastique
+(19, 4),  -- La Servante écarlate → Dystopie
+(19, 15), -- La Servante écarlate → Science-fiction
+(20, 1),  -- Les Cerfs-volants de Kaboul → Roman contemporain
+(20, 11); -- Les Cerfs-volants de Kaboul → Drame

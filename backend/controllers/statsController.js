@@ -3,6 +3,17 @@ const { mockData } = require('../data/mockData');
 
 const toNumber = (value) => Number(value) || 0;
 
+const normalizeDate = (value) => {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return String(value);
+  }
+  return parsed.toISOString().slice(0, 10);
+};
+
 const mapTopReaderRow = (row) =>
   row && {
     user: {
@@ -17,7 +28,9 @@ const mapTopReaderRow = (row) =>
 const mapBookRow = (row) =>
   row && {
     id: row.id,
+    isbn: row.isbn,
     title: row.title,
+    releaseDate: normalizeDate(row.publication_date),
     summary: row.summary,
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
@@ -87,7 +100,9 @@ const getHighlights = async (req, res, next) => {
             topRatedBook = {
               book: {
                 id: book.id,
+                isbn: book.isbn,
                 title: book.title,
+                releaseDate: book.releaseDate || null,
                 summary: book.summary,
                 createdAt: book.createdAt,
               },
@@ -106,7 +121,9 @@ const getHighlights = async (req, res, next) => {
         .slice(0, 5)
         .map((book) => ({
           id: book.id,
+          isbn: book.isbn,
           title: book.title,
+          releaseDate: book.releaseDate || null,
           summary: book.summary,
           createdAt: book.createdAt,
           updatedAt: book.updatedAt || book.createdAt,
@@ -134,7 +151,9 @@ const getHighlights = async (req, res, next) => {
       ),
       query(
         `SELECT b.id,
+                b.isbn,
                 b.title,
+                b.publication_date,
                 b.summary,
                 b.created_at,
                 b.updated_at,
@@ -142,13 +161,15 @@ const getHighlights = async (req, res, next) => {
                 COUNT(r.id) AS review_count
          FROM reviews r
          JOIN books b ON b.id = r.book_id
-         GROUP BY b.id, b.title, b.summary, b.created_at, b.updated_at
+         GROUP BY b.id, b.isbn, b.title, b.publication_date, b.summary, b.created_at, b.updated_at
          HAVING COUNT(r.id) > 0
          ORDER BY average_rating DESC, review_count DESC
          LIMIT 1`,
       ),
       query(
         `SELECT id,
+                isbn,
+                publication_date,
                 title,
                 summary,
                 created_at,
@@ -239,7 +260,9 @@ const getPublicOverview = async (req, res, next) => {
         .slice(0, 3)
         .map((book) => ({
           id: book.id,
+          isbn: book.isbn,
           title: book.title,
+          releaseDate: book.releaseDate || null,
           summary: book.summary,
           createdAt: book.createdAt,
           updatedAt: book.updatedAt || book.createdAt,
@@ -296,6 +319,8 @@ const getPublicOverview = async (req, res, next) => {
       query("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '30 days'"),
       query(
         `SELECT id,
+                isbn,
+                publication_date,
                 title,
                 summary,
                 created_at,
