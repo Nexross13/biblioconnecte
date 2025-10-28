@@ -1,12 +1,15 @@
 import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import AdminRoute from './components/AdminRoute.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Library from './pages/Library.jsx'
 import Wishlist from './pages/Wishlist.jsx'
 import BookDetails from './pages/BookDetails.jsx'
+import BookProposalDetails from './pages/BookProposalDetails.jsx'
+import BookProposalForm from './pages/BookProposalForm.jsx'
 import Profile from './pages/Profile.jsx'
 import Friends from './pages/Friends.jsx'
 import FriendCollection from './pages/FriendCollection.jsx'
@@ -18,6 +21,14 @@ const App = () => (
     <Route element={<Layout />}>
       <Route path="/" element={<Home />} />
       <Route path="/books/:id" element={<BookDetails />} />
+      <Route
+        path="/books/new"
+        element={
+          <ProtectedRoute>
+            <BookProposalForm />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/library"
         element={
@@ -63,6 +74,16 @@ const App = () => (
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/book-proposals/:id"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <BookProposalDetails />
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
