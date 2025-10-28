@@ -33,6 +33,7 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
 - Authentification sécurisée des membres et gestion des profils.
 - Création, consultation et partage de bibliothèques personnelles.
 - Catalogue collaboratif alimenté par la communauté (ajout et mise à jour de livres).
+- Soumission de nouveaux ouvrages pour validation avec contrôle final par un administrateur.
 - Suivi des états d’un ouvrage : non possédé (par défaut), souhaité, dans ma bibliothèque, prêté (avec mémo sur l’emprunteur).
 - Journalisation et sécurisation des accès via Express, JWT, Helmet et CORS.
 
@@ -63,6 +64,7 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
 - Copier `backend/.env.example` vers `.env.local` et renseigner les variables (connexion PostgreSQL, clés JWT, etc.).  
 - Ne jamais committer de secrets ; conserver les fichiers `.env.local` en local uniquement.
 - Les données d’exemple ou scripts SQL doivent être placés dans `backend/resources/`.
+- Renseigner `ADMIN_EMAILS` (liste séparée par des virgules) pour désigner les comptes pouvant valider les propositions de livres.
 
 ### Documentation API
 - La spécification OpenAPI est disponible dans `backend/docs/openapi.yaml`.

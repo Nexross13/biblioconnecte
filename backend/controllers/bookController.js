@@ -1,4 +1,5 @@
 const bookModel = require('../models/bookModel');
+const bookProposalModel = require('../models/bookProposalModel');
 const {
   getBooks: getMockBooks,
   getBookById: getMockBookById,
@@ -129,6 +130,35 @@ const createBook = async (req, res, next) => {
           authors: normalizedAuthors.filter(Boolean),
           genres: normalizedGenres.filter(Boolean),
         },
+      });
+    }
+
+    if (!req.user || !req.user.id) {
+      const err = new Error('Authenticated user required');
+      err.status = 401;
+      throw err;
+    }
+
+    const submittedBy = Number(req.user.id);
+    if (!Number.isInteger(submittedBy)) {
+      const err = new Error('Authenticated user required');
+      err.status = 401;
+      throw err;
+    }
+
+    if (!req.user.isAdmin) {
+      const proposal = await bookProposalModel.createProposal({
+        title,
+        isbn,
+        edition,
+        volume,
+        summary,
+        submittedBy,
+      });
+
+      return res.status(202).json({
+        message: 'Livre envoyé pour validation par un administrateur',
+        proposal,
       });
     }
 
