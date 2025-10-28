@@ -237,21 +237,33 @@ const Home = () => {
             <Loader label="Recherche en cours..." />
           ) : booksQuery.isError ? (
             <p className="text-sm text-rose-600">Impossible de récupérer les résultats.</p>
-          ) : booksQuery.data?.books?.length ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {booksQuery.data.books.map((book) => (
-                <BookCard
-                  key={book.id}
-                  book={book}
-                  inLibrary={libraryIds.has(book.id)}
-                  inWishlist={wishlistIds.has(book.id)}
-                />
-              ))}
-            </div>
           ) : (
-            <p className="text-sm text-slate-500 dark:text-slate-300">
-              Aucun livre ne correspond à votre recherche.
-            </p>
+            <>
+              {booksQuery.data?.books?.length ? (
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {booksQuery.data.books.map((book) => (
+                    <BookCard
+                      key={book.id}
+                      book={book}
+                      inLibrary={libraryIds.has(book.id)}
+                      inWishlist={wishlistIds.has(book.id)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  Aucun livre ne correspond à votre recherche.
+                </p>
+              )}
+              <div className="mt-4 flex justify-center">
+                <Link
+                  to={`/books/new?title=${encodeURIComponent(submittedSearch)}`}
+                  className="btn"
+                >
+                  Proposer un livre
+                </Link>
+              </div>
+            </>
           )}
         </section>
       ) : null}

@@ -1,10 +1,20 @@
 const jwt = require('jsonwebtoken');
 const { getUserById } = require('../data/mockData');
+const { getRoleForEmail } = require('../utils/roles');
 
 const buildAuthError = (message = 'Authentication required') => {
   const error = new Error(message);
   error.status = 401;
   return error;
+};
+
+const attachRole = (user = {}) => {
+  const role = user.role || getRoleForEmail(user.email) || 'user';
+  return {
+    ...user,
+    role,
+    isAdmin: role === 'admin',
+  };
 };
 
 const authenticate = (req, res, next) => {
@@ -22,9 +32,16 @@ const authenticate = (req, res, next) => {
       return next(buildAuthError('Invalid token'));
     }
     const mockUser = getUserById(1);
-    req.user = mockUser
-      ? { id: mockUser.id, email: mockUser.email, firstName: mockUser.firstName, lastName: mockUser.lastName }
-      : { id: 1, email: 'mock@biblio.test' };
+    req.user = attachRole(
+      mockUser
+        ? {
+            id: mockUser.id,
+            email: mockUser.email,
+            firstName: mockUser.firstName,
+            lastName: mockUser.lastName,
+          }
+        : { id: 1, email: 'mock@biblio.test' },
+    );
     return next();
   }
 
@@ -35,7 +52,7 @@ const authenticate = (req, res, next) => {
     }
 
     const payload = jwt.verify(token, secret);
-    req.user = payload;
+    req.user = attachRole(payload);
     return next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -51,4 +68,12 @@ const authenticate = (req, res, next) => {
 
 module.exports = {
   authenticate,
+  requireAdmin: (req, res, next) => {
+    if (!req.user || !req.user.isAdmin) {
+      const error = new Error('Administrator privileges required');
+      error.status = 403;
+      return next(error);
+    }
+    return next();
+  },
 };

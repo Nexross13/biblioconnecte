@@ -2,13 +2,16 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/userModel');
 const { getUsers, getUserById } = require('../data/mockData');
+const { getRoleForEmail } = require('../utils/roles');
 
 const createToken = (user) => {
+  const role = user.role || getRoleForEmail(user.email);
   const payload = {
     id: user.id,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
+    role,
   };
 
   const secret = process.env.JWT_SECRET;
@@ -30,6 +33,7 @@ const register = async (req, res, next) => {
         throw error;
       }
 
+      const role = getRoleForEmail(email);
       return res.status(201).json({
         token: 'mock-jwt-token',
         user: {
@@ -37,6 +41,7 @@ const register = async (req, res, next) => {
           firstName,
           lastName,
           email,
+          role,
           createdAt: new Date().toISOString(),
         },
       });
@@ -57,11 +62,12 @@ const register = async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await userModel.createUser({ firstName, lastName, email, passwordHash });
-    const token = createToken(user);
+    const role = getRoleForEmail(user.email);
+    const token = createToken({ ...user, role });
 
     res.status(201).json({
       token,
-      user,
+      user: { ...user, role },
     });
   } catch (error) {
     next(error);
@@ -85,9 +91,10 @@ const login = async (req, res, next) => {
         throw error;
       }
 
+      const role = getRoleForEmail(mockUser.email);
       return res.json({
         token: 'mock-jwt-token',
-        user: mockUser,
+        user: { ...mockUser, role },
       });
     }
 
@@ -105,7 +112,8 @@ const login = async (req, res, next) => {
       throw error;
     }
 
-    const token = createToken(user);
+    const role = getRoleForEmail(user.email);
+    const token = createToken({ ...user, role });
 
     res.json({
       token,
@@ -114,6 +122,7 @@ const login = async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        role,
         createdAt: user.createdAt,
       },
     });
@@ -131,7 +140,8 @@ const me = async (req, res, next) => {
         error.status = 404;
         throw error;
       }
-      return res.json({ user: mockUser });
+      const role = getRoleForEmail(mockUser.email);
+      return res.json({ user: { ...mockUser, role } });
     }
 
     const user = await userModel.findById(req.user.id);
@@ -140,7 +150,8 @@ const me = async (req, res, next) => {
       error.status = 404;
       throw error;
     }
-    res.json({ user });
+    const role = getRoleForEmail(user.email);
+    res.json({ user: { ...user, role } });
   } catch (error) {
     next(error);
   }

@@ -622,9 +622,31 @@ paths:
                           lastName: Asimov
                       genres:
                         - id: 3
-                          name: Science-fiction
+                      name: Science-fiction
                       createdAt: '2024-03-20T11:45:00.000Z'
                       updatedAt: '2024-03-20T11:45:00.000Z'
+        '202':
+          description: Proposition de livre enregistrée pour validation (utilisateur non administrateur)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  proposal:
+                    $ref: '#/components/schemas/BookProposal'
+              examples:
+                submitted:
+                  value:
+                    message: Livre envoyé pour validation par un administrateur
+                    proposal:
+                      id: 42
+                      title: Fondation
+                      status: pending
+                      submittedAt: '2024-04-18T10:12:00.000Z'
+                      submittedBy:
+                        id: 5
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1100,6 +1122,231 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /book-proposals:
+    post:
+      tags:
+        - Livres
+      summary: Soumettre une proposition de livre
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreateRequest'
+            examples:
+              proposal:
+                value:
+                  title: Fondation
+                  isbn: '9782070360536'
+                  edition: Folio SF
+                  volume: '1'
+                  summary: Cycle de science-fiction d'Isaac Asimov.
+      responses:
+        '202':
+          description: Proposition de livre enregistrée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  proposal:
+                    $ref: '#/components/schemas/BookProposal'
+              examples:
+                created:
+                  value:
+                    message: Livre envoyé pour validation par un administrateur
+                    proposal:
+                      id: 42
+                      title: Fondation
+                      status: pending
+                      submittedAt: '2024-04-18T10:12:00.000Z'
+                      submittedBy:
+                        id: 5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Livres
+      summary: Lister les propositions de livres (administrateur)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+          description: Nombre maximum de propositions à retourner
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Décalage pour la pagination
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - approved
+              - rejected
+          description: Filtrer les propositions selon leur statut
+      responses:
+        '200':
+          description: Liste paginée des propositions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookProposal'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /book-proposals/mine:
+    get:
+      tags:
+        - Livres
+      summary: Lister mes propositions de livres
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+          description: Nombre maximum de propositions à retourner
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Décalage pour la pagination
+      responses:
+        '200':
+          description: Liste paginée de mes propositions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookProposal'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /book-proposals/{id}:
+    get:
+      tags:
+        - Livres
+      summary: Consulter une proposition de livre
+      parameters:
+        - $ref: '#/components/parameters/BookProposalId'
+      responses:
+        '200':
+          description: Proposition trouvée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposal:
+                    $ref: '#/components/schemas/BookProposal'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /book-proposals/{id}/approve:
+    post:
+      tags:
+        - Livres
+      summary: Valider une proposition de livre
+      parameters:
+        - $ref: '#/components/parameters/BookProposalId'
+      responses:
+        '200':
+          description: Proposition approuvée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposal:
+                    $ref: '#/components/schemas/BookProposal'
+                  book:
+                    $ref: '#/components/schemas/Book'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /book-proposals/{id}/reject:
+    post:
+      tags:
+        - Livres
+      summary: Refuser une proposition de livre
+      parameters:
+        - $ref: '#/components/parameters/BookProposalId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Motif du refus
+      responses:
+        '200':
+          description: Proposition refusée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposal:
+                    $ref: '#/components/schemas/BookProposal'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /wishlist:
     get:
       tags:
@@ -1375,6 +1622,14 @@ components:
         type: integer
         minimum: 1
       description: Identifiant de l'avis
+    BookProposalId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant de la proposition de livre
   responses:
     BadRequest:
       description: Requête invalide
@@ -1406,6 +1661,16 @@ components:
             forbidden:
               value:
                 message: You are not allowed to perform this action
+    Conflict:
+      description: Conflit avec l'état actuel de la ressource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            conflict:
+              value:
+                message: Proposal is not pending
     NotFound:
       description: Ressource non trouvée
       content:
@@ -1447,12 +1712,19 @@ components:
           type: string
           format: date-time
           example: '2024-01-10T08:00:00.000Z'
+        role:
+          type: string
+          enum:
+            - user
+            - admin
+          example: user
       required:
         - id
         - firstName
         - lastName
         - email
         - createdAt
+        - role
     Friend:
       type: object
       properties:
@@ -1562,6 +1834,98 @@ components:
         - title
         - createdAt
         - updatedAt
+    BookProposal:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        title:
+          type: string
+          example: Fondation
+        isbn:
+          type: string
+          nullable: true
+          example: '9782070360536'
+        edition:
+          type: string
+          nullable: true
+          example: Folio SF
+        volume:
+          type: string
+          nullable: true
+          example: '1'
+        summary:
+          type: string
+          nullable: true
+          example: Cycle de science-fiction d'Isaac Asimov.
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+          example: pending
+        submittedBy:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 5
+            firstName:
+              type: string
+              nullable: true
+              example: Jeanne
+            lastName:
+              type: string
+              nullable: true
+              example: Dupont
+            email:
+              type: string
+              nullable: true
+              format: email
+              example: jeanne@biblio.test
+          required:
+            - id
+        submittedAt:
+          type: string
+          format: date-time
+          example: '2024-05-12T09:30:00.000Z'
+        decidedBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              example: 1
+            firstName:
+              type: string
+              nullable: true
+              example: Alice
+            lastName:
+              type: string
+              nullable: true
+              example: Martin
+            email:
+              type: string
+              nullable: true
+              format: email
+              example: alice@biblio.test
+        decidedAt:
+          type: string
+          nullable: true
+          format: date-time
+          example: '2024-05-13T14:45:00.000Z'
+        rejectionReason:
+          type: string
+          nullable: true
+          example: Doublon détecté dans la base.
+      required:
+        - id
+        - title
+        - status
+        - submittedBy
+        - submittedAt
     BookCreateRequest:
       type: object
       properties:

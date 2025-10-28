@@ -144,6 +144,54 @@ const friendships = [
   },
 ];
 
+const bookProposals = [
+  {
+    id: 201,
+    title: 'La Horde du Contrevent',
+    isbn: '9782702143438',
+    edition: 'La Volte',
+    volume: '1',
+    summary: 'Une aventure SF/heroic fantasy suivant la 34e Horde face aux vents.',
+    status: 'pending',
+    submittedBy: 2,
+    submittedAt: '2024-04-01T10:00:00.000Z',
+    updatedAt: '2024-04-01T10:00:00.000Z',
+    decidedBy: null,
+    decidedAt: null,
+    rejectionReason: null,
+  },
+  {
+    id: 202,
+    title: 'Hyperion',
+    isbn: '9782221088303',
+    edition: 'Robert Laffont',
+    volume: '1',
+    summary: 'Premier tome des Cantos d’Hyperion de Dan Simmons.',
+    status: 'approved',
+    submittedBy: 3,
+    submittedAt: '2024-03-05T09:30:00.000Z',
+    updatedAt: '2024-03-06T16:35:00.000Z',
+    decidedBy: 1,
+    decidedAt: '2024-03-06T16:35:00.000Z',
+    rejectionReason: null,
+  },
+  {
+    id: 203,
+    title: 'Dune - Les Origines',
+    isbn: '9782266137321',
+    edition: 'Pocket',
+    volume: '1',
+    summary: 'Spin-off de l’univers Dune écrit par Brian Herbert et Kevin J. Anderson.',
+    status: 'rejected',
+    submittedBy: 2,
+    submittedAt: '2024-02-18T14:45:00.000Z',
+    updatedAt: '2024-02-19T08:12:00.000Z',
+    decidedBy: 1,
+    decidedAt: '2024-02-19T08:12:00.000Z',
+    rejectionReason: 'Doublon déjà présent dans le catalogue.',
+  },
+];
+
 const getUsers = () => clone(users);
 const getUserById = (id) => clone(users.find((user) => user.id === Number(id)) || null);
 
@@ -290,6 +338,129 @@ const getReviewsByBook = (bookId) => {
 const getReviewById = (reviewId) =>
   clone(reviews.find((review) => review.id === Number(reviewId)) || null);
 
+const getBookProposals = ({ status } = {}) => {
+  let proposals = bookProposals;
+  if (status) {
+    proposals = proposals.filter((proposal) => proposal.status === status);
+  }
+  return clone(proposals);
+};
+
+const getBookProposalsForUser = (userId) => {
+  const proposals = bookProposals.filter((proposal) => proposal.submittedBy === Number(userId));
+  return clone(proposals);
+};
+
+const getBookProposalById = (id) =>
+  clone(bookProposals.find((proposal) => proposal.id === Number(id)) || null);
+
+const nextProposalId = () =>
+  bookProposals.length ? Math.max(...bookProposals.map((proposal) => proposal.id)) + 1 : 1;
+
+const nextBookId = () => (books.length ? Math.max(...books.map((book) => book.id)) + 1 : 1);
+
+const createBookProposal = ({ title, isbn, edition, volume, summary, submittedBy }) => {
+  const timestamp = new Date().toISOString();
+  const newProposal = {
+    id: nextProposalId(),
+    title,
+    isbn: isbn || null,
+    edition: edition || null,
+    volume: volume || null,
+    summary: summary || null,
+    status: 'pending',
+    submittedBy: Number(submittedBy),
+    submittedAt: timestamp,
+    updatedAt: timestamp,
+    decidedBy: null,
+    decidedAt: null,
+    rejectionReason: null,
+  };
+  bookProposals.push(newProposal);
+  return clone(newProposal);
+};
+
+const approveBookProposal = ({ id, decidedBy }) => {
+  const index = bookProposals.findIndex((proposal) => proposal.id === Number(id));
+  if (index === -1) {
+    return null;
+  }
+
+  const proposal = bookProposals[index];
+  if (proposal.status !== 'pending') {
+    const error = new Error('Proposal is not pending');
+    error.status = 409;
+    throw error;
+  }
+
+  const timestamp = new Date().toISOString();
+  const book = {
+    id: nextBookId(),
+    title: proposal.title,
+    isbn: proposal.isbn,
+    edition: proposal.edition,
+    volume: proposal.volume,
+    summary: proposal.summary,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  books.push({
+    id: book.id,
+    title: book.title,
+    isbn: book.isbn,
+    edition: book.edition,
+    volume: book.volume,
+    summary: book.summary,
+    createdAt: book.createdAt,
+    updatedAt: book.updatedAt,
+  });
+
+  const updatedProposal = {
+    ...proposal,
+    status: 'approved',
+    decidedBy: Number(decidedBy),
+    decidedAt: timestamp,
+    rejectionReason: null,
+    updatedAt: timestamp,
+  };
+
+  bookProposals[index] = updatedProposal;
+
+  return {
+    proposal: clone(updatedProposal),
+    book: clone(book),
+  };
+};
+
+const rejectBookProposal = ({ id, decidedBy, reason }) => {
+  const index = bookProposals.findIndex((proposal) => proposal.id === Number(id));
+  if (index === -1) {
+    return null;
+  }
+
+  const proposal = bookProposals[index];
+  if (proposal.status !== 'pending') {
+    const error = new Error('Proposal is not pending');
+    error.status = 409;
+    throw error;
+  }
+
+  const timestamp = new Date().toISOString();
+  const updatedProposal = {
+    ...proposal,
+    status: 'rejected',
+    decidedBy: Number(decidedBy),
+    decidedAt: timestamp,
+    rejectionReason: reason || null,
+    updatedAt: timestamp,
+  };
+
+  bookProposals[index] = updatedProposal;
+
+  return clone(updatedProposal);
+};
+
 module.exports = {
   mockData: {
     users,
@@ -302,6 +473,7 @@ module.exports = {
     wishlistItems,
     reviews,
     friendships,
+    bookProposals,
   },
   getUsers,
   getUserById,
@@ -321,4 +493,10 @@ module.exports = {
   getWishlistItems,
   getReviewsByBook,
   getReviewById,
+  getBookProposals,
+  getBookProposalsForUser,
+  getBookProposalById,
+  createBookProposal,
+  approveBookProposal,
+  rejectBookProposal,
 };
