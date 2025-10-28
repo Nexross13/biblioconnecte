@@ -29,3 +29,8 @@ export const createBookReview = async (bookId, payload) => {
   const { data } = await apiClient.post(`/books/${bookId}/reviews`, payload)
   return data.review
 }
+
+export const createBook = async (payload) => {
+  const { data } = await apiClient.post('/books', payload)
+  return data
+}
