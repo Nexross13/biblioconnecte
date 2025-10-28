@@ -1,8 +1,13 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { approveBookProposal, fetchBookProposalById, rejectBookProposal } from '../api/bookProposals'
 import Loader from '../components/Loader.jsx'
+import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
+
+const PLACEHOLDER_COVER = '/placeholder-book.svg'
+const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 const BookProposalDetails = () => {
   const { id } = useParams()
@@ -13,6 +18,27 @@ const BookProposalDetails = () => {
     queryKey: ['book-proposal', id],
     queryFn: () => fetchBookProposalById(id),
   })
+
+  const coverCandidates = useMemo(() => {
+    const isbn = proposalQuery.data?.isbn
+    if (!isbn) {
+      return []
+    }
+    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BOOKS_BASE_URL}/${isbn}.${ext}`)
+  }, [proposalQuery.data?.isbn])
+
+  const [coverSrc, setCoverSrc] = useState(() => coverCandidates[0] || PLACEHOLDER_COVER)
+  const [candidateIndex, setCandidateIndex] = useState(0)
+
+  useEffect(() => {
+    if (!coverCandidates.length) {
+      setCoverSrc(PLACEHOLDER_COVER)
+      setCandidateIndex(0)
+      return
+    }
+    setCoverSrc(coverCandidates[0])
+    setCandidateIndex(0)
+  }, [coverCandidates])
 
   const invalidateLists = async () => {
     await Promise.all([
@@ -86,78 +112,103 @@ const BookProposalDetails = () => {
         </p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="card space-y-2">
-          <h2 className="text-lg font-semibold text-primary">Détails de la proposition</h2>
-          <dl className="space-y-2 text-sm text-slate-600 dark:text-slate-200">
-            {proposal.isbn && (
+      <div className="grid gap-6 md:grid-cols-2 md:items-start">
+        <div className="space-y-4">
+          <div className="card space-y-2">
+            <h2 className="text-lg font-semibold text-primary">Détails de la proposition</h2>
+            <dl className="space-y-3 text-sm text-slate-600 dark:text-slate-200">
               <div>
                 <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                  ISBN
+                  Proposé par
                 </dt>
-                <dd>{proposal.isbn}</dd>
+                <dd>{submittedFullName || 'Utilisateur inconnu'}</dd>
               </div>
-            )}
-            {proposal.edition && (
+              {proposal.isbn && (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    ISBN
+                  </dt>
+                  <dd>{proposal.isbn}</dd>
+                </div>
+              )}
+              {proposal.edition && (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Édition
+                  </dt>
+                  <dd>{proposal.edition}</dd>
+                </div>
+              )}
+              {proposal.volume && (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Tome / Volume
+                  </dt>
+                  <dd>{proposal.volume}</dd>
+                </div>
+              )}
               <div>
                 <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                  Édition
+                  Statut actuel
                 </dt>
-                <dd>{proposal.edition}</dd>
-              </div>
-            )}
-            {proposal.volume && (
-              <div>
-                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                  Tome / Volume
-                </dt>
-                <dd>{proposal.volume}</dd>
-              </div>
-            )}
-            <div>
-              <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                Statut actuel
-              </dt>
-              <dd className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
-                {proposal.status === 'pending' && 'En attente'}
-                {proposal.status === 'approved' && 'Approuvé'}
-                {proposal.status === 'rejected' && 'Rejeté'}
-              </dd>
-            </div>
-            {proposal.decidedBy && (
-              <div>
-                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                  Décidé par
-                </dt>
-                <dd>
-                  {proposal.decidedBy.firstName} {proposal.decidedBy.lastName} –{' '}
-                  {proposal.decidedAt
-                    ? new Date(proposal.decidedAt).toLocaleString('fr-FR')
-                    : 'Date inconnue'}
+                <dd className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+                  {proposal.status === 'pending' && 'En attente'}
+                  {proposal.status === 'approved' && 'Approuvé'}
+                  {proposal.status === 'rejected' && 'Rejeté'}
                 </dd>
               </div>
-            )}
-            {proposal.rejectionReason && (
-              <div>
-                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                  Motif du refus
-                </dt>
-                <dd>{proposal.rejectionReason}</dd>
-              </div>
-            )}
-          </dl>
+              {proposal.decidedBy && (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Décidé par
+                  </dt>
+                  <dd>
+                    {proposal.decidedBy.firstName} {proposal.decidedBy.lastName} –{' '}
+                    {proposal.decidedAt
+                      ? new Date(proposal.decidedAt).toLocaleString('fr-FR')
+                      : 'Date inconnue'}
+                  </dd>
+                </div>
+              )}
+              {proposal.rejectionReason && (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Motif du refus
+                  </dt>
+                  <dd>{proposal.rejectionReason}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+
+          <div className="card space-y-2">
+            <h2 className="text-lg font-semibold text-primary">Résumé</h2>
+            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-200">
+              {proposal.summary || 'Aucun résumé fourni pour cette proposition.'}
+            </p>
+          </div>
         </div>
 
-        <div className="card space-y-2">
-          <h2 className="text-lg font-semibold text-primary">Résumé</h2>
-          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-200">
-            {proposal.summary || 'Aucun résumé fourni pour cette proposition.'}
-          </p>
+        <div className="card h-full overflow-hidden border border-slate-200 p-0 shadow-md shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-800/70 dark:shadow-black/30">
+          <img
+            src={coverSrc}
+            alt={`Couverture de ${proposal.title}`}
+            onError={(event) => {
+              if (candidateIndex < coverCandidates.length - 1) {
+                const nextIndex = candidateIndex + 1
+                setCandidateIndex(nextIndex)
+                setCoverSrc(coverCandidates[nextIndex])
+                return
+              }
+              event.currentTarget.src = PLACEHOLDER_COVER
+            }}
+            className="h-full w-full object-contain bg-slate-100 dark:bg-slate-900 md:h-[420px]"
+          />
         </div>
       </div>
 
       {isPending && (
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex flex-col items-center gap-3 md:flex-row md:justify-center">
           <button
             type="button"
             className="btn btn-primary"
