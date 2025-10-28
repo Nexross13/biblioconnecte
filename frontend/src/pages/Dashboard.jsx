@@ -143,6 +143,16 @@ const Dashboard = () => {
                       {proposal.submittedBy?.lastName ?? ''} •{' '}
                       {new Date(proposal.submittedAt).toLocaleDateString('fr-FR')}
                     </p>
+                    {proposal.authorNames?.length ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-300">
+                        Auteur(s) : {proposal.authorNames.join(', ')}
+                      </p>
+                    ) : null}
+                    {proposal.genreNames?.length ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-300">
+                        Genre(s) : {proposal.genreNames.join(', ')}
+                      </p>
+                    ) : null}
                     {proposal.summary && (
                       <p className="mt-2 text-sm text-slate-600 dark:text-slate-200 line-clamp-2">
                         {proposal.summary}

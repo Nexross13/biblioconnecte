@@ -19,26 +19,8 @@ const BookProposalDetails = () => {
     queryFn: () => fetchBookProposalById(id),
   })
 
-  const coverCandidates = useMemo(() => {
-    const isbn = proposalQuery.data?.isbn
-    if (!isbn) {
-      return []
-    }
-    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BOOKS_BASE_URL}/${isbn}.${ext}`)
-  }, [proposalQuery.data?.isbn])
-
-  const [coverSrc, setCoverSrc] = useState(() => coverCandidates[0] || PLACEHOLDER_COVER)
+  const [coverSrc, setCoverSrc] = useState(PLACEHOLDER_COVER)
   const [candidateIndex, setCandidateIndex] = useState(0)
-
-  useEffect(() => {
-    if (!coverCandidates.length) {
-      setCoverSrc(PLACEHOLDER_COVER)
-      setCandidateIndex(0)
-      return
-    }
-    setCoverSrc(coverCandidates[0])
-    setCandidateIndex(0)
-  }, [coverCandidates])
 
   const invalidateLists = async () => {
     await Promise.all([
@@ -95,6 +77,32 @@ const BookProposalDetails = () => {
     proposal.submittedBy?.lastName ?? ''
   }`.trim()
 
+  const coverCandidates = useMemo(() => {
+    const candidates = []
+    if (proposal.coverImagePath) {
+      const normalized = proposal.coverImagePath.startsWith('/')
+        ? proposal.coverImagePath
+        : `/${proposal.coverImagePath}`
+      candidates.push(normalized)
+    }
+    if (proposal.isbn) {
+      COVER_EXTENSIONS.forEach((ext) => {
+        candidates.push(`${ASSETS_BOOKS_BASE_URL}/${proposal.isbn}.${ext}`)
+      })
+    }
+    return candidates
+  }, [proposal.coverImagePath, proposal.isbn])
+
+  useEffect(() => {
+    if (!coverCandidates.length) {
+      setCoverSrc(PLACEHOLDER_COVER)
+      setCandidateIndex(0)
+      return
+    }
+    setCoverSrc(coverCandidates[0])
+    setCandidateIndex(0)
+  }, [coverCandidates])
+
   return (
     <section className="space-y-6">
       <header className="space-y-2">
@@ -147,6 +155,22 @@ const BookProposalDetails = () => {
                   <dd>{proposal.volume}</dd>
                 </div>
               )}
+              {proposal.authorNames?.length ? (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Auteur(s)
+                  </dt>
+                  <dd>{proposal.authorNames.join(', ')}</dd>
+                </div>
+              ) : null}
+              {proposal.genreNames?.length ? (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Genre(s)
+                  </dt>
+                  <dd>{proposal.genreNames.join(', ')}</dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
                   Statut actuel
