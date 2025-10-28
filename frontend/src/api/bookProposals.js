@@ -10,6 +10,11 @@ export const fetchBookProposalById = async (id) => {
   return data.proposal
 }
 
+export const createBookProposal = async (payload) => {
+  const { data } = await apiClient.post('/book-proposals', payload)
+  return data
+}
+
 export const approveBookProposal = async (id) => {
   const { data } = await apiClient.post(`/book-proposals/${id}/approve`)
   return data
