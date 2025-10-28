@@ -3,12 +3,14 @@
 process.env.NODE_ENV = 'test';
 process.env.USE_MOCKS = 'true';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+process.env.ADMIN_EMAILS = 'alice@biblio.test';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const authController = require('../controllers/authController');
 const bookController = require('../controllers/bookController');
+const bookProposalController = require('../controllers/bookProposalController');
 const authorController = require('../controllers/authorController');
 const genreController = require('../controllers/genreController');
 const userController = require('../controllers/userController');
@@ -73,6 +75,7 @@ test('authController.register crée un utilisateur mock', async () => {
 
   assert.equal(res.statusCode, 201);
   assert.equal(res.body.user.email, 'john@biblio.test');
+  assert.equal(res.body.user.role, 'user');
   assert.equal(res.body.token, 'mock-jwt-token');
 });
 
@@ -98,6 +101,7 @@ test('authController.login renvoie un jeton mock', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.token, 'mock-jwt-token');
   assert.equal(res.body.user.email, 'alice@biblio.test');
+  assert.equal(res.body.user.role, 'admin');
 });
 
 test('authController.login renvoie 401 pour un utilisateur inconnu', async () => {
@@ -121,6 +125,7 @@ test('authController.me retourne le profil mock', async () => {
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.user.id, 1);
+  assert.equal(res.body.user.role, 'admin');
 });
 
 test('authController.me renvoie 404 si utilisateur inexistant', async () => {
@@ -197,6 +202,95 @@ test('bookController.createBook crée un livre et normalise les relations', asyn
   assert.equal(res.body.book.title, 'Nouveau Livre');
   assert.ok(Array.isArray(res.body.book.authors));
   assert.ok(Array.isArray(res.body.book.genres));
+});
+/* Book proposal controller */
+
+test('bookProposalController.createProposal soumet une proposition', async () => {
+  const res = await callController(bookProposalController.createProposal, {
+    user: { id: 7 },
+    body: {
+      title: 'Nouveau Livre',
+      isbn: '1234567890',
+    },
+  });
+
+  assert.equal(res.statusCode, 202);
+  assert.equal(res.body.proposal.title, 'Nouveau Livre');
+  assert.equal(res.body.proposal.status, 'pending');
+  assert.equal(res.body.proposal.submittedBy.id, 7);
+  assert.equal(res.body.proposal.decidedBy, null);
+  assert.equal(res.body.message, 'Livre envoyé pour validation par un administrateur');
+});
+
+test('bookProposalController.listProposals refuse un non-admin', async () => {
+  await expectReject(
+    () =>
+      callController(bookProposalController.listProposals, {
+        user: { id: 3 },
+      }),
+    (err) => {
+      assert.equal(err.status, 403);
+      return true;
+    },
+  );
+});
+
+test('bookProposalController.listProposals retourne la liste mock pour un admin', async () => {
+  const res = await callController(bookProposalController.listProposals, {
+    user: { id: 1, isAdmin: true },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.ok(Array.isArray(res.body.proposals));
+  assert.ok(res.body.proposals.length >= 1);
+  assert.equal(res.body.pagination.count, res.body.proposals.length);
+  assert.ok(res.body.proposals.some((proposal) => proposal.status === 'pending'));
+});
+
+test('bookProposalController.getProposalById renvoie une proposition mock', async () => {
+  const res = await callController(bookProposalController.getProposalById, {
+    user: { id: 2 },
+    params: { id: 201 },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.proposal.id, 201);
+  assert.equal(res.body.proposal.submittedBy.id, 2);
+});
+
+test('bookProposalController.approveProposal retourne une proposition mock approuvée', async () => {
+  const creation = await callController(bookProposalController.createProposal, {
+    user: { id: 8 },
+    body: { title: 'Livre à valider' },
+  });
+
+  const res = await callController(bookProposalController.approveProposal, {
+    user: { id: 1, isAdmin: true },
+    params: { id: creation.body.proposal.id },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.proposal.status, 'approved');
+  assert.equal(res.body.proposal.decidedBy.id, 1);
+  assert.equal(res.body.book.title, 'Livre à valider');
+});
+
+test('bookProposalController.rejectProposal retourne une proposition mock rejetée', async () => {
+  const creation = await callController(bookProposalController.createProposal, {
+    user: { id: 9 },
+    body: { title: 'Livre refusé' },
+  });
+
+  const res = await callController(bookProposalController.rejectProposal, {
+    user: { id: 1, isAdmin: true },
+    params: { id: creation.body.proposal.id },
+    body: { reason: 'Déjà présent' },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.proposal.status, 'rejected');
+  assert.equal(res.body.proposal.decidedBy.id, 1);
+  assert.equal(res.body.proposal.rejectionReason, 'Déjà présent');
 });
 
 test('bookController.updateBook met à jour un livre mock', async () => {
