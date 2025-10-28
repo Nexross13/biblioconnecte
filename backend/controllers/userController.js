@@ -8,6 +8,17 @@ const {
   getFriendsOfUser,
 } = require('../data/mockData');
 
+const normalizeDate = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString().slice(0, 10);
+};
+
 const listUsers = async (req, res, next) => {
   try {
     if (process.env.USE_MOCKS === 'true') {
@@ -329,6 +340,8 @@ const updateProfile = async (req, res, next) => {
     const email = req.body?.email?.trim();
     const passwordInput = typeof req.body?.password === 'string' ? req.body.password : undefined;
     const trimmedPassword = passwordInput?.trim();
+    const rawDateOfBirth = req.body?.dateOfBirth ?? req.body?.date_naissance;
+    const dateOfBirth = normalizeDate(rawDateOfBirth);
 
     if (!firstName || !lastName || !email) {
       const err = new Error('firstName, lastName and email are required');
@@ -342,6 +355,12 @@ const updateProfile = async (req, res, next) => {
       throw err;
     }
 
+    if (rawDateOfBirth && !dateOfBirth) {
+      const err = new Error('Invalid date_of_birth format');
+      err.status = 400;
+      throw err;
+    }
+
     if (process.env.USE_MOCKS === 'true') {
       return res.json({
         user: {
@@ -349,12 +368,18 @@ const updateProfile = async (req, res, next) => {
           firstName,
           lastName,
           email,
+          dateOfBirth,
           createdAt: new Date().toISOString(),
         },
       });
     }
 
-    const updatedUser = await userModel.updateUser(userId, { firstName, lastName, email });
+    const updatedUser = await userModel.updateUser(userId, {
+      firstName,
+      lastName,
+      email,
+      dateOfBirth,
+    });
 
     if (trimmedPassword) {
       const passwordHash = await bcrypt.hash(trimmedPassword, 10);

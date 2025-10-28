@@ -6,6 +6,7 @@ const users = [
     firstName: 'Alice',
     lastName: 'Martin',
     email: 'alice@biblio.test',
+    dateOfBirth: '1990-03-12',
     createdAt: '2024-01-10T08:00:00.000Z',
   },
   {
@@ -13,6 +14,7 @@ const users = [
     firstName: 'Benoit',
     lastName: 'Durand',
     email: 'benoit@biblio.test',
+    dateOfBirth: '1988-07-22',
     createdAt: '2024-01-12T10:15:00.000Z',
   },
   {
@@ -20,6 +22,7 @@ const users = [
     firstName: 'Claire',
     lastName: 'Faure',
     email: 'claire@biblio.test',
+    dateOfBirth: '1992-11-03',
     createdAt: '2024-02-01T09:05:00.000Z',
   },
 ];
@@ -159,6 +162,9 @@ const bookProposals = [
     decidedBy: null,
     decidedAt: null,
     rejectionReason: null,
+    authorNames: ['Alain Damasio'],
+    genreNames: ['Science-fiction', 'Fantasy'],
+    coverImagePath: null,
   },
   {
     id: 202,
@@ -174,6 +180,9 @@ const bookProposals = [
     decidedBy: 1,
     decidedAt: '2024-03-06T16:35:00.000Z',
     rejectionReason: null,
+    authorNames: ['Dan Simmons'],
+    genreNames: ['Science-fiction'],
+    coverImagePath: null,
   },
   {
     id: 203,
@@ -189,6 +198,9 @@ const bookProposals = [
     decidedBy: 1,
     decidedAt: '2024-02-19T08:12:00.000Z',
     rejectionReason: 'Doublon déjà présent dans le catalogue.',
+    authorNames: ['Brian Herbert', 'Kevin J. Anderson'],
+    genreNames: ['Science-fiction'],
+    coverImagePath: null,
   },
 ];
 
@@ -359,7 +371,17 @@ const nextProposalId = () =>
 
 const nextBookId = () => (books.length ? Math.max(...books.map((book) => book.id)) + 1 : 1);
 
-const createBookProposal = ({ title, isbn, edition, volume, summary, submittedBy }) => {
+const createBookProposal = ({
+  title,
+  isbn,
+  edition,
+  volume,
+  summary,
+  submittedBy,
+  authorNames = [],
+  genreNames = [],
+  coverImagePath = null,
+}) => {
   const timestamp = new Date().toISOString();
   const newProposal = {
     id: nextProposalId(),
@@ -375,6 +397,9 @@ const createBookProposal = ({ title, isbn, edition, volume, summary, submittedBy
     decidedBy: null,
     decidedAt: null,
     rejectionReason: null,
+    authorNames: authorNames.slice(),
+    genreNames: genreNames.slice(),
+    coverImagePath: coverImagePath || null,
   };
   bookProposals.push(newProposal);
   return clone(newProposal);

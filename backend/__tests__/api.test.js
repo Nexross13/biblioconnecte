@@ -70,12 +70,14 @@ test('authController.register crée un utilisateur mock', async () => {
       lastName: 'Doe',
       email: 'john@biblio.test',
       password: 'secret',
+      dateOfBirth: '1991-04-20',
     },
   });
 
   assert.equal(res.statusCode, 201);
   assert.equal(res.body.user.email, 'john@biblio.test');
   assert.equal(res.body.user.role, 'user');
+  assert.equal(res.body.user.dateOfBirth, '1991-04-20');
   assert.equal(res.body.token, 'mock-jwt-token');
 });
 

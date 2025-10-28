@@ -10,11 +10,25 @@ const mapAuthor = (row) =>
     updatedAt: row.updated_at,
   };
 
-const listAuthors = async () => {
+const listAuthors = async ({ search } = {}) => {
+  const values = [];
+  const conditions = [];
+
+  if (search && search.trim().length) {
+    values.push(`%${search.trim().toLowerCase()}%`);
+    conditions.push(
+      `(LOWER(authors.first_name) LIKE $${values.length} OR LOWER(authors.last_name) LIKE $${values.length} OR LOWER(CONCAT(authors.first_name, ' ', authors.last_name)) LIKE $${values.length})`,
+    );
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
   const result = await query(
     `SELECT id, first_name, last_name, biography, created_at, updated_at
      FROM authors
+     ${whereClause}
      ORDER BY last_name ASC, first_name ASC`,
+    values,
   );
   return result.rows.map(mapAuthor);
 };

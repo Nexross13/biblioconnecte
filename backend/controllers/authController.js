@@ -22,13 +22,31 @@ const createToken = (user) => {
   return jwt.sign(payload, secret, { expiresIn: '12h' });
 };
 
+const normalizeDate = (value) => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString().slice(0, 10);
+};
+
 const register = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password } = req.body;
+    const rawDateOfBirth = req.body.dateOfBirth ?? req.body.date_naissance;
+    const dateOfBirth = normalizeDate(rawDateOfBirth);
 
     if (process.env.USE_MOCKS === 'true') {
       if (!firstName || !lastName || !email || !password) {
         const error = new Error('Missing registration fields');
+        error.status = 400;
+        throw error;
+      }
+      if (rawDateOfBirth && !dateOfBirth) {
+        const error = new Error('Invalid date_of_birth format');
         error.status = 400;
         throw error;
       }
@@ -42,6 +60,7 @@ const register = async (req, res, next) => {
           lastName,
           email,
           role,
+          dateOfBirth,
           createdAt: new Date().toISOString(),
         },
       });
@@ -49,6 +68,11 @@ const register = async (req, res, next) => {
 
     if (!firstName || !lastName || !email || !password) {
       const error = new Error('Missing registration fields');
+      error.status = 400;
+      throw error;
+    }
+    if (rawDateOfBirth && !dateOfBirth) {
+      const error = new Error('Invalid date_of_birth format');
       error.status = 400;
       throw error;
     }
@@ -61,7 +85,7 @@ const register = async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await userModel.createUser({ firstName, lastName, email, passwordHash });
+    const user = await userModel.createUser({ firstName, lastName, email, passwordHash, dateOfBirth });
     const role = getRoleForEmail(user.email);
     const token = createToken({ ...user, role });
 
@@ -123,6 +147,7 @@ const login = async (req, res, next) => {
         lastName: user.lastName,
         email: user.email,
         role,
+        dateOfBirth: user.dateOfBirth,
         createdAt: user.createdAt,
       },
     });

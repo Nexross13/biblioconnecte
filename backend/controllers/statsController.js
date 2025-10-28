@@ -1,6 +1,8 @@
 const { query } = require('../config/db');
 const { mockData } = require('../data/mockData');
 
+const toNumber = (value) => Number(value) || 0;
+
 const mapTopReaderRow = (row) =>
   row && {
     user: {
@@ -20,6 +22,12 @@ const mapBookRow = (row) =>
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   };
+
+const mapPopularGenreRow = (row) => ({
+  id: row.id,
+  name: row.name,
+  bookCount: toNumber(row.book_count),
+});
 
 const getHighlights = async (req, res, next) => {
   try {
@@ -178,6 +186,167 @@ const getHighlights = async (req, res, next) => {
   }
 };
 
+const getPublicOverview = async (req, res, next) => {
+  try {
+    const useMocks = process.env.USE_MOCKS === 'true';
+
+    if (useMocks) {
+      const {
+        users = [],
+        books = [],
+        authors = [],
+        genres = [],
+        reviews = [],
+        friendships = [],
+        libraryItems = [],
+        bookProposals = [],
+        bookGenres = [],
+      } = mockData;
+
+      const now = Date.now();
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      const threshold = now - THIRTY_DAYS_MS;
+
+      const counts = {
+        members: users.length,
+        books: books.length,
+        authors: authors.length,
+        genres: genres.length,
+        reviews: reviews.length,
+        pendingProposals: bookProposals.filter((proposal) => proposal.status === 'pending').length,
+        libraryEntries: libraryItems.length,
+        acceptedFriendships: friendships.filter((friendship) => friendship.status === 'accepted')
+          .length,
+      };
+
+      const activity = {
+        booksAddedLast30Days: books.filter((book) => {
+          const createdAt = book.createdAt ? new Date(book.createdAt).getTime() : 0;
+          return createdAt >= threshold;
+        }).length,
+        newMembersLast30Days: users.filter((user) => {
+          const createdAt = user.createdAt ? new Date(user.createdAt).getTime() : 0;
+          return createdAt >= threshold;
+        }).length,
+      };
+
+      const recentBooks = books
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+        )
+        .slice(0, 3)
+        .map((book) => ({
+          id: book.id,
+          title: book.title,
+          summary: book.summary,
+          createdAt: book.createdAt,
+          updatedAt: book.updatedAt || book.createdAt,
+        }));
+
+      const genreTally = bookGenres.reduce((acc, relation) => {
+        acc.set(relation.genreId, (acc.get(relation.genreId) || 0) + 1);
+        return acc;
+      }, new Map());
+
+      const popularGenres = genres
+        .map((genre) => ({
+          id: genre.id,
+          name: genre.name,
+          bookCount: genreTally.get(genre.id) || 0,
+        }))
+        .sort(
+          (a, b) =>
+            b.bookCount - a.bookCount || a.name.localeCompare(b.name),
+        )
+        .slice(0, 3);
+
+      return res.json({
+        counts,
+        activity,
+        recentBooks,
+        popularGenres,
+      });
+    }
+
+    const [
+      membersResult,
+      booksResult,
+      authorsResult,
+      genresResult,
+      reviewsResult,
+      pendingProposalsResult,
+      libraryEntriesResult,
+      friendshipsResult,
+      booksLast30DaysResult,
+      membersLast30DaysResult,
+      recentBooksResult,
+      popularGenresResult,
+    ] = await Promise.all([
+      query('SELECT COUNT(*) FROM users'),
+      query('SELECT COUNT(*) FROM books'),
+      query('SELECT COUNT(*) FROM authors'),
+      query('SELECT COUNT(*) FROM genres'),
+      query('SELECT COUNT(*) FROM reviews'),
+      query("SELECT COUNT(*) FROM book_proposals WHERE status = 'pending'"),
+      query('SELECT COUNT(*) FROM library_items'),
+      query("SELECT COUNT(*) FROM friendships WHERE status = 'accepted'"),
+      query("SELECT COUNT(*) FROM books WHERE created_at >= NOW() - INTERVAL '30 days'"),
+      query("SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '30 days'"),
+      query(
+        `SELECT id,
+                title,
+                summary,
+                created_at,
+                updated_at
+         FROM books
+         ORDER BY created_at DESC
+         LIMIT 3`,
+      ),
+      query(
+        `SELECT g.id,
+                g.name,
+                COUNT(bg.book_id) AS book_count
+         FROM genres g
+         LEFT JOIN book_genres bg ON bg.genre_id = g.id
+         GROUP BY g.id, g.name
+         ORDER BY book_count DESC, g.name ASC
+         LIMIT 3`,
+      ),
+    ]);
+
+    const counts = {
+      members: toNumber(membersResult.rows[0]?.count),
+      books: toNumber(booksResult.rows[0]?.count),
+      authors: toNumber(authorsResult.rows[0]?.count),
+      genres: toNumber(genresResult.rows[0]?.count),
+      reviews: toNumber(reviewsResult.rows[0]?.count),
+      pendingProposals: toNumber(pendingProposalsResult.rows[0]?.count),
+      libraryEntries: toNumber(libraryEntriesResult.rows[0]?.count),
+      acceptedFriendships: toNumber(friendshipsResult.rows[0]?.count),
+    };
+
+    const activity = {
+      booksAddedLast30Days: toNumber(booksLast30DaysResult.rows[0]?.count),
+      newMembersLast30Days: toNumber(membersLast30DaysResult.rows[0]?.count),
+    };
+
+    const recentBooks = recentBooksResult.rows.map(mapBookRow);
+    const popularGenres = popularGenresResult.rows.map(mapPopularGenreRow);
+
+    return res.json({
+      counts,
+      activity,
+      recentBooks,
+      popularGenres,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getHighlights,
+  getPublicOverview,
 };
