@@ -1,5 +1,90 @@
 const { query } = require('../config/db');
 
+// Map common accented characters plus combining marks to ASCII equivalents for fuzzy search.
+const ACCENT_MAP = [
+  ['à', 'a'],
+  ['á', 'a'],
+  ['â', 'a'],
+  ['ä', 'a'],
+  ['ã', 'a'],
+  ['å', 'a'],
+  ['ç', 'c'],
+  ['è', 'e'],
+  ['é', 'e'],
+  ['ê', 'e'],
+  ['ë', 'e'],
+  ['ì', 'i'],
+  ['í', 'i'],
+  ['î', 'i'],
+  ['ï', 'i'],
+  ['ñ', 'n'],
+  ['ò', 'o'],
+  ['ó', 'o'],
+  ['ô', 'o'],
+  ['ö', 'o'],
+  ['õ', 'o'],
+  ['ù', 'u'],
+  ['ú', 'u'],
+  ['û', 'u'],
+  ['ü', 'u'],
+  ['ý', 'y'],
+  ['ÿ', 'y'],
+  ['À', 'a'],
+  ['Á', 'a'],
+  ['Â', 'a'],
+  ['Ä', 'a'],
+  ['Ã', 'a'],
+  ['Å', 'a'],
+  ['Ç', 'c'],
+  ['È', 'e'],
+  ['É', 'e'],
+  ['Ê', 'e'],
+  ['Ë', 'e'],
+  ['Ì', 'i'],
+  ['Í', 'i'],
+  ['Î', 'i'],
+  ['Ï', 'i'],
+  ['Ñ', 'n'],
+  ['Ò', 'o'],
+  ['Ó', 'o'],
+  ['Ô', 'o'],
+  ['Ö', 'o'],
+  ['Õ', 'o'],
+  ['Ù', 'u'],
+  ['Ú', 'u'],
+  ['Û', 'u'],
+  ['Ü', 'u'],
+  ['Ý', 'y'],
+  ['Ÿ', 'y'],
+  ['’', "'"],
+  ['‘', "'"],
+  ['`', "'"],
+  ['´', "'"],
+];
+
+const BASE_ACCENT_FROM = ACCENT_MAP.map(([source]) => source).join('');
+const ACCENT_TO = ACCENT_MAP.map(([, target]) => target).join('');
+const COMBINING_MARKS = Array.from({ length: 0x36f - 0x300 + 1 }, (_, index) =>
+  String.fromCharCode(0x0300 + index),
+).join('');
+const ACCENT_FROM = `${BASE_ACCENT_FROM}${COMBINING_MARKS}`;
+const ACCENT_TO_SQL = ACCENT_TO.replace(/'/g, "''");
+
+const normalizeForSearch = (value = '') => {
+  const normalized = String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘`´]/g, "'")
+    .toLowerCase();
+
+  return normalized.replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const normalizeColumnExpression = (column) => {
+  const translated = `TRANSLATE(LOWER(${column}), '${ACCENT_FROM}', '${ACCENT_TO_SQL}')`;
+  return `TRIM(BOTH ' ' FROM REGEXP_REPLACE(REGEXP_REPLACE(${translated}, '[^a-z0-9]+', ' ', 'g'), '[[:space:]]+', ' ', 'g'))`;
+};
+
 const normalizeDate = (value) => {
   if (!value) {
     return null;
@@ -45,8 +130,16 @@ const listBooks = async ({ search, limit = 25, offset = 0 } = {}) => {
   const conditions = [];
 
   if (search) {
-    values.push(`%${search.toLowerCase()}%`);
-    conditions.push(`(LOWER(b.title) LIKE $${values.length} OR LOWER(b.summary) LIKE $${values.length})`);
+    const normalizedSearch = normalizeForSearch(search);
+    if (normalizedSearch) {
+      const likePattern = `%${normalizedSearch.replace(/ /g, '%')}%`;
+      values.push(likePattern);
+      const normalizedTitleExpr = normalizeColumnExpression("COALESCE(b.title, '')");
+      const normalizedSummaryExpr = normalizeColumnExpression("COALESCE(b.summary, '')");
+      conditions.push(
+        `(${normalizedTitleExpr} LIKE $${values.length} OR ${normalizedSummaryExpr} LIKE $${values.length})`,
+      );
+    }
   }
 
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
