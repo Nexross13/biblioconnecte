@@ -6,7 +6,6 @@ import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Library from './pages/Library.jsx'
-import Wishlist from './pages/Wishlist.jsx'
 import BookDetails from './pages/BookDetails.jsx'
 import BookProposalDetails from './pages/BookProposalDetails.jsx'
 import BookProposalForm from './pages/BookProposalForm.jsx'
@@ -38,14 +37,6 @@ const App = () => (
         }
       />
       <Route
-        path="/wishlist"
-        element={
-          <ProtectedRoute>
-            <Wishlist />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/friends"
         element={
           <ProtectedRoute>
@@ -73,7 +64,9 @@ const App = () => (
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <AdminRoute>
+              <Dashboard />
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
