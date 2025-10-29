@@ -1,137 +1,98 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { fetchBooks } from '../api/books'
-import { fetchLibrary } from '../api/library'
-import { fetchWishlist } from '../api/wishlist'
-import { fetchFriends } from '../api/users'
 import { fetchBookProposals } from '../api/bookProposals'
-import useAuth from '../hooks/useAuth'
+import { fetchAdminOverview } from '../api/stats'
 import Loader from '../components/Loader.jsx'
-import getAverageRating from '../utils/getAverageRating'
+import TimelineChart from '../components/TimelineChart.jsx'
 
 const Dashboard = () => {
-  const { user } = useAuth()
-
-  const isAdmin = user?.role === 'admin'
-
-  const booksQuery = useQuery({
-    queryKey: ['books-dashboard'],
-    queryFn: () => fetchBooks(),
-  })
-  const libraryQuery = useQuery({
-    queryKey: ['library'],
-    queryFn: fetchLibrary,
-  })
-  const wishlistQuery = useQuery({
-    queryKey: ['wishlist'],
-    queryFn: fetchWishlist,
-  })
-  const friendsQuery = useQuery({
-    queryKey: ['friends', user.id],
-    queryFn: () => fetchFriends(user.id),
+  const adminOverviewQuery = useQuery({
+    queryKey: ['admin-overview'],
+    queryFn: fetchAdminOverview,
   })
   const pendingProposalsQuery = useQuery({
     queryKey: ['book-proposals', 'pending'],
     queryFn: () => fetchBookProposals({ status: 'pending' }),
-    enabled: isAdmin,
   })
 
-  const isLoading =
-    booksQuery.isLoading ||
-    libraryQuery.isLoading ||
-    wishlistQuery.isLoading ||
-    friendsQuery.isLoading ||
-    (isAdmin && pendingProposalsQuery.isLoading)
-
-  if (isLoading) {
+  if (adminOverviewQuery.isLoading || pendingProposalsQuery.isLoading) {
     return <Loader label="Chargement du tableau de bord..." />
   }
 
-  const pendingProposals = isAdmin ? pendingProposalsQuery.data?.proposals ?? [] : []
-  const pendingProposalsCount = isAdmin
-    ? pendingProposalsQuery.data?.pagination?.count ?? pendingProposals.length
-    : 0
-
-  const stats = [
-    {
-      label: 'Livres dans ma bibliothèque',
-      value: libraryQuery.data?.length ?? 0,
-    },
-    {
-      label: 'Livres dans ma wishlist',
-      value: wishlistQuery.data?.length ?? 0,
-    },
-    {
-      label: 'Amis connectés',
-      value: friendsQuery.data?.length ?? 0,
-    },
-    {
-      label: 'Titres disponibles dans le catalogue',
-      value: booksQuery.data?.books?.length ?? 0,
-    },
-  ]
-
-  if (isAdmin) {
-    stats.push({
-      label: 'Propositions en attente',
-      value: pendingProposalsCount,
-    })
+  if (adminOverviewQuery.isError || pendingProposalsQuery.isError) {
+    return (
+      <p className="text-center text-sm text-rose-600">
+        Impossible de charger les métriques administrateur. Veuillez réessayer plus tard.
+      </p>
+    )
   }
 
-  const ratings = booksQuery.data?.books
-    ?.map((book) => book.reviews)
-    ?.flat()
-    ?.filter(Boolean)
-
-  const averageRating = getAverageRating(ratings)
+  const totals = adminOverviewQuery.data?.totals ?? {
+    books: 0,
+    members: 0,
+    pendingProposals: 0,
+  }
+  const timeline = (adminOverviewQuery.data?.timeline ?? []).slice(-30)
+  const pendingProposals = pendingProposalsQuery.data?.proposals ?? []
+  const pendingCount =
+    pendingProposalsQuery.data?.pagination?.count ?? pendingProposals.length ?? totals.pendingProposals
 
   return (
     <section className="space-y-8">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold text-primary">Tableau de bord</h1>
         <p className="text-sm text-slate-500 dark:text-slate-300">
-          Une vue synthétique de vos activités de lecture.
+          Suivez l’activité globale de la plateforme et gérez les contributions de la communauté.
         </p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="card">
-            <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              {stat.label}
-            </p>
-            <p className="mt-2 text-3xl font-bold text-primary">{stat.value}</p>
-          </div>
-        ))}
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            Note moyenne globale
+            Livres dans le catalogue
           </p>
           <p className="mt-2 text-3xl font-bold text-primary">
-            {averageRating ? averageRating.toFixed(2) : 'N/A'}
+            {new Intl.NumberFormat('fr-FR').format(totals.books)}
+          </p>
+        </div>
+        <div className="card">
+          <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Comptes créés
+          </p>
+          <p className="mt-2 text-3xl font-bold text-primary">
+            {new Intl.NumberFormat('fr-FR').format(totals.members)}
+          </p>
+        </div>
+        <div className="card">
+          <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Propositions en attente
+          </p>
+          <p className="mt-2 text-3xl font-bold text-primary">
+            {new Intl.NumberFormat('fr-FR').format(pendingCount)}
           </p>
         </div>
       </div>
-      {isAdmin && (
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-4">
           <header>
-            <h2 className="text-xl font-semibold text-primary">Validation des livres</h2>
+            <h2 className="text-xl font-semibold text-primary">Propositions en attente</h2>
             <p className="text-sm text-slate-500 dark:text-slate-300">
-              Consultez les ouvrages proposés par la communauté avant leur publication.
+              Passez en revue les titres proposés avant leur mise en catalogue.
             </p>
           </header>
           <div className="card divide-y divide-slate-200/60 dark:divide-slate-700/60">
             {pendingProposals.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-300">
-                Aucune proposition n’attend votre validation pour l’instant.
+                Aucune proposition n’attend votre validation pour le moment.
               </p>
             ) : (
               pendingProposals.map((proposal) => (
                 <article
                   key={proposal.id}
-                  className="py-3 first:pt-0 last:pb-0 md:flex md:items-center md:justify-between md:gap-6"
+                  className="py-3 first:pt-0 last:pb-0 lg:flex lg:items-start lg:justify-between lg:gap-6"
                 >
-                  <div>
+                  <div className="space-y-1">
                     <Link
                       to={`/admin/book-proposals/${proposal.id}`}
                       className="text-base font-semibold text-primary hover:underline"
@@ -141,7 +102,9 @@ const Dashboard = () => {
                     <p className="text-sm text-slate-500 dark:text-slate-300">
                       Soumis par {proposal.submittedBy?.firstName ?? 'Utilisateur'}{' '}
                       {proposal.submittedBy?.lastName ?? ''} •{' '}
-                      {new Date(proposal.submittedAt).toLocaleDateString('fr-FR')}
+                      {proposal.submittedAt
+                        ? new Date(proposal.submittedAt).toLocaleDateString('fr-FR')
+                        : 'Date inconnue'}
                     </p>
                     {proposal.authorNames?.length ? (
                       <p className="text-xs text-slate-500 dark:text-slate-300">
@@ -159,7 +122,7 @@ const Dashboard = () => {
                       </p>
                     )}
                   </div>
-                  <div className="mt-3 flex items-center gap-4 text-sm md:mt-0">
+                  <div className="mt-3 flex flex-col items-start gap-2 text-xs lg:mt-0">
                     {proposal.isbn && (
                       <span className="rounded-full bg-primary/10 px-3 py-1 font-medium text-primary">
                         ISBN {proposal.isbn}
@@ -174,7 +137,25 @@ const Dashboard = () => {
             )}
           </div>
         </section>
-      )}
+
+        <section className="space-y-4">
+          <header>
+            <h2 className="text-xl font-semibold text-primary">Progression quotidienne</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-300">
+              Cumul des livres et des comptes créés sur les 30 derniers jours.
+            </p>
+          </header>
+          <div className="card">
+            {timeline.length > 1 ? (
+              <TimelineChart data={timeline} />
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-300">
+                Pas encore assez de données pour tracer la courbe.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
     </section>
   )
 }

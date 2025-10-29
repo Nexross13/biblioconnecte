@@ -371,7 +371,158 @@ const getPublicOverview = async (req, res, next) => {
   }
 };
 
+const ADMIN_TIMELINE_DAYS = 30;
+
+const getAdminOverview = async (req, res, next) => {
+  try {
+    const useMocks = process.env.USE_MOCKS === 'true';
+    const timelineLength = ADMIN_TIMELINE_DAYS;
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - (timelineLength - 1));
+    const startDateISO = startDate.toISOString().slice(0, 10);
+
+    if (useMocks) {
+      const { users = [], books = [], bookProposals = [] } = mockData;
+
+      const totals = {
+        books: books.length,
+        members: users.length,
+        pendingProposals: bookProposals.filter((proposal) => proposal.status === 'pending').length,
+      };
+
+      const dailyBooks = books.reduce((acc, book) => {
+        if (!book.createdAt) {
+          return acc;
+        }
+        const key = normalizeDate(book.createdAt);
+        if (!key) {
+          return acc;
+        }
+        acc.set(key, (acc.get(key) || 0) + 1);
+        return acc;
+      }, new Map());
+
+      const dailyMembers = users.reduce((acc, member) => {
+        if (!member.createdAt) {
+          return acc;
+        }
+        const key = normalizeDate(member.createdAt);
+        if (!key) {
+          return acc;
+        }
+        acc.set(key, (acc.get(key) || 0) + 1);
+        return acc;
+      }, new Map());
+
+      let cumulativeBooks = books.filter((book) => {
+        const created = book.createdAt ? new Date(book.createdAt) : null;
+        return created && created < startDate;
+      }).length;
+
+      let cumulativeMembers = users.filter((user) => {
+        const created = user.createdAt ? new Date(user.createdAt) : null;
+        return created && created < startDate;
+      }).length;
+
+      const timeline = Array.from({ length: timelineLength }, (_, index) => {
+        const current = new Date(startDate);
+        current.setDate(startDate.getDate() + index);
+        const key = current.toISOString().slice(0, 10);
+        cumulativeBooks += dailyBooks.get(key) || 0;
+        cumulativeMembers += dailyMembers.get(key) || 0;
+        return {
+          date: key,
+          books: cumulativeBooks,
+          members: cumulativeMembers,
+        };
+      });
+
+      return res.json({
+        totals,
+        timeline,
+      });
+    }
+
+    const [
+      totalBooksResult,
+      totalMembersResult,
+      pendingProposalsResult,
+      initialBooksResult,
+      initialMembersResult,
+      dailyBooksResult,
+      dailyMembersResult,
+    ] = await Promise.all([
+      query('SELECT COUNT(*) AS count FROM books'),
+      query('SELECT COUNT(*) AS count FROM users'),
+      query("SELECT COUNT(*) AS count FROM book_proposals WHERE status = 'pending'"),
+      query('SELECT COUNT(*) AS count FROM books WHERE created_at < $1', [startDateISO]),
+      query('SELECT COUNT(*) AS count FROM users WHERE created_at < $1', [startDateISO]),
+      query(
+        `SELECT created_at::date AS date, COUNT(*) AS count
+         FROM books
+         WHERE created_at >= $1
+         GROUP BY created_at::date`,
+        [startDateISO],
+      ),
+      query(
+        `SELECT created_at::date AS date, COUNT(*) AS count
+         FROM users
+         WHERE created_at >= $1
+         GROUP BY created_at::date`,
+        [startDateISO],
+      ),
+    ]);
+
+    const totals = {
+      books: toNumber(totalBooksResult.rows[0]?.count),
+      members: toNumber(totalMembersResult.rows[0]?.count),
+      pendingProposals: toNumber(pendingProposalsResult.rows[0]?.count),
+    };
+
+    const dailyBooks = dailyBooksResult.rows.reduce((acc, row) => {
+      const key = normalizeDate(row.date);
+      if (key) {
+        acc.set(key, toNumber(row.count));
+      }
+      return acc;
+    }, new Map());
+
+    const dailyMembers = dailyMembersResult.rows.reduce((acc, row) => {
+      const key = normalizeDate(row.date);
+      if (key) {
+        acc.set(key, toNumber(row.count));
+      }
+      return acc;
+    }, new Map());
+
+    let cumulativeBooks = toNumber(initialBooksResult.rows[0]?.count);
+    let cumulativeMembers = toNumber(initialMembersResult.rows[0]?.count);
+
+    const timeline = Array.from({ length: timelineLength }, (_, index) => {
+      const current = new Date(startDate);
+      current.setDate(startDate.getDate() + index);
+      const key = current.toISOString().slice(0, 10);
+      cumulativeBooks += dailyBooks.get(key) || 0;
+      cumulativeMembers += dailyMembers.get(key) || 0;
+      return {
+        date: key,
+        books: cumulativeBooks,
+        members: cumulativeMembers,
+      };
+    });
+
+    return res.json({
+      totals,
+      timeline,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getHighlights,
   getPublicOverview,
+  getAdminOverview,
 };
