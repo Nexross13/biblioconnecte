@@ -13,6 +13,7 @@ import Profile from './pages/Profile.jsx'
 import Friends from './pages/Friends.jsx'
 import FriendCollection from './pages/FriendCollection.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import Unauthorized from './pages/Unauthorized.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 const App = () => (
@@ -80,6 +81,7 @@ const App = () => (
           </ProtectedRoute>
         }
       />
+      <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="*" element={<NotFound />} />
