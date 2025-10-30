@@ -46,6 +46,7 @@ paths:
                   lastName: Martin
                   email: alice@example.com
                   password: Mot2PasseSecurise!
+                  dateOfBirth: '1990-03-12'
       responses:
         '201':
           description: Utilisateur créé avec succès
@@ -62,6 +63,7 @@ paths:
                       firstName: Alice
                       lastName: Martin
                       email: alice@example.com
+                      dateOfBirth: '1990-03-12'
                       createdAt: '2024-03-21T10:00:00.000Z'
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -110,6 +112,7 @@ paths:
                       firstName: Alice
                       lastName: Martin
                       email: alice@example.com
+                      dateOfBirth: '1990-03-12'
                       createdAt: '2024-03-21T10:00:00.000Z'
         '400':
           $ref: '#/components/responses/BadRequest'
@@ -1141,6 +1144,13 @@ paths:
                   edition: Folio SF
                   volume: '1'
                   summary: Cycle de science-fiction d'Isaac Asimov.
+                  authorNames:
+                    - Isaac Asimov
+                  genreNames:
+                    - Science-fiction
+                    - Classique
+                  releaseDate: '2001-01-15'
+                  coverImage: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA
       responses:
         '202':
           description: Proposition de livre enregistrée
@@ -1164,6 +1174,13 @@ paths:
                       submittedAt: '2024-04-18T10:12:00.000Z'
                       submittedBy:
                         id: 5
+                      authorNames:
+                        - Isaac Asimov
+                      genreNames:
+                        - Science-fiction
+                        - Classique
+                      releaseDate: '2001-01-15'
+                      coverImagePath: /assets/books/proposals/proposal-1719943500.jpg
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1557,6 +1574,49 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /stats/public-overview:
+    get:
+      tags:
+        - Statistiques
+      summary: Obtenir un aperçu public du catalogue
+      description: Donne un aperçu chiffré du catalogue et de la communauté, accessible sans authentification.
+      responses:
+        '200':
+          description: Aperçu agrégé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicOverviewResponse'
+              examples:
+                overview:
+                  value:
+                    counts:
+                      members: 1240
+                      books: 3620
+                      authors: 890
+                      genres: 42
+                      reviews: 1875
+                      pendingProposals: 8
+                      libraryEntries: 9720
+                      acceptedFriendships: 540
+                    activity:
+                      booksAddedLast30Days: 120
+                      newMembersLast30Days: 85
+                    popularGenres:
+                      - id: 5
+                        name: Science-fiction
+                        bookCount: 220
+                      - id: 2
+                        name: Fantasy
+                        bookCount: 198
+                    recentBooks:
+                      - id: 42
+                        title: La Passe-miroir
+                        summary: Premier tome de la saga de Christelle Dabos.
+                        createdAt: '2024-05-01T08:00:00.000Z'
+                        updatedAt: '2024-05-01T08:00:00.000Z'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     bearerAuth:
@@ -1708,6 +1768,11 @@ components:
           type: string
           format: email
           example: alice@biblio.test
+        dateOfBirth:
+          type: string
+          format: date
+          nullable: true
+          example: '1990-03-12'
         createdAt:
           type: string
           format: date-time
@@ -1809,6 +1874,11 @@ components:
           type: string
           nullable: true
           example: '1'
+        releaseDate:
+          type: string
+          format: date
+          nullable: true
+          example: '2001-01-15'
         summary:
           type: string
           nullable: true
@@ -1859,6 +1929,20 @@ components:
           type: string
           nullable: true
           example: Cycle de science-fiction d'Isaac Asimov.
+        authorNames:
+          type: array
+          items:
+            type: string
+          example: []
+        genreNames:
+          type: array
+          items:
+            type: string
+          example: []
+        coverImagePath:
+          type: string
+          nullable: true
+          example: /assets/books/proposals/proposal-1719943500.jpg
         status:
           type: string
           enum:
@@ -1937,6 +2021,10 @@ components:
           type: string
         volume:
           type: string
+        releaseDate:
+          type: string
+          format: date
+          nullable: true
         summary:
           type: string
         authorIds:
@@ -1947,6 +2035,20 @@ components:
           type: array
           items:
             type: integer
+        authorNames:
+          type: array
+          description: Liste de noms d'auteurs (utilisée lors d'une proposition)
+          items:
+            type: string
+        genreNames:
+          type: array
+          description: Liste de genres textuels (utilisée lors d'une proposition)
+          items:
+            type: string
+        coverImage:
+          type: string
+          nullable: true
+          description: Image de couverture encodée en base64 (data URL)
       required:
         - title
     BookUpdateRequest:
@@ -1960,6 +2062,10 @@ components:
           type: string
         volume:
           type: string
+        releaseDate:
+          type: string
+          format: date
+          nullable: true
         summary:
           type: string
         authorIds:
@@ -2167,6 +2273,10 @@ components:
         password:
           type: string
           format: password
+        dateOfBirth:
+          type: string
+          format: date
+          description: Date de naissance au format ISO (YYYY-MM-DD)
       required:
         - firstName
         - lastName
@@ -2261,3 +2371,83 @@ components:
             $ref: '#/components/schemas/Book'
       required:
         - latestBooks
+    PopularGenre:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        name:
+          type: string
+          example: Science-fiction
+        bookCount:
+          type: integer
+          example: 220
+      required:
+        - id
+        - name
+        - bookCount
+    PublicOverviewResponse:
+      type: object
+      properties:
+        counts:
+          type: object
+          properties:
+            members:
+              type: integer
+              example: 1240
+            books:
+              type: integer
+              example: 3620
+            authors:
+              type: integer
+              example: 890
+            genres:
+              type: integer
+              example: 42
+            reviews:
+              type: integer
+              example: 1875
+            pendingProposals:
+              type: integer
+              example: 8
+            libraryEntries:
+              type: integer
+              example: 9720
+            acceptedFriendships:
+              type: integer
+              example: 540
+          required:
+            - members
+            - books
+            - authors
+            - genres
+            - reviews
+            - pendingProposals
+            - libraryEntries
+            - acceptedFriendships
+        activity:
+          type: object
+          properties:
+            booksAddedLast30Days:
+              type: integer
+              example: 120
+            newMembersLast30Days:
+              type: integer
+              example: 85
+          required:
+            - booksAddedLast30Days
+            - newMembersLast30Days
+        recentBooks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        popularGenres:
+          type: array
+          items:
+            $ref: '#/components/schemas/PopularGenre'
+      required:
+        - counts
+        - activity
+        - recentBooks
+        - popularGenres

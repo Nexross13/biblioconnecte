@@ -70,12 +70,14 @@ test('authController.register crée un utilisateur mock', async () => {
       lastName: 'Doe',
       email: 'john@biblio.test',
       password: 'secret',
+      dateOfBirth: '1991-04-20',
     },
   });
 
   assert.equal(res.statusCode, 201);
   assert.equal(res.body.user.email, 'john@biblio.test');
   assert.equal(res.body.user.role, 'user');
+  assert.equal(res.body.user.dateOfBirth, '1991-04-20');
   assert.equal(res.body.token, 'mock-jwt-token');
 });
 
@@ -211,6 +213,7 @@ test('bookProposalController.createProposal soumet une proposition', async () =>
     body: {
       title: 'Nouveau Livre',
       isbn: '1234567890',
+      releaseDate: '2024-02-29',
     },
   });
 
@@ -219,6 +222,7 @@ test('bookProposalController.createProposal soumet une proposition', async () =>
   assert.equal(res.body.proposal.status, 'pending');
   assert.equal(res.body.proposal.submittedBy.id, 7);
   assert.equal(res.body.proposal.decidedBy, null);
+  assert.equal(res.body.proposal.releaseDate, '2024-02-29');
   assert.equal(res.body.message, 'Livre envoyé pour validation par un administrateur');
 });
 

@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const bookProposalModel = require('../models/bookProposalModel');
 const {
   getBookProposals: getMockBookProposals,
@@ -8,6 +10,72 @@ const {
   rejectBookProposal: rejectMockBookProposal,
   getUserById: getMockUserById,
 } = require('../data/mockData');
+
+const fsPromises = fs.promises;
+const { PROPOSAL_COVER_DIR, PROPOSAL_COVER_RELATIVE_DIR } = bookProposalModel;
+const MIME_EXTENSION_MAP = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+
+const normalizeStringArray = (value) => {
+  if (!value) {
+    return [];
+  }
+  const array = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+    ? value.split(',')
+    : [];
+  const normalized = array
+    .map((item) => String(item ?? '').trim())
+    .filter((item) => item.length);
+  return Array.from(new Set(normalized));
+};
+
+const decodeBase64Image = (dataString) => {
+  if (typeof dataString !== 'string' || !dataString.length) {
+    throw new Error('Invalid cover image payload');
+  }
+
+  let mimeType;
+  let base64Data;
+
+  const dataUrlMatch = dataString.match(/^data:(.+);base64,(.+)$/);
+  if (dataUrlMatch) {
+    mimeType = dataUrlMatch[1];
+    base64Data = dataUrlMatch[2];
+  } else {
+    mimeType = 'image/jpeg';
+    base64Data = dataString;
+  }
+
+  const extension = MIME_EXTENSION_MAP[mimeType];
+  if (!extension) {
+    const error = new Error('Unsupported cover image format');
+    error.status = 400;
+    throw error;
+  }
+
+  return {
+    buffer: Buffer.from(base64Data, 'base64'),
+    extension,
+  };
+};
+
+const saveCoverImage = async (base64) => {
+  if (!base64) {
+    return null;
+  }
+  await fsPromises.mkdir(PROPOSAL_COVER_DIR, { recursive: true });
+  const { buffer, extension } = decodeBase64Image(base64);
+  const fileName = `proposal-${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
+  const filePath = path.join(PROPOSAL_COVER_DIR, fileName);
+  await fsPromises.writeFile(filePath, buffer);
+  return path.join(PROPOSAL_COVER_RELATIVE_DIR, fileName).replace(/\\/g, '/');
+};
 
 const parsePagination = (req) => {
   const limit = Math.min(Number(req.query.limit) || 25, 100);
@@ -52,6 +120,10 @@ const mapMockProposal = (proposal) => {
     updatedAt: proposal.updatedAt,
     decidedAt: proposal.decidedAt || null,
     rejectionReason: proposal.rejectionReason || null,
+    releaseDate: proposal.releaseDate || null,
+    authorNames: proposal.authorNames || [],
+    genreNames: proposal.genreNames || [],
+    coverImagePath: proposal.coverImagePath || null,
     submittedBy: mapMockUserSummary(submittedUser) || { id: Number(proposal.submittedBy) },
     decidedBy: decidedUser
       ? mapMockUserSummary(decidedUser)
@@ -63,7 +135,7 @@ const mapMockProposal = (proposal) => {
 
 const createProposal = async (req, res, next) => {
   try {
-    const { title, isbn, edition, volume, summary } = req.body;
+    const { title, isbn, edition, volume, summary, releaseDate: rawReleaseDate } = req.body;
     if (!title) {
       const err = new Error('Title is required');
       err.status = 400;
@@ -81,6 +153,37 @@ const createProposal = async (req, res, next) => {
       throw err;
     }
 
+    let releaseDate = null;
+    if (rawReleaseDate !== undefined && rawReleaseDate !== null && String(rawReleaseDate).trim()) {
+      const normalized = String(rawReleaseDate).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+        releaseDate = normalized;
+      } else {
+        const parsed = new Date(normalized);
+        if (Number.isNaN(parsed.getTime())) {
+          const err = new Error('Invalid release date');
+          err.status = 400;
+          throw err;
+        }
+        releaseDate = parsed.toISOString().slice(0, 10);
+      }
+    }
+
+    const authorNames = normalizeStringArray(req.body.authorNames || req.body.authors);
+    const genreNames = normalizeStringArray(req.body.genreNames || req.body.genres);
+    const coverImageBase64 = typeof req.body.coverImage === 'string' ? req.body.coverImage : null;
+    let savedCoverPath = null;
+    if (process.env.USE_MOCKS !== 'true') {
+      try {
+        if (coverImageBase64) {
+          savedCoverPath = await saveCoverImage(coverImageBase64);
+        }
+      } catch (imageError) {
+        imageError.status = imageError.status || 400;
+        throw imageError;
+      }
+    }
+
     if (process.env.USE_MOCKS === 'true') {
       const proposal = createMockBookProposal({
         title,
@@ -88,7 +191,11 @@ const createProposal = async (req, res, next) => {
         edition,
         volume,
         summary,
+        releaseDate,
         submittedBy,
+        authorNames,
+        genreNames,
+        coverImagePath: savedCoverPath,
       });
       return res.status(202).json({
         message: 'Livre envoyé pour validation par un administrateur',
@@ -96,19 +203,35 @@ const createProposal = async (req, res, next) => {
       });
     }
 
-    const proposal = await bookProposalModel.createProposal({
-      title,
-      isbn,
-      edition,
-      volume,
-      summary,
-      submittedBy,
-    });
+    try {
+      const proposal = await bookProposalModel.createProposal({
+        title,
+        isbn,
+        edition,
+        volume,
+        summary,
+        publicationDate: releaseDate,
+        submittedBy,
+        authorNames,
+        genreNames,
+        coverImagePath: savedCoverPath,
+      });
 
-    res.status(202).json({
-      message: 'Livre envoyé pour validation par un administrateur',
-      proposal,
-    });
+      res.status(202).json({
+        message: 'Livre envoyé pour validation par un administrateur',
+        proposal,
+      });
+    } catch (error) {
+      if (savedCoverPath) {
+        try {
+          const relativePath = savedCoverPath.replace(/^\//, '');
+          await fsPromises.unlink(path.join(__dirname, '..', relativePath));
+        } catch (unlinkError) {
+          // ignore cleanup error
+        }
+      }
+      throw error;
+    }
   } catch (error) {
     next(error);
   }

@@ -21,11 +21,16 @@ const Register = () => {
       lastName: formData.get('lastName'),
       email: formData.get('email'),
       password: formData.get('password'),
+      dateOfBirth: formData.get('dateOfBirth') || null,
     }
 
     if (!payload.firstName || !payload.lastName || !payload.email || !payload.password) {
       toast.error('Tous les champs sont obligatoires')
       return
+    }
+
+    if (payload.dateOfBirth === '') {
+      payload.dateOfBirth = null
     }
 
     try {
@@ -70,6 +75,15 @@ const Register = () => {
             Email
           </label>
           <input className="input" id="email" name="email" type="email" autoComplete="email" />
+        </div>
+        <div className="space-y-2">
+          <label
+            className="text-sm font-medium text-slate-600 dark:text-slate-300"
+            htmlFor="dateOfBirth"
+          >
+            Date de naissance
+          </label>
+          <input className="input" id="dateOfBirth" name="dateOfBirth" type="date" />
         </div>
         <div className="space-y-2">
           <label

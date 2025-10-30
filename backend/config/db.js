@@ -13,7 +13,7 @@ const pool = new Pool(
         port: Number(process.env.PGPORT) || 5432,
         user: process.env.PGUSER || 'postgres',
         password: process.env.PGPASSWORD || 'postgres',
-        database: process.env.PGDATABASE || 'biblioconnect',
+        database: process.env.PGDATABASE || 'biblioconnecte',
       },
 );
 

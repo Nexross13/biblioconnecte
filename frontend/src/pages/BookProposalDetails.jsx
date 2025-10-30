@@ -19,26 +19,10 @@ const BookProposalDetails = () => {
     queryFn: () => fetchBookProposalById(id),
   })
 
-  const coverCandidates = useMemo(() => {
-    const isbn = proposalQuery.data?.isbn
-    if (!isbn) {
-      return []
-    }
-    return COVER_EXTENSIONS.map((ext) => `${ASSETS_BOOKS_BASE_URL}/${isbn}.${ext}`)
-  }, [proposalQuery.data?.isbn])
-
-  const [coverSrc, setCoverSrc] = useState(() => coverCandidates[0] || PLACEHOLDER_COVER)
+  const [coverSrc, setCoverSrc] = useState(PLACEHOLDER_COVER)
   const [candidateIndex, setCandidateIndex] = useState(0)
-
-  useEffect(() => {
-    if (!coverCandidates.length) {
-      setCoverSrc(PLACEHOLDER_COVER)
-      setCandidateIndex(0)
-      return
-    }
-    setCoverSrc(coverCandidates[0])
-    setCandidateIndex(0)
-  }, [coverCandidates])
+  const proposal = proposalQuery.data ?? null
+  const isPending = proposal?.status === 'pending'
 
   const invalidateLists = async () => {
     await Promise.all([
@@ -74,11 +58,37 @@ const BookProposalDetails = () => {
     },
   })
 
+  const coverCandidates = useMemo(() => {
+    const candidates = []
+    if (proposal?.coverImagePath) {
+      const normalized = proposal.coverImagePath.startsWith('/')
+        ? proposal.coverImagePath
+        : `/${proposal.coverImagePath}`
+      candidates.push(normalized)
+    }
+    if (proposal?.isbn) {
+      COVER_EXTENSIONS.forEach((ext) => {
+        candidates.push(`${ASSETS_BOOKS_BASE_URL}/${proposal.isbn}.${ext}`)
+      })
+    }
+    return candidates
+  }, [proposal?.coverImagePath, proposal?.isbn])
+
+  useEffect(() => {
+    if (!coverCandidates.length) {
+      setCoverSrc(PLACEHOLDER_COVER)
+      setCandidateIndex(0)
+      return
+    }
+    setCoverSrc(coverCandidates[0])
+    setCandidateIndex(0)
+  }, [coverCandidates])
+
   if (proposalQuery.isLoading) {
     return <Loader label="Chargement de la proposition..." />
   }
 
-  if (proposalQuery.isError || !proposalQuery.data) {
+  if (proposalQuery.isError || !proposal) {
     return (
       <section className="space-y-4">
         <h1 className="text-2xl font-semibold text-primary">Proposition introuvable</h1>
@@ -89,11 +99,19 @@ const BookProposalDetails = () => {
     )
   }
 
-  const proposal = proposalQuery.data
-  const isPending = proposal.status === 'pending'
   const submittedFullName = `${proposal.submittedBy?.firstName ?? 'Utilisateur'} ${
     proposal.submittedBy?.lastName ?? ''
   }`.trim()
+
+  const releaseDateLabel = proposal.releaseDate
+    ? (() => {
+        const date = new Date(proposal.releaseDate)
+        if (Number.isNaN(date.getTime())) {
+          return proposal.releaseDate
+        }
+        return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(date)
+      })()
+    : null
 
   return (
     <section className="space-y-6">
@@ -147,6 +165,30 @@ const BookProposalDetails = () => {
                   <dd>{proposal.volume}</dd>
                 </div>
               )}
+              {releaseDateLabel && (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Date de sortie
+                  </dt>
+                  <dd>{releaseDateLabel}</dd>
+                </div>
+              )}
+              {proposal.authorNames?.length ? (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Auteur(s)
+                  </dt>
+                  <dd>{proposal.authorNames.join(', ')}</dd>
+                </div>
+              ) : null}
+              {proposal.genreNames?.length ? (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Genre(s)
+                  </dt>
+                  <dd>{proposal.genreNames.join(', ')}</dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
                   Statut actuel

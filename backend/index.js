@@ -75,6 +75,12 @@ app.use(
     fallthrough: true,
   }),
 );
+app.use(
+  '/assets/components',
+  express.static(path.join(__dirname, 'assets', 'components'), {
+    fallthrough: true,
+  }),
+);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -6,7 +6,6 @@ import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Library from './pages/Library.jsx'
-import Wishlist from './pages/Wishlist.jsx'
 import BookDetails from './pages/BookDetails.jsx'
 import BookProposalDetails from './pages/BookProposalDetails.jsx'
 import BookProposalForm from './pages/BookProposalForm.jsx'
@@ -14,6 +13,7 @@ import Profile from './pages/Profile.jsx'
 import Friends from './pages/Friends.jsx'
 import FriendCollection from './pages/FriendCollection.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import Unauthorized from './pages/Unauthorized.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 const App = () => (
@@ -34,14 +34,6 @@ const App = () => (
         element={
           <ProtectedRoute>
             <Library />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/wishlist"
-        element={
-          <ProtectedRoute>
-            <Wishlist />
           </ProtectedRoute>
         }
       />
@@ -73,7 +65,9 @@ const App = () => (
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <AdminRoute>
+              <Dashboard />
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -87,6 +81,7 @@ const App = () => (
           </ProtectedRoute>
         }
       />
+      <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="*" element={<NotFound />} />

@@ -15,6 +15,26 @@ const parsePagination = (req) => {
   return { limit, offset };
 };
 
+const normalizeReleaseDate = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const stringValue = String(value).trim();
+  if (!stringValue.length) {
+    return null;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stringValue)) {
+    return stringValue;
+  }
+  const parsed = new Date(stringValue);
+  if (Number.isNaN(parsed.getTime())) {
+    const err = new Error('Invalid release date');
+    err.status = 400;
+    throw err;
+  }
+  return parsed.toISOString().slice(0, 10);
+};
+
 const listBooks = async (req, res, next) => {
   try {
     const { limit, offset } = parsePagination(req);
@@ -100,12 +120,15 @@ const normalizeIds = (ids = []) =>
 
 const createBook = async (req, res, next) => {
   try {
-    const { title, isbn, edition, volume, summary, authorIds, genreIds } = req.body;
+    const { title, isbn, edition, volume, summary, releaseDate: rawReleaseDate, authorIds, genreIds } =
+      req.body;
     if (!title) {
       const err = new Error('Title is required');
       err.status = 400;
       throw err;
     }
+
+    const releaseDate = normalizeReleaseDate(rawReleaseDate);
 
     if (process.env.USE_MOCKS === 'true') {
       const allAuthors = getMockAuthors();
@@ -125,6 +148,7 @@ const createBook = async (req, res, next) => {
           edition: edition || null,
           volume: volume || null,
           summary: summary || null,
+          releaseDate,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           authors: normalizedAuthors.filter(Boolean),
@@ -153,6 +177,7 @@ const createBook = async (req, res, next) => {
         edition,
         volume,
         summary,
+        publicationDate: releaseDate,
         submittedBy,
       });
 
@@ -162,7 +187,7 @@ const createBook = async (req, res, next) => {
       });
     }
 
-    const book = await bookModel.createBook({ title, isbn, edition, volume, summary });
+    const book = await bookModel.createBook({ title, isbn, edition, volume, releaseDate, summary });
 
     const [authors, genres] = await Promise.all([
       bookModel.setBookAuthors(book.id, normalizeIds(authorIds)),
@@ -204,6 +229,9 @@ const updateBook = async (req, res, next) => {
         edition: req.body.edition ?? existing.edition,
         volume: req.body.volume ?? existing.volume,
         summary: req.body.summary ?? existing.summary,
+        releaseDate: normalizeReleaseDate(
+          req.body.releaseDate === undefined ? existing.releaseDate : req.body.releaseDate,
+        ),
         updatedAt: new Date().toISOString(),
       };
 
@@ -222,6 +250,9 @@ const updateBook = async (req, res, next) => {
       isbn: req.body.isbn ?? existing.isbn,
       edition: req.body.edition ?? existing.edition,
       volume: req.body.volume ?? existing.volume,
+      releaseDate: normalizeReleaseDate(
+        req.body.releaseDate === undefined ? existing.releaseDate : req.body.releaseDate,
+      ),
       summary: req.body.summary ?? existing.summary,
     };
 

@@ -6,9 +6,8 @@ import useAuth from '../hooks/useAuth'
 const navLinks = [
   { to: '/', label: 'Accueil', private: false },
   { to: '/library', label: 'Ma bibliothèque', private: true },
-  { to: '/wishlist', label: 'Souhaits', private: true },
   { to: '/friends', label: 'Amis', private: true },
-  { to: '/dashboard', label: 'Tableau de bord', private: true },
+  { to: '/dashboard', label: 'Tableau de bord', private: true, adminOnly: true },
   { to: '/profile', label: 'Profil', private: true },
 ]
 
@@ -30,8 +29,17 @@ const Navbar = () => {
   }, [theme])
 
   const filteredLinks = useMemo(
-    () => navLinks.filter((link) => (link.private ? isAuthenticated : true)),
-    [isAuthenticated],
+    () =>
+      navLinks.filter((link) => {
+        if (link.adminOnly) {
+          return isAuthenticated && user?.role === 'admin'
+        }
+        if (link.private) {
+          return isAuthenticated
+        }
+        return true
+      }),
+    [isAuthenticated, user?.role],
   )
 
   const handleLogout = () => {

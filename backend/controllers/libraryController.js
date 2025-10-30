@@ -34,8 +34,10 @@ const addBookToLibrary = async (req, res, next) => {
       });
     }
 
-    const entry = await libraryModel.addLibraryBook({ userId: Number(req.user.id), bookId });
-    res.status(201).json({ entry });
+    const userId = Number(req.user.id);
+    await libraryModel.removeWishlistBook({ userId, bookId });
+    const entry = await libraryModel.addLibraryBook({ userId, bookId });
+    res.status(201).json({ entry, removedFromWishlist: true });
   } catch (error) {
     next(error);
   }
