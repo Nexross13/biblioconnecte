@@ -4,6 +4,25 @@ const userModel = require('../models/userModel');
 const { getUsers, getUserById } = require('../data/mockData');
 const { getRoleForEmail } = require('../utils/roles');
 
+const THIRTEEN_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 13;
+const SESSION_COOKIE_NAME = 'biblio_session';
+
+const buildSessionCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: THIRTEEN_MONTHS_MS,
+  path: '/',
+});
+
+const setSessionCookie = (res, token) => {
+  res.cookie(SESSION_COOKIE_NAME, token, buildSessionCookieOptions());
+};
+
+const clearSessionCookie = (res) => {
+  res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
+};
+
 const createToken = (user) => {
   const role = user.role || getRoleForEmail(user.email);
   const payload = {
@@ -52,6 +71,7 @@ const register = async (req, res, next) => {
       }
 
       const role = getRoleForEmail(email);
+      setSessionCookie(res, 'mock-jwt-token');
       return res.status(201).json({
         token: 'mock-jwt-token',
         user: {
@@ -85,10 +105,17 @@ const register = async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await userModel.createUser({ firstName, lastName, email, passwordHash, dateOfBirth });
+    const user = await userModel.createUser({
+      firstName,
+      lastName,
+      email,
+      passwordHash,
+      dateOfBirth,
+    });
     const role = getRoleForEmail(user.email);
     const token = createToken({ ...user, role });
 
+    setSessionCookie(res, token);
     res.status(201).json({
       token,
       user: { ...user, role },
@@ -116,6 +143,7 @@ const login = async (req, res, next) => {
       }
 
       const role = getRoleForEmail(mockUser.email);
+      setSessionCookie(res, 'mock-jwt-token');
       return res.json({
         token: 'mock-jwt-token',
         user: { ...mockUser, role },
@@ -139,6 +167,7 @@ const login = async (req, res, next) => {
     const role = getRoleForEmail(user.email);
     const token = createToken({ ...user, role });
 
+    setSessionCookie(res, token);
     res.json({
       token,
       user: {
@@ -182,8 +211,14 @@ const me = async (req, res, next) => {
   }
 };
 
+const logout = (req, res) => {
+  clearSessionCookie(res);
+  res.status(204).end();
+};
+
 module.exports = {
   register,
   login,
   me,
+  logout,
 };
