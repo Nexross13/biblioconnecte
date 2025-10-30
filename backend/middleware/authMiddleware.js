@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const { getUserById } = require('../data/mockData');
 const { getRoleForEmail } = require('../utils/roles');
 
+const SESSION_COOKIE_NAME = 'biblio_session';
+
 const buildAuthError = (message = 'Authentication required') => {
   const error = new Error(message);
   error.status = 401;
@@ -19,10 +21,14 @@ const attachRole = (user = {}) => {
 
 const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  let token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
+
+  if (!token && req.cookies) {
+    token = req.cookies[SESSION_COOKIE_NAME];
+  }
 
   if (!token) {
-    return next(buildAuthError('Missing bearer token'));
+    return next(buildAuthError('Authentication required'));
   }
 
   const useMocks = process.env.USE_MOCKS === 'true';
@@ -77,3 +83,4 @@ module.exports = {
     return next();
   },
 };
+

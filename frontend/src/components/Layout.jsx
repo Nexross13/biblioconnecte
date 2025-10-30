@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import Navbar from './Navbar.jsx'
 import Footer from './Footer.jsx'
+import CookieBanner from './CookieBanner.jsx'
 
 const Layout = () => (
   <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-900">
@@ -9,6 +10,7 @@ const Layout = () => (
       <Outlet />
     </main>
     <Footer />
+    <CookieBanner />
   </div>
 )
 
