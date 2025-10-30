@@ -123,7 +123,7 @@ L’interface tourne sur `http://localhost:5173` et consomme l’API exposée pa
 - React Router DOM pour la navigation client
 - @tanstack/react-query (et Devtools) pour le cache et la synchronisation réseau
 - Tailwind CSS avec gestion du mode sombre
-- Axios pour les appels API (intercepteur JWT)
+- Axios pour les appels API (session via cookies)
 - Context API pour l’état global d’authentification
 - react-hot-toast pour les notifications
 
@@ -140,8 +140,8 @@ frontend/src/
 ```
 
 ### Authentification
-- Les tokens JWT renvoyés par `/auth/login` et `/auth/register` sont stockés dans `localStorage` (`biblio_token`).
-- À l’initialisation, le contexte tente `/auth/me` pour récupérer le profil courant et injecte automatiquement le token dans Axios.
+- Les tokens JWT renvoyés par `/auth/login` et `/auth/register` sont servis dans un cookie HTTP-only valable 13 mois.
+- À l’initialisation, le contexte tente `/auth/me` pour récupérer le profil courant (les cookies sont envoyés automatiquement via Axios `withCredentials`).
 - Le composant `ProtectedRoute` protège les pages nécessitant une session active.
 - Les utilisateurs peuvent mettre à jour leur profil (nom, email, mot de passe) et téléverser une photo depuis l’interface.
 
@@ -149,6 +149,7 @@ frontend/src/
 - ESLint + Prettier configurés (voir `npm run lint`).
 - Tailwind centralise les styles réutilisés (`btn`, `card`, `input`…).
 - Les appels réseau sont isolés dans `src/api/` pour garder les pages légères.
+- Le thème (clair/sombre) est mémorisé via un cookie `pref_theme` valable 13 mois.
 
 ### Variables d’environnement
 
@@ -157,3 +158,9 @@ frontend/src/
 | `VITE_API_URL` | URL de base de l’API backend consommée par React | `http://localhost:3000/api/v1`   |
 
 Créer un fichier `.env.local` (non versionné) d’après `.env.example` pour adapter l’URL selon votre environnement.
+
+### Variables d’environnement (backend)
+
+| Variable         | Description                                                             | Valeur par défaut            |
+|------------------|-------------------------------------------------------------------------|------------------------------|
+| `FRONTEND_URL`   | Origine autorisée pour CORS + cookies de session (autorise les credentials) | `http://localhost:5173`      |
