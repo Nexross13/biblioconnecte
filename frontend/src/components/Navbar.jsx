@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { SunIcon, MoonIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import useAuth from '../hooks/useAuth'
+import { deleteCookie, readCookie, writeCookie } from '../utils/cookies'
 
 const navLinks = [
   { to: '/', label: 'Accueil', private: false },
@@ -11,13 +12,18 @@ const navLinks = [
   { to: '/profile', label: 'Profil', private: true },
 ]
 
-const storageKey = 'biblio_theme'
+const THEME_COOKIE_NAME = 'pref_theme'
+const THIRTEEN_MONTHS_SECONDS = 60 * 60 * 24 * 30 * 13
+
+
+const CONSENT_COOKIE_NAME = 'cookie_consent'
 
 const Navbar = () => {
   const { isAuthenticated, logout, user } = useAuth()
   const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [theme, setTheme] = useState(() => localStorage.getItem(storageKey) || 'light')
+  const [theme, setTheme] = useState(() => readCookie(THEME_COOKIE_NAME) || 'light')
+  const [canPersistTheme, setCanPersistTheme] = useState(() => readCookie(CONSENT_COOKIE_NAME) === 'accepted')
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -25,8 +31,20 @@ const Navbar = () => {
     } else {
       document.documentElement.classList.remove('dark')
     }
-    localStorage.setItem(storageKey, theme)
-  }, [theme])
+    if (canPersistTheme) {
+      writeCookie(THEME_COOKIE_NAME, theme, { maxAgeSeconds: THIRTEEN_MONTHS_SECONDS })
+    } else {
+      deleteCookie(THEME_COOKIE_NAME)
+    }
+  }, [theme, canPersistTheme])
+
+  useEffect(() => {
+    const handler = () => {
+      setCanPersistTheme(readCookie(CONSENT_COOKIE_NAME) === 'accepted')
+    }
+    window.addEventListener('cookie-consent-change', handler)
+    return () => window.removeEventListener('cookie-consent-change', handler)
+  }, [])
 
   const filteredLinks = useMemo(
     () =>
@@ -43,8 +61,9 @@ const Navbar = () => {
   )
 
   const handleLogout = () => {
-    logout()
-    navigate('/login')
+    logout().finally(() => {
+      navigate('/login')
+    })
   }
 
   const toggleTheme = () => {

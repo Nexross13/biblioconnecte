@@ -1,34 +1,23 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
-import { fetchCurrentUser, loginUser, registerUser } from '../api/auth'
+import { fetchCurrentUser, loginUser, logoutUser, registerUser } from '../api/auth'
 
 const AuthContext = createContext(null)
 
-const TOKEN_STORAGE_KEY = 'biblio_token'
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_STORAGE_KEY))
   const [loading, setLoading] = useState(true)
   const queryClient = useQueryClient()
 
   const handleAuthSuccess = useCallback(
-    ({ token: newToken, user: nextUser }) => {
-      localStorage.setItem(TOKEN_STORAGE_KEY, newToken)
-      setToken(newToken)
+    ({ user: nextUser }) => {
+      queryClient.clear()
       setUser(nextUser)
       toast.success(`Bienvenue ${nextUser.firstName}!`)
     },
-    [setToken, setUser],
+    [queryClient],
   )
-
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_STORAGE_KEY)
-    setToken(null)
-    setUser(null)
-    queryClient.clear()
-  }, [queryClient])
 
   const loginMutation = useMutation({
     mutationFn: loginUser,
@@ -48,39 +37,50 @@ export const AuthProvider = ({ children }) => {
     },
   })
 
+  const logout = useCallback(async () => {
+    try {
+      await logoutUser()
+    } catch (error) {
+      console.warn('Unable to logout', error)
+    } finally {
+      setUser(null)
+      queryClient.clear()
+    }
+  }, [queryClient])
+
   useEffect(() => {
     const bootstrap = async () => {
-      if (!token) {
-        setLoading(false)
-        return
-      }
       try {
         const currentUser = await fetchCurrentUser()
         setUser(currentUser)
       } catch (error) {
-        console.warn('Unable to fetch current user', error)
-        logout()
+        if (error?.response?.status !== 401) {
+          console.warn('Unable to fetch current user', error)
+        }
+        setUser(null)
       } finally {
         setLoading(false)
       }
     }
 
     bootstrap()
-  }, [token, logout])
+  }, [])
+
+  const { mutateAsync: login, status: loginStatus } = loginMutation
+  const { mutateAsync: register, status: registerStatus } = registerMutation
 
   const value = useMemo(
     () => ({
       user,
-      token,
-      isAuthenticated: Boolean(user && token),
+      isAuthenticated: Boolean(user),
       loading,
-      login: loginMutation.mutateAsync,
-      register: registerMutation.mutateAsync,
-      loginStatus: loginMutation.status,
-      registerStatus: registerMutation.status,
+      login,
+      register,
+      loginStatus,
+      registerStatus,
       logout,
     }),
-    [user, token, loading, loginMutation, registerMutation, logout],
+    [user, loading, login, register, loginStatus, registerStatus, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

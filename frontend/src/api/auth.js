@@ -10,6 +10,10 @@ export const loginUser = async (payload) => {
   return data
 }
 
+export const logoutUser = async () => {
+  await apiClient.post('/auth/logout')
+}
+
 export const fetchCurrentUser = async () => {
   const { data } = await apiClient.get('/auth/me')
   return data.user
