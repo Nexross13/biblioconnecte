@@ -344,6 +344,9 @@ const approveProposal = async (id, { decidedBy }) => {
         const targetName = book.isbn ? `${book.isbn}${extension}` : `book-${book.id}${extension}`;
         const targetPath = path.join(FINAL_COVER_DIR, targetName);
         await fsPromises.copyFile(absoluteSource, targetPath);
+        await fsPromises.unlink(absoluteSource).catch((error) => {
+          console.warn('Unable to remove proposal cover image after approval', error);
+        });
       } catch (error) {
         // ignore missing file, but log for troubleshooting
         console.warn('Unable to copy proposal cover image', error);
@@ -352,7 +355,10 @@ const approveProposal = async (id, { decidedBy }) => {
 
     await client.query('COMMIT');
 
-    return { proposal: proposalPayload, book };
+    const refreshedResult = await query(`${baseSelect} WHERE bp.id = $1`, [id]);
+    const fullProposal = mapProposal(refreshedResult.rows[0]) || proposalPayload;
+
+    return { proposal: fullProposal, book };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -373,7 +379,23 @@ const rejectProposal = async (id, { decidedBy, reason }) => {
      RETURNING id, title, isbn, edition, volume, summary, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
     [id, decidedBy, reason || null],
   );
-  return mapProposal(result.rows[0]);
+  const baseProposal = mapProposal(result.rows[0]);
+  if (!baseProposal) {
+    return null;
+  }
+
+  const refreshedResult = await query(`${baseSelect} WHERE bp.id = $1`, [id]);
+  const fullProposal = mapProposal(refreshedResult.rows[0]) || baseProposal;
+
+  if (fullProposal.coverImagePath) {
+    const sourceRelative = fullProposal.coverImagePath.replace(/^\//, '');
+    const absoluteSource = path.join(__dirname, '..', sourceRelative);
+    await fsPromises.unlink(absoluteSource).catch((error) => {
+      console.warn('Unable to remove proposal cover image after rejection', error);
+    });
+  }
+
+  return fullProposal;
 };
 
 module.exports = {
