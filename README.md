@@ -67,6 +67,7 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
 - Renseigner `ADMIN_EMAILS` (liste séparée par des virgules) pour désigner les comptes pouvant valider les propositions de livres.
 - Configurer les variables SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, etc.) ainsi que `EMAIL_FROM` pour permettre l’envoi d’e-mails transactionnels (notifications, réinitialisation de mot de passe).
 - Ajuster `PASSWORD_RESET_CODE_TTL_MINUTES` si le délai de validité du code doit différer des 15 minutes par défaut.
+- Définir `GOOGLE_CLIENT_ID` (console Google Cloud) pour activer la connexion via Google et la vérification côté backend.
 
 ### Documentation API
 - La spécification OpenAPI est disponible dans `backend/docs/openapi.yaml`.
@@ -149,6 +150,7 @@ frontend/src/
 - Le composant `ProtectedRoute` protège les pages nécessitant une session active.
 - Les utilisateurs peuvent mettre à jour leur profil (nom, email, mot de passe) et téléverser une photo depuis l’interface.
 - La page de connexion propose un lien « mot de passe oublié » : un code OTP à 6 chiffres est envoyé par e-mail, à saisir avant de définir un nouveau mot de passe.
+- La création/connexion peut s’effectuer via Google OAuth : côté frontend, le bouton Google n’apparaît que si `VITE_GOOGLE_CLIENT_ID` est défini.
 
 ### Conventions (frontend)
 - ESLint + Prettier configurés (voir `npm run lint`).
@@ -160,7 +162,8 @@ frontend/src/
 
 | Variable       | Description                                      | Valeur par défaut                |
 |----------------|--------------------------------------------------|----------------------------------|
-| `VITE_API_URL` | URL de base de l’API backend consommée par React | `http://localhost:3000/api/v1`   |
+| `VITE_API_URL`          | URL de base de l’API backend consommée par React                  | `http://localhost:3000/api/v1` |
+| `VITE_GOOGLE_CLIENT_ID` | Identifiant client Google OAuth 2.0 pour l’app frontend           | —                              |
 
 Créer un fichier `.env.local` (non versionné) d’après `.env.example` pour adapter l’URL selon votre environnement.
 
@@ -176,3 +179,4 @@ Créer un fichier `.env.local` (non versionné) d’après `.env.example` pour a
 | `SMTP_PASSWORD`  | Mot de passe SMTP                                                            | —                            |
 | `SMTP_URL`       | URL de connexion complète (remplace host/port/user/pass)                     | —                            |
 | `EMAIL_FROM`     | Adresse expéditrice par défaut                                               | `SMTP_USER`                  |
+| `GOOGLE_CLIENT_ID` | Identifiant client Google OAuth utilisé pour vérifier les tokens côté API  | —                            |

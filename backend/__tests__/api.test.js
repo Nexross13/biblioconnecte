@@ -4,6 +4,7 @@ process.env.NODE_ENV = 'test';
 process.env.USE_MOCKS = 'true';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 process.env.ADMIN_EMAILS = 'alice@biblio.test';
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -61,6 +62,13 @@ const expectReject = async (controllerCall, verifier) => {
     await controllerCall();
   }, verifier);
 };
+
+const encodeBase64Url = (input) =>
+  Buffer.from(JSON.stringify(input))
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
 
 test.beforeEach(() => {
   mockPasswordResets.clear();
@@ -236,6 +244,39 @@ test("authController.resetPassword exige un mot de passe robuste", async () => {
     (err) => {
       assert.equal(err.status, 400);
       assert.equal(err.message, 'Le nouveau mot de passe doit contenir au moins 8 caractères');
+      return true;
+    },
+  );
+});
+
+test("authController.loginWithGoogle authentifie un utilisateur existant", async () => {
+  const credential = encodeBase64Url({
+    sub: 'google-123',
+    email: 'alice@biblio.test',
+    email_verified: true,
+    given_name: 'Alice',
+    family_name: 'Martin',
+  });
+
+  const res = await callController(authController.loginWithGoogle, {
+    body: { credential },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.token, 'mock-jwt-token');
+  assert.equal(res.body.user.email, 'alice@biblio.test');
+  assert.equal(res.body.user.role, 'admin');
+});
+
+test("authController.loginWithGoogle rejette un jeton invalide", async () => {
+  await expectReject(
+    () =>
+      callController(authController.loginWithGoogle, {
+        body: { credential: 'token-invalide' },
+      }),
+    (err) => {
+      assert.equal(err.status, 400);
+      assert.equal(err.message, 'Unable to decode mock Google credential');
       return true;
     },
   );

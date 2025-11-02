@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/userModel');
 const passwordResetService = require('../services/passwordResetService');
+const { verifyGoogleCredential } = require('../services/googleAuthService');
 const { getUsers, getUserById } = require('../data/mockData');
 const { getRoleForEmail } = require('../utils/roles');
 
@@ -27,6 +29,8 @@ const clearSessionCookie = (res) => {
     res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
   }
 };
+
+const generateRandomPassword = () => crypto.randomBytes(32).toString('hex');
 
 const createToken = (user) => {
   const role = user.role || getRoleForEmail(user.email);
@@ -285,6 +289,81 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const loginWithGoogle = async (req, res, next) => {
+  try {
+    const credential = req.body?.credential;
+
+    if (process.env.USE_MOCKS === 'true') {
+      const payload = await verifyGoogleCredential(credential);
+      const mockUsers = getUsers();
+      const existing = mockUsers.find((user) => user.email === payload.email);
+      const role = getRoleForEmail(payload.email);
+      const user =
+        existing ||
+        {
+          id: 1000,
+          firstName: payload.firstName || 'Utilisateur',
+          lastName: payload.lastName || '',
+          email: payload.email,
+          createdAt: new Date().toISOString(),
+        };
+
+      setSessionCookie(res, 'mock-jwt-token');
+      return res.json({
+        token: 'mock-jwt-token',
+        user: {
+          ...user,
+          role,
+        },
+      });
+    }
+
+    const payload = await verifyGoogleCredential(credential);
+    if (!payload.emailVerified) {
+      const error = new Error('Votre adresse email Google doit être vérifiée');
+      error.status = 401;
+      throw error;
+    }
+
+    let user = await userModel.findByGoogleId(payload.googleId);
+    if (!user) {
+      const existingByEmail = await userModel.findByEmail(payload.email);
+      if (existingByEmail) {
+        await userModel.setGoogleId(existingByEmail.id, payload.googleId);
+        user = { ...existingByEmail, googleId: payload.googleId };
+      } else {
+        const passwordHash = await bcrypt.hash(generateRandomPassword(), 10);
+        user = await userModel.createUser({
+          firstName: payload.firstName || 'Utilisateur',
+          lastName: payload.lastName || '',
+          email: payload.email,
+          passwordHash,
+          googleId: payload.googleId,
+        });
+      }
+    }
+
+    const role = getRoleForEmail(user.email);
+    const token = createToken({ ...user, role });
+
+    setSessionCookie(res, token);
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role,
+        dateOfBirth: user.dateOfBirth,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -293,4 +372,5 @@ module.exports = {
   requestPasswordReset,
   verifyPasswordResetCode,
   resetPassword,
+  loginWithGoogle,
 };
