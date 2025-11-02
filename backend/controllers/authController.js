@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/userModel');
+const passwordResetService = require('../services/passwordResetService');
 const { getUsers, getUserById } = require('../data/mockData');
 const { getRoleForEmail } = require('../utils/roles');
 
@@ -220,9 +221,76 @@ const logout = (req, res) => {
   res.status(204).end();
 };
 
+const requestPasswordReset = async (req, res, next) => {
+  try {
+    const emailInput = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    if (!emailInput) {
+      const error = new Error('Email is required');
+      error.status = 400;
+      throw error;
+    }
+
+    await passwordResetService.requestPasswordReset(emailInput);
+    res.json({
+      message: 'If an account matches this email, we have sent a verification code.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyPasswordResetCode = async (req, res, next) => {
+  try {
+    const emailInput = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const codeInput = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+
+    if (!emailInput || !codeInput) {
+      const error = new Error('Email and code are required');
+      error.status = 400;
+      throw error;
+    }
+
+    await passwordResetService.verifyPasswordResetCode({
+      email: emailInput,
+      code: codeInput,
+    });
+
+    res.json({ valid: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const emailInput = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const codeInput = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+    const passwordInput = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!emailInput || !codeInput || !passwordInput) {
+      const error = new Error('Email, code and password are required');
+      error.status = 400;
+      throw error;
+    }
+
+    await passwordResetService.resetPassword({
+      email: emailInput,
+      code: codeInput,
+      password: passwordInput,
+    });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   me,
   logout,
+  requestPasswordReset,
+  verifyPasswordResetCode,
+  resetPassword,
 };

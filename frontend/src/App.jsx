@@ -5,6 +5,8 @@ import AdminRoute from './components/AdminRoute.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
+import ForgotPasswordRequest from './pages/ForgotPasswordRequest.jsx'
+import ForgotPasswordReset from './pages/ForgotPasswordReset.jsx'
 import Library from './pages/Library.jsx'
 import BookDetails from './pages/BookDetails.jsx'
 import BookProposalDetails from './pages/BookProposalDetails.jsx'
@@ -83,6 +85,8 @@ const App = () => (
       />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPasswordRequest />} />
+      <Route path="/forgot-password/reset" element={<ForgotPasswordReset />} />
       <Route path="/register" element={<Register />} />
       <Route path="*" element={<NotFound />} />
     </Route>

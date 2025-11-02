@@ -65,6 +65,8 @@ BiblioConnecte propose un système de bibliothèque connectée permettant à cha
 - Ne jamais committer de secrets ; conserver les fichiers `.env.local` en local uniquement.
 - Les données d’exemple ou scripts SQL doivent être placés dans `backend/resources/`.
 - Renseigner `ADMIN_EMAILS` (liste séparée par des virgules) pour désigner les comptes pouvant valider les propositions de livres.
+- Configurer les variables SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, etc.) ainsi que `EMAIL_FROM` pour permettre l’envoi d’e-mails transactionnels (notifications, réinitialisation de mot de passe).
+- Ajuster `PASSWORD_RESET_CODE_TTL_MINUTES` si le délai de validité du code doit différer des 15 minutes par défaut.
 
 ### Documentation API
 - La spécification OpenAPI est disponible dans `backend/docs/openapi.yaml`.
@@ -146,6 +148,7 @@ frontend/src/
 - Lorsqu’une proposition de livre est validée ou refusée, son auteur reçoit un e-mail résumant la décision et les détails soumis.
 - Le composant `ProtectedRoute` protège les pages nécessitant une session active.
 - Les utilisateurs peuvent mettre à jour leur profil (nom, email, mot de passe) et téléverser une photo depuis l’interface.
+- La page de connexion propose un lien « mot de passe oublié » : un code OTP à 6 chiffres est envoyé par e-mail, à saisir avant de définir un nouveau mot de passe.
 
 ### Conventions (frontend)
 - ESLint + Prettier configurés (voir `npm run lint`).

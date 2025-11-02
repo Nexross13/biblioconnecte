@@ -21,6 +21,21 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- =====================================================================
+-- PASSWORD RESET CODES
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS password_reset_codes (
+  id          BIGSERIAL PRIMARY KEY,
+  user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  code_hash   TEXT NOT NULL,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  consumed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_codes_user ON password_reset_codes (user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_codes_expiration ON password_reset_codes (expires_at);
+
+-- =====================================================================
 -- GENRES
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS genres (
