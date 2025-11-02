@@ -35,17 +35,6 @@ const CookieBanner = () => {
     setIsOpen(!consent)
   }, [isAuthenticated, consent, previousConsent])
 
-  useEffect(() => {
-    const handler = () => {
-      const value = readCookie(CONSENT_COOKIE_NAME)
-      setConsent(value)
-      setPreviousConsent(value)
-      setIsOpen(false)
-    }
-    window.addEventListener('cookie-consent-change', handler)
-    return () => window.removeEventListener('cookie-consent-change', handler)
-  }, [])
-
   const acknowledge = (value) => {
     writeCookie(CONSENT_COOKIE_NAME, value, {
       maxAgeSeconds: THIRTEEN_MONTHS_SECONDS,

@@ -36,13 +36,39 @@ const Friends = () => {
     queryFn: fetchUsers,
   })
 
+  const [pendingTargets, setPendingTargets] = useState(() => new Set())
+  const [activeTarget, setActiveTarget] = useState(null)
+
   const sendRequestMutation = useMutation({
     mutationFn: (targetId) => requestFriend(targetId),
-    onSuccess: () => {
+    onMutate: (targetId) => {
+      setActiveTarget(targetId)
+      setPendingTargets((prev) => {
+        const next = new Set(prev)
+        next.add(targetId)
+        return next
+      })
+    },
+    onSuccess: (_, targetId) => {
       toast.success('Demande envoyée')
       queryClient.invalidateQueries({ queryKey: ['friendRequests', user.id] })
+      setPendingTargets((prev) => {
+        const next = new Set(prev)
+        next.add(targetId)
+        return next
+      })
     },
-    onError: () => toast.error("Impossible d'envoyer la demande"),
+    onError: (_, targetId) => {
+      toast.error("Impossible d'envoyer la demande")
+      setPendingTargets((prev) => {
+        const next = new Set(prev)
+        next.delete(targetId)
+        return next
+      })
+    },
+    onSettled: () => {
+      setActiveTarget(null)
+    },
   })
 
   const acceptRequestMutation = useMutation({
@@ -108,6 +134,9 @@ const Friends = () => {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredCandidates.map((candidate) => {
                 const alreadyFriend = friendsEmails.has(candidate.email.toLowerCase())
+                const pending = pendingTargets.has(candidate.id)
+                const isActive = activeTarget === candidate.id && sendRequestMutation.isPending
+
                 return (
                   <div key={candidate.id} className="card flex items-center gap-3">
                     <div className="h-12 w-12 overflow-hidden rounded-full border border-slate-200 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800">
@@ -137,12 +166,14 @@ const Friends = () => {
                       type="button"
                       className="btn"
                       onClick={() => sendRequestMutation.mutate(candidate.id)}
-                      disabled={sendRequestMutation.isPending || alreadyFriend}
+                      disabled={alreadyFriend || pending}
                     >
                       {alreadyFriend
                         ? 'Déjà ami'
-                        : sendRequestMutation.isPending
-                        ? 'Envoi...'
+                        : pending
+                        ? isActive
+                          ? 'Envoi...'
+                          : 'Demande en attente'
                         : 'Envoyer une demande'}
                     </button>
                   </div>
