@@ -150,6 +150,102 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /auth/password/forgot:
+    post:
+      tags:
+        - Authentification
+      summary: Demander un code de réinitialisation de mot de passe
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+            examples:
+              forgot:
+                value:
+                  email: alice@example.com
+      responses:
+        '200':
+          description: Demande prise en compte (le message reste générique)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetMessageResponse'
+              examples:
+                generic:
+                  value:
+                    message: If an account matches this email, we have sent a verification code.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/password/verify:
+    post:
+      tags:
+        - Authentification
+      summary: Vérifier un code de réinitialisation de mot de passe
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyRequest'
+            examples:
+              verify:
+                value:
+                  email: alice@example.com
+                  code: '123456'
+      responses:
+        '200':
+          description: Code valide
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetVerifyResponse'
+              examples:
+                valid:
+                  value:
+                    valid: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/password/reset:
+    post:
+      tags:
+        - Authentification
+      summary: Réinitialiser un mot de passe à l'aide d'un code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetFinalizeRequest'
+            examples:
+              reset:
+                value:
+                  email: alice@example.com
+                  code: '123456'
+                  password: NouveauMotDePasse1!
+      responses:
+        '200':
+          description: Mot de passe mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetMessageResponse'
+              examples:
+                success:
+                  value:
+                    message: Password updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /users:
     get:
       tags:
@@ -2305,6 +2401,58 @@ components:
       required:
         - token
         - user
+    PasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+        - email
+    PasswordResetVerifyRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          pattern: '^\d{6}$'
+      required:
+        - email
+        - code
+    PasswordResetFinalizeRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          pattern: '^\d{6}$'
+        password:
+          type: string
+          format: password
+          minLength: 8
+      required:
+        - email
+        - code
+        - password
+    PasswordResetVerifyResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          example: true
+      required:
+        - valid
+    PasswordResetMessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
     Pagination:
       type: object
       properties:

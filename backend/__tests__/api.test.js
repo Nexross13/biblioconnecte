@@ -16,6 +16,7 @@ const genreController = require('../controllers/genreController');
 const userController = require('../controllers/userController');
 const libraryController = require('../controllers/libraryController');
 const reviewController = require('../controllers/reviewController');
+const mockPasswordResets = require('../data/mockPasswordResets');
 
 const createMockReq = (overrides = {}) => ({
   headers: {},
@@ -60,6 +61,10 @@ const expectReject = async (controllerCall, verifier) => {
     await controllerCall();
   }, verifier);
 };
+
+test.beforeEach(() => {
+  mockPasswordResets.clear();
+});
 
 /* Auth controller */
 
@@ -139,6 +144,98 @@ test('authController.me renvoie 404 si utilisateur inexistant', async () => {
     (err) => {
       assert.equal(err.status, 404);
       assert.equal(err.message, 'User not found');
+      return true;
+    },
+  );
+});
+
+test("authController.requestPasswordReset renvoie un message générique", async () => {
+  const email = 'alice@biblio.test';
+
+  const res = await callController(authController.requestPasswordReset, {
+    body: { email },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, {
+    message: 'If an account matches this email, we have sent a verification code.',
+  });
+
+  const stored = mockPasswordResets.peek(email);
+  assert.ok(stored);
+  assert.equal(stored.email, email);
+  assert.match(stored.code, /^\d{6}$/);
+});
+
+test("authController.verifyPasswordResetCode accepte un code valide", async () => {
+  const email = 'alice@biblio.test';
+  await callController(authController.requestPasswordReset, {
+    body: { email },
+  });
+
+  const stored = mockPasswordResets.peek(email);
+  assert.ok(stored, 'le code doit être stocké dans le mock');
+
+  const res = await callController(authController.verifyPasswordResetCode, {
+    body: { email, code: stored.code },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { valid: true });
+});
+
+test("authController.verifyPasswordResetCode rejette un code invalide", async () => {
+  const email = 'alice@biblio.test';
+  await callController(authController.requestPasswordReset, {
+    body: { email },
+  });
+
+  await expectReject(
+    () =>
+      callController(authController.verifyPasswordResetCode, {
+        body: { email, code: '000000' },
+      }),
+    (err) => {
+      assert.equal(err.status, 400);
+      assert.equal(err.message, 'Code expiré ou invalide');
+      return true;
+    },
+  );
+});
+
+test("authController.resetPassword consomme le code et accepte un nouveau mot de passe", async () => {
+  const email = 'alice@biblio.test';
+  await callController(authController.requestPasswordReset, {
+    body: { email },
+  });
+  const stored = mockPasswordResets.peek(email);
+  assert.ok(stored);
+
+  const res = await callController(authController.resetPassword, {
+    body: { email, code: stored.code, password: 'nouveauPass123' },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { message: 'Password updated successfully' });
+  assert.equal(mockPasswordResets.peek(email), null);
+});
+
+test("authController.resetPassword exige un mot de passe robuste", async () => {
+  const email = 'alice@biblio.test';
+  await callController(authController.requestPasswordReset, {
+    body: { email },
+  });
+  const stored = mockPasswordResets.peek(email);
+  assert.ok(stored);
+
+  await expectReject(
+    () =>
+      callController(authController.resetPassword, {
+        body: { email, code: stored.code, password: '123' },
+      }),
+    (err) => {
+      assert.equal(err.status, 400);
+      assert.equal(err.message, 'Le nouveau mot de passe doit contenir au moins 8 caractères');
       return true;
     },
   );
