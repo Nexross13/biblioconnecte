@@ -6,23 +6,31 @@ const mapUser = (row) =>
     firstName: row.first_name,
     lastName: row.last_name,
     email: row.email,
+    googleId: row.google_id || null,
     dateOfBirth: row.date_of_birth || null,
     createdAt: row.created_at,
   };
 
-const createUser = async ({ firstName, lastName, email, passwordHash, dateOfBirth = null }) => {
+const createUser = async ({
+  firstName,
+  lastName,
+  email,
+  passwordHash,
+  dateOfBirth = null,
+  googleId = null,
+}) => {
   const result = await query(
-    `INSERT INTO users (first_name, last_name, email, password_hash, date_of_birth)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, first_name, last_name, email, date_of_birth, created_at`,
-    [firstName, lastName, email, passwordHash, dateOfBirth],
+    `INSERT INTO users (first_name, last_name, email, password_hash, date_of_birth, google_id)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, first_name, last_name, email, date_of_birth, created_at, google_id`,
+    [firstName, lastName, email, passwordHash, dateOfBirth, googleId],
   );
   return mapUser(result.rows[0]);
 };
 
 const findByEmail = async (email) => {
   const result = await query(
-    `SELECT id, first_name, last_name, email, password_hash, date_of_birth, created_at
+    `SELECT id, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id
      FROM users WHERE email = $1`,
     [email],
   );
@@ -33,6 +41,29 @@ const findByEmail = async (email) => {
         firstName: row.first_name,
         lastName: row.last_name,
         email: row.email,
+        googleId: row.google_id || null,
+        passwordHash: row.password_hash,
+        dateOfBirth: row.date_of_birth || null,
+        createdAt: row.created_at,
+      }
+    : null;
+};
+
+const findByGoogleId = async (googleId) => {
+  const result = await query(
+    `SELECT id, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id
+     FROM users
+     WHERE google_id = $1`,
+    [googleId],
+  );
+  const row = result.rows[0];
+  return row
+    ? {
+        id: row.id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.email,
+        googleId: row.google_id || null,
         passwordHash: row.password_hash,
         dateOfBirth: row.date_of_birth || null,
         createdAt: row.created_at,
@@ -42,7 +73,7 @@ const findByEmail = async (email) => {
 
 const findById = async (id) => {
   const result = await query(
-    `SELECT id, first_name, last_name, email, date_of_birth, created_at
+    `SELECT id, first_name, last_name, email, google_id, date_of_birth, created_at
      FROM users WHERE id = $1`,
     [id],
   );
@@ -66,7 +97,7 @@ const updateUser = async (id, { firstName, lastName, email, dateOfBirth }) => {
 
 const listUsers = async () => {
   const result = await query(
-    `SELECT id, first_name, last_name, email, date_of_birth, created_at
+    `SELECT id, first_name, last_name, email, google_id, date_of_birth, created_at
      FROM users
      ORDER BY created_at DESC`,
   );
@@ -83,11 +114,23 @@ const updateUserPassword = async (id, passwordHash) => {
   );
 };
 
+const setGoogleId = async (id, googleId) => {
+  await query(
+    `UPDATE users
+     SET google_id = $2,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [id, googleId],
+  );
+};
+
 module.exports = {
   createUser,
   findByEmail,
+  findByGoogleId,
   findById,
   updateUser,
   updateUserPassword,
+  setGoogleId,
   listUsers,
 };

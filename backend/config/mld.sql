@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   first_name     VARCHAR(100) NOT NULL,
   last_name      VARCHAR(100) NOT NULL,
   email          VARCHAR(150) NOT NULL UNIQUE,
+  google_id      VARCHAR(255) UNIQUE,
   password_hash  TEXT NOT NULL,
   date_of_birth  DATE,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -120,6 +120,35 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  /auth/google:
+    post:
+      tags:
+        - Authentification
+      summary: Authentification via Google OAuth 2.0
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+            examples:
+              google:
+                value:
+                  credential: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Authentification réussie via Google
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /auth/me:
     get:
       tags:
@@ -2409,6 +2438,14 @@ components:
           format: email
       required:
         - email
+    GoogleLoginRequest:
+      type: object
+      properties:
+        credential:
+          type: string
+          description: Jeton d'identité Google (ID token JWT)
+      required:
+        - credential
     PasswordResetVerifyRequest:
       type: object
       properties:
