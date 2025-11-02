@@ -61,10 +61,11 @@ const BookProposalDetails = () => {
   const coverCandidates = useMemo(() => {
     const candidates = []
     if (proposal?.coverImagePath) {
+      const root = ASSETS_BOOKS_BASE_URL.replace(/\/assets\/books\/?$/, '')
       const normalized = proposal.coverImagePath.startsWith('/')
         ? proposal.coverImagePath
         : `/${proposal.coverImagePath}`
-      candidates.push(normalized)
+      candidates.push(`${root}${normalized}`)
     }
     if (proposal?.isbn) {
       COVER_EXTENSIONS.forEach((ext) => {

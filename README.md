@@ -142,6 +142,8 @@ frontend/src/
 ### Authentification
 - Les tokens JWT renvoyés par `/auth/login` et `/auth/register` sont servis dans un cookie HTTP-only valable 13 mois.
 - À l’initialisation, le contexte tente `/auth/me` pour récupérer le profil courant (les cookies sont envoyés automatiquement via Axios `withCredentials`).
+- Lorsqu’une demande d’ami est envoyée, le destinataire reçoit un e-mail de notification (SMTP configurable via les variables ci-dessous).
+- Lorsqu’une proposition de livre est validée ou refusée, son auteur reçoit un e-mail résumant la décision et les détails soumis.
 - Le composant `ProtectedRoute` protège les pages nécessitant une session active.
 - Les utilisateurs peuvent mettre à jour leur profil (nom, email, mot de passe) et téléverser une photo depuis l’interface.
 
@@ -164,3 +166,10 @@ Créer un fichier `.env.local` (non versionné) d’après `.env.example` pour a
 | Variable         | Description                                                             | Valeur par défaut            |
 |------------------|-------------------------------------------------------------------------|------------------------------|
 | `FRONTEND_URL`   | Origine autorisée pour CORS + cookies de session (autorise les credentials) | `http://localhost:5173`      |
+| `SMTP_HOST`      | Hôte SMTP pour l’envoi d’e-mails (alternative à `SMTP_URL`)                 | —                            |
+| `SMTP_PORT`      | Port SMTP (généralement 587)                                                | `587`                        |
+| `SMTP_SECURE`    | `true` pour TLS (port 465)                                                   | `false`                      |
+| `SMTP_USER`      | Identifiant SMTP                                                             | —                            |
+| `SMTP_PASSWORD`  | Mot de passe SMTP                                                            | —                            |
+| `SMTP_URL`       | URL de connexion complète (remplace host/port/user/pass)                     | —                            |
+| `EMAIL_FROM`     | Adresse expéditrice par défaut                                               | `SMTP_USER`                  |

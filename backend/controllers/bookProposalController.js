@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const bookProposalModel = require('../models/bookProposalModel');
+const { sendBookProposalDecisionNotification } = require('../services/emailService');
 const {
   getBookProposals: getMockBookProposals,
   getBookProposalsForUser: getMockBookProposalsForUser,
@@ -376,6 +377,22 @@ const approveProposal = async (req, res, next) => {
       throw err;
     }
 
+    const proposer = decision.proposal?.submittedBy;
+    if (proposer?.email) {
+      sendBookProposalDecisionNotification({
+        proposer: {
+          firstName: proposer.firstName,
+          lastName: proposer.lastName,
+          email: proposer.email,
+        },
+        proposal: decision.proposal,
+        decision: 'approved',
+        dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`,
+      }).catch((emailError) => {
+        console.error('📨  Unable to send proposal approval email:', emailError.message);
+      });
+    }
+
     res.json(decision);
   } catch (error) {
     next(error);
@@ -419,6 +436,22 @@ const rejectProposal = async (req, res, next) => {
       const err = new Error('Book proposal not found or already decided');
       err.status = 404;
       throw err;
+    }
+
+    const proposer = proposal.submittedBy;
+    if (proposer?.email) {
+      sendBookProposalDecisionNotification({
+        proposer: {
+          firstName: proposer.firstName,
+          lastName: proposer.lastName,
+          email: proposer.email,
+        },
+        proposal,
+        decision: 'rejected',
+        dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`,
+      }).catch((emailError) => {
+        console.error('📨  Unable to send proposal rejection email:', emailError.message);
+      });
     }
 
     res.json({ proposal });

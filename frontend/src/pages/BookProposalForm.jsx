@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { createBookProposal } from '../api/bookProposals'
 import { fetchGenres } from '../api/genres'
@@ -27,7 +27,6 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const BookProposalForm = () => {
   const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
   const [formValues, setFormValues] = useState(initialState)
   const [errors, setErrors] = useState({})
   const [authors, setAuthors] = useState([])
@@ -82,16 +81,20 @@ const BookProposalForm = () => {
   const mutation = useMutation({
     mutationFn: createBookProposal,
     onSuccess: (data) => {
-      if (data.proposal) {
-        toast.success(`Votre proposition « ${data.proposal.title} » a été envoyée.`)
-        navigate('/dashboard')
-      } else if (data.message) {
-        toast.success(data.message)
-        navigate('/dashboard')
-      } else {
-        toast.success('Action effectuée.')
-        navigate('/dashboard')
-      }
+      const title = data?.proposal?.title || formValues.title || 'Votre proposition'
+      toast.success(`Votre proposition « ${title} » a été envoyée.`)
+
+      setFormValues(initialState)
+      setErrors({})
+      setAuthors([])
+      setAuthorModalSelection([])
+      setAuthorModalSearch('')
+      setGenres([])
+      setGenreModalSelection([])
+      setGenreModalSearch('')
+      setCoverImageData(null)
+      setCoverPreviewUrl(null)
+      setCoverError('')
     },
     onError: (error) => {
       const message =

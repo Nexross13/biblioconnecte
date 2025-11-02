@@ -1,6 +1,10 @@
 const bcrypt = require('bcryptjs');
 const userModel = require('../models/userModel');
 const friendshipModel = require('../models/friendshipModel');
+const {
+  sendFriendRequestNotification,
+  sendFriendAcceptedNotification,
+} = require('../services/emailService');
 const libraryModel = require('../models/libraryModel');
 const {
   getUsers: getMockUsers,
@@ -112,7 +116,29 @@ const requestFriend = async (req, res, next) => {
       });
     }
 
+    const addressee = await userModel.findById(addresseeId);
+    if (!addressee) {
+      const err = new Error('User not found');
+      err.status = 404;
+      throw err;
+    }
+
     const friendship = await friendshipModel.createFriendRequest({ requesterId, addresseeId });
+
+    const requesterProfile = {
+      firstName: req.user.firstName || '',
+      lastName: req.user.lastName || '',
+      email: req.user.email,
+    };
+
+    sendFriendRequestNotification({
+      addressee,
+      requester: requesterProfile,
+      dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/friends`,
+    }).catch((emailError) => {
+      console.error('📨  Unable to send friend request email:', emailError.message);
+    });
+
     res.status(201).json({ friendship });
   } catch (error) {
     next(error);
@@ -148,11 +174,36 @@ const acceptFriend = async (req, res, next) => {
       });
     }
 
-    const friendship = await friendshipModel.acceptFriendRequest({ requesterId, addresseeId });
+    const [friendship, requester, addressee] = await Promise.all([
+      friendshipModel.acceptFriendRequest({ requesterId, addresseeId }),
+      userModel.findById(requesterId),
+      userModel.findById(addresseeId),
+    ]);
     if (!friendship) {
       const err = new Error('Friend request not found');
       err.status = 404;
       throw err;
+    }
+
+    if (requester && addressee) {
+      const requesterProfile = {
+        firstName: requester.firstName,
+        lastName: requester.lastName,
+        email: requester.email,
+      };
+      const addresseeProfile = {
+        firstName: addressee.firstName,
+        lastName: addressee.lastName,
+        email: addressee.email,
+      };
+
+      sendFriendAcceptedNotification({
+        requester: requesterProfile,
+        addressee: addresseeProfile,
+        dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/friends`,
+      }).catch((emailError) => {
+        console.error('📨  Unable to send friend acceptance email:', emailError.message);
+      });
     }
 
     res.json({ friendship });

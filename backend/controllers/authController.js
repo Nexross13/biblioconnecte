@@ -16,11 +16,15 @@ const buildSessionCookieOptions = () => ({
 });
 
 const setSessionCookie = (res, token) => {
-  res.cookie(SESSION_COOKIE_NAME, token, buildSessionCookieOptions());
+  if (typeof res.cookie === 'function') {
+    res.cookie(SESSION_COOKIE_NAME, token, buildSessionCookieOptions());
+  }
 };
 
 const clearSessionCookie = (res) => {
-  res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
+  if (typeof res.clearCookie === 'function') {
+    res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
+  }
 };
 
 const createToken = (user) => {
