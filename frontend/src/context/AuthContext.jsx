@@ -1,7 +1,13 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
-import { fetchCurrentUser, loginUser, logoutUser, registerUser } from '../api/auth'
+import {
+  fetchCurrentUser,
+  loginUser,
+  loginWithGoogle,
+  logoutUser,
+  registerUser,
+} from '../api/auth'
 
 const AuthContext = createContext(null)
 
@@ -37,6 +43,17 @@ export const AuthProvider = ({ children }) => {
     },
   })
 
+  const googleLoginMutation = useMutation({
+    mutationFn: loginWithGoogle,
+    onSuccess: handleAuthSuccess,
+    onError: (error) => {
+      const message =
+        error.response?.data?.message ||
+        "Impossible de vérifier votre compte Google pour le moment"
+      toast.error(message)
+    },
+  })
+
   const logout = useCallback(async () => {
     try {
       await logoutUser()
@@ -68,6 +85,7 @@ export const AuthProvider = ({ children }) => {
 
   const { mutateAsync: login, status: loginStatus } = loginMutation
   const { mutateAsync: register, status: registerStatus } = registerMutation
+  const { mutateAsync: googleLogin, status: googleLoginStatus } = googleLoginMutation
 
   const value = useMemo(
     () => ({
@@ -75,12 +93,24 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated: Boolean(user),
       loading,
       login,
+      googleLogin,
       register,
       loginStatus,
+      googleLoginStatus,
       registerStatus,
       logout,
     }),
-    [user, loading, login, register, loginStatus, registerStatus, logout],
+    [
+      user,
+      loading,
+      login,
+      googleLogin,
+      register,
+      loginStatus,
+      googleLoginStatus,
+      registerStatus,
+      logout,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

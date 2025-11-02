@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
+import { GoogleLogin } from '@react-oauth/google'
 import useAuth from '../hooks/useAuth'
 
 const Login = () => {
-  const { login, isAuthenticated, loginStatus } = useAuth()
+  const { login, googleLogin, isAuthenticated, loginStatus, googleLoginStatus } = useAuth()
   const navigate = useNavigate()
+  const isGoogleAuthEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -31,6 +33,23 @@ const Login = () => {
     } catch {
       // toast already handled by AuthContext
     }
+  }
+
+  const handleGoogleSuccess = async (response) => {
+    if (!response?.credential) {
+      toast.error('Jeton Google manquant')
+      return
+    }
+    try {
+      await googleLogin({ credential: response.credential })
+      navigate('/')
+    } catch {
+      // toast already handled by AuthContext
+    }
+  }
+
+  const handleGoogleError = () => {
+    toast.error('Connexion Google refusée')
   }
 
   return (
@@ -66,6 +85,28 @@ const Login = () => {
           {loginStatus === 'pending' ? 'Connexion...' : 'Se connecter'}
         </button>
       </form>
+      {isGoogleAuthEnabled && (
+        <>
+          <div className="flex items-center gap-4">
+            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+            <span className="text-xs font-medium uppercase tracking-widest text-slate-400">ou</span>
+            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+          </div>
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap
+              shape="pill"
+            />
+          </div>
+          {googleLoginStatus === 'pending' && (
+            <p className="text-center text-sm text-slate-500 dark:text-slate-300">
+              Vérification de votre compte Google…
+            </p>
+          )}
+        </>
+      )}
       <p className="text-center text-sm text-slate-500 dark:text-slate-300">
         Pas encore de compte ?{' '}
         <Link to="/register" className="font-semibold text-primary hover:underline">

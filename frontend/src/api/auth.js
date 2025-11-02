@@ -33,3 +33,8 @@ export const resetPasswordWithCode = async ({ email, code, password }) => {
   const { data } = await apiClient.post('/auth/password/reset', { email, code, password })
   return data
 }
+
+export const loginWithGoogle = async ({ credential }) => {
+  const { data } = await apiClient.post('/auth/google', { credential })
+  return data
+}
