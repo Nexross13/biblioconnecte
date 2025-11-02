@@ -57,6 +57,11 @@ const Login = () => {
           </label>
           <input className="input" id="password" name="password" type="password" />
         </div>
+        <div className="text-right">
+          <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+            Mot de passe oublié ?
+          </Link>
+        </div>
         <button type="submit" className="btn w-full" disabled={loginStatus === 'pending'}>
           {loginStatus === 'pending' ? 'Connexion...' : 'Se connecter'}
         </button>
