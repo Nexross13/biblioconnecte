@@ -441,11 +441,7 @@ const Home = () => {
                 </p>
               </div>
               <div className="space-y-3 text-sm text-white/80">
-                <p>
-                  « Grâce à BiblioConnecte, je découvre les lectures de mes amis en temps réel et je
-                  n&apos;ai plus jamais manqué une sortie littéraire qui comptait pour eux. »
-                </p>
-                <p className="text-xs uppercase tracking-wide text-white/60">Élise, membre depuis 2024</p>
+                <p>Les commentaires arrivent bientôt : merci pour votre patience !</p>
               </div>
               <div>
                 <Link className="btn bg-white text-primary hover:bg-slate-100" to="/register">
@@ -650,7 +646,7 @@ const Home = () => {
                 </h2>
                 {topRatedBook ? (
                   <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-slate-700 dark:bg-slate-900/60 md:flex-row md:items-center">
-                    <div className="relative flex h-32 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+                    <div className="relative aspect-[3/4] w-28 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 md:w-32">
                       <img
                         src={topRatedCoverSrc}
                         alt={`Couverture de ${topRatedBook.book.title}`}
