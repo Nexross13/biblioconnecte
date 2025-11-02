@@ -139,7 +139,7 @@ const Navbar = () => {
             <NavLink
               key={link.to}
               to={link.to}
-              className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700"
+              className="block rounded-lg px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700"
               onClick={() => setIsMenuOpen(false)}
             >
               {link.label}
