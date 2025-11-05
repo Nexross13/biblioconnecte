@@ -10,9 +10,31 @@ const { getRoleForEmail } = require('../utils/roles');
 const THIRTEEN_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 13;
 const SESSION_COOKIE_NAME = 'biblio_session';
 
+const normalizeBooleanEnv = (value) => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
+    return false;
+  }
+  return null;
+};
+
+const shouldUseSecureCookies = (() => {
+  const override = normalizeBooleanEnv(process.env.SESSION_COOKIE_SECURE);
+  if (override !== null) {
+    return override;
+  }
+  return (process.env.FRONTEND_URL || '').startsWith('https://');
+})();
+
 const buildSessionCookieOptions = () => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: shouldUseSecureCookies,
   sameSite: 'lax',
   maxAge: THIRTEEN_MONTHS_MS,
   path: '/',
