@@ -23,6 +23,7 @@ const statsRoutes = require('./routes/stats');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+app.set('trust proxy', 1); // allow Express to honor X-Forwarded-* headers from the reverse proxy
 const PORT = process.env.PORT || 3000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:5173';
 
