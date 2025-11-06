@@ -10,7 +10,7 @@ const YAML = require('yaml');
 require('dotenv').config();
 
 const { connectDB } = require('./config/db');
-const { isAllowedOrigin } = require('./config/frontend');
+const { FRONTEND_ORIGINS, isAllowedOrigin } = require('./config/frontend');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const bookRoutes = require('./routes/books');
@@ -47,6 +47,11 @@ app.use(
     credentials: true,
   }),
 );
+
+if (process.env.NODE_ENV !== 'test') {
+  const originsList = FRONTEND_ORIGINS.join(', ') || '(none)';
+  console.log(`🔐 Allowed CORS origins: ${originsList}`);
+}
 app.use(cookieParser());
 app.use(express.json());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
