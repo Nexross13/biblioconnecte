@@ -6,6 +6,7 @@ const passwordResetService = require('../services/passwordResetService');
 const { verifyGoogleCredential } = require('../services/googleAuthService');
 const { getUsers, getUserById } = require('../data/mockData');
 const { getRoleForEmail } = require('../utils/roles');
+const { IS_PRIMARY_FRONTEND_SECURE } = require('../config/frontend');
 
 const THIRTEEN_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 13;
 const SESSION_COOKIE_NAME = 'biblio_session';
@@ -29,7 +30,7 @@ const shouldUseSecureCookies = (() => {
   if (override !== null) {
     return override;
   }
-  return (process.env.FRONTEND_URL || '').startsWith('https://');
+  return IS_PRIMARY_FRONTEND_SECURE;
 })();
 
 const buildSessionCookieOptions = () => ({

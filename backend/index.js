@@ -10,6 +10,7 @@ const YAML = require('yaml');
 require('dotenv').config();
 
 const { connectDB } = require('./config/db');
+const { isAllowedOrigin } = require('./config/frontend');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const bookRoutes = require('./routes/books');
@@ -25,7 +26,6 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 app.set('trust proxy', 1); // allow Express to honor X-Forwarded-* headers from the reverse proxy
 const PORT = process.env.PORT || 3000;
-const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 app.use(
   helmet({
@@ -36,7 +36,14 @@ app.use(
 );
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        return callback(null, true);
+      }
+      const corsError = new Error(`Origin "${origin}" is not allowed`);
+      corsError.status = 403;
+      return callback(corsError);
+    },
     credentials: true,
   }),
 );
