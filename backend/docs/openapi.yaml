@@ -9,7 +9,7 @@ info:
   contact:
     name: Nexross
     url: https://github.com/Nexross13/biblioconnecte
-    email: contact@nexross.dev
+    email: noreply.biblioconnect@gmail.com
 servers:
   - url: http://localhost:3000/api/v1
     description: Serveur local de développement

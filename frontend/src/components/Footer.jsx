@@ -198,10 +198,10 @@ const Footer = () => {
                   toute question relative à la protection des données, vous pouvez nous contacter à
                   l’adresse&nbsp;:
                   <a
-                    href="mailto:privacy@biblioconnecte.test"
+                    href="mailto:noreply.biblioconnect@gmail.com"
                     className="ml-1 text-primary underline hover:text-primary/80"
                   >
-                    privacy@biblioconnecte.test
+                    noreply.biblioconnect@gmail.com
                   </a>
                   .
                 </p>
@@ -292,10 +292,10 @@ const Footer = () => {
                 <p className="mt-2">
                   Pour exercer ces droits, contactez-nous à&nbsp;
                   <a
-                    href="mailto:privacy@biblioconnecte.test"
+                    href="mailto:noreply.biblioconnect@gmail.com"
                     className="text-primary underline hover:text-primary/80"
                   >
-                    privacy@biblioconnecte.test
+                    noreply.biblioconnect@gmail.com
                   </a>
                   .
                 </p>
