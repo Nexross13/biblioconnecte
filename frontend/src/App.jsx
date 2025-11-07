@@ -11,6 +11,9 @@ import Library from './pages/Library.jsx'
 import BookDetails from './pages/BookDetails.jsx'
 import BookProposalDetails from './pages/BookProposalDetails.jsx'
 import BookProposalForm from './pages/BookProposalForm.jsx'
+import AuthorForm from './pages/AuthorForm.jsx'
+import AuthorProposalDetails from './pages/AuthorProposalDetails.jsx'
+import AuthorDetails from './pages/AuthorDetails.jsx'
 import Profile from './pages/Profile.jsx'
 import Friends from './pages/Friends.jsx'
 import FriendCollection from './pages/FriendCollection.jsx'
@@ -23,11 +26,20 @@ const App = () => (
     <Route element={<Layout />}>
       <Route path="/" element={<Home />} />
       <Route path="/books/:id" element={<BookDetails />} />
+      <Route path="/authors/:id" element={<AuthorDetails />} />
       <Route
         path="/books/new"
         element={
           <ProtectedRoute>
             <BookProposalForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/authors/new"
+        element={
+          <ProtectedRoute>
+            <AuthorForm />
           </ProtectedRoute>
         }
       />
@@ -79,6 +91,16 @@ const App = () => (
           <ProtectedRoute>
             <AdminRoute>
               <BookProposalDetails />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/author-proposals/:id"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AuthorProposalDetails />
             </AdminRoute>
           </ProtectedRoute>
         }
