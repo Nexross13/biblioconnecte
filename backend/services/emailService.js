@@ -72,10 +72,10 @@ const sendEmail = async ({ to, subject, text, html }) => {
 
 const buildFriendRequestEmail = ({ addressee, requester, dashboardUrl }) => {
   const fullRequesterName = [requester.firstName, requester.lastName].filter(Boolean).join(' ');
-  const subject = `${fullRequesterName} souhaite devenir votre ami sur BiblioConnecte`;
+  const subject = `${fullRequesterName} souhaite devenir votre ami sur My BiblioConnect`;
   const actionUrl = dashboardUrl || `${FRONTEND_BASE}/friends`;
 
-  const text = `Bonjour ${addressee.firstName || addressee.email},\n\n${fullRequesterName} vous a envoyé une demande d'ami sur BiblioConnecte.\nPour accepter ou refuser, rendez-vous sur votre espace amis : ${actionUrl}\n\nÀ très vite sur BiblioConnecte !`;
+  const text = `Bonjour ${addressee.firstName || addressee.email},\n\n${fullRequesterName} vous a envoyé une demande d'ami sur My BiblioConnect.\nPour accepter ou refuser, rendez-vous sur votre espace amis : ${actionUrl}\n\nÀ très vite sur My BiblioConnect !`;
 
   const html = `
   <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background-color:#f1f5f9;padding:24px 0;font-family:Segoe UI,Helvetica,Arial,sans-serif;">
@@ -84,7 +84,7 @@ const buildFriendRequestEmail = ({ addressee, requester, dashboardUrl }) => {
         <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;width:90%;background-color:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 12px 24px rgba(15,23,42,0.12);">
           <tr>
             <td style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:32px;text-align:center;color:#ffffff;">
-              <h1 style="margin:0;font-size:24px;letter-spacing:0.05em;text-transform:uppercase;">BiblioConnecte</h1>
+              <h1 style="margin:0;font-size:24px;letter-spacing:0.05em;text-transform:uppercase;">My BiblioConnect</h1>
               <p style="margin:12px 0 0;font-size:14px;opacity:0.85;">La communauté qui partage ses coups de cœur</p>
             </td>
           </tr>
@@ -92,7 +92,7 @@ const buildFriendRequestEmail = ({ addressee, requester, dashboardUrl }) => {
             <td style="padding:32px;color:#0f172a;">
               <p style="margin:0 0 16px;font-size:16px;">Bonjour <strong>${addressee.firstName || addressee.email}</strong>,</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">
-                <strong style="color:#2563eb;">${fullRequesterName}</strong> souhaite rejoindre votre cercle d'amis sur BiblioConnecte. Vous pouvez accepter ou refuser cette invitation depuis votre espace «&nbsp;Amis&nbsp;».
+                <strong style="color:#2563eb;">${fullRequesterName}</strong> souhaite rejoindre votre cercle d'amis sur My BiblioConnect. Vous pouvez accepter ou refuser cette invitation depuis votre espace «&nbsp;Amis&nbsp;».
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
                 <tr>
@@ -106,12 +106,12 @@ const buildFriendRequestEmail = ({ addressee, requester, dashboardUrl }) => {
               <p style="margin:0 0 12px;font-size:14px;color:#475569;line-height:1.6;">
                 Astuce&nbsp;: profitez-en pour découvrir les dernières lectures de vos amis et enrichir votre propre bibliothèque.
               </p>
-              <p style="margin:0;font-size:14px;color:#94a3b8;">À très vite sur BiblioConnecte 💙</p>
+              <p style="margin:0;font-size:14px;color:#94a3b8;">À très vite sur My BiblioConnect 💙</p>
             </td>
           </tr>
           <tr>
             <td style="background-color:#0f172a;padding:20px;text-align:center;color:#e2e8f0;font-size:12px;">
-              <p style="margin:0 0 6px;">BiblioConnecte • Vos lectures, partout, tout le temps.</p>
+              <p style="margin:0 0 6px;">My BiblioConnect • Vos lectures, partout, tout le temps.</p>
               <p style="margin:0;opacity:0.7;">Si vous n'attendiez pas cette invitation, vous pouvez ignorer ce message.</p>
             </td>
           </tr>
@@ -136,10 +136,10 @@ const sendFriendRequestNotification = async ({ addressee, requester, dashboardUr
 
 const buildFriendAcceptedEmail = ({ requester, addressee, dashboardUrl }) => {
   const addresseeName = [addressee.firstName, addressee.lastName].filter(Boolean).join(' ') || 'Votre ami';
-  const subject = `${addresseeName} a accepté votre demande d'ami sur BiblioConnecte`;
+  const subject = `${addresseeName} a accepté votre demande d'ami sur My BiblioConnect`;
   const actionUrl = dashboardUrl || `${FRONTEND_BASE}/friends`;
 
-  const text = `Bonjour ${requester.firstName || requester.email},\n\n${addresseeName} a accepté votre demande d'ami sur BiblioConnecte.\nVous pouvez désormais consulter sa bibliothèque et partager vos lectures.\nAccédez à votre espace amis : ${actionUrl}\n\nBonne lecture sur BiblioConnecte !`;
+  const text = `Bonjour ${requester.firstName || requester.email},\n\n${addresseeName} a accepté votre demande d'ami sur My BiblioConnect.\nVous pouvez désormais consulter sa bibliothèque et partager vos lectures.\nAccédez à votre espace amis : ${actionUrl}\n\nBonne lecture sur My BiblioConnect !`;
 
   const html = `
   <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background-color:#f1f5f9;padding:24px 0;font-family:Segoe UI,Helvetica,Arial,sans-serif;">
@@ -148,7 +148,7 @@ const buildFriendAcceptedEmail = ({ requester, addressee, dashboardUrl }) => {
         <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;width:90%;background-color:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 12px 24px rgba(15,23,42,0.12);">
           <tr>
             <td style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:32px;text-align:center;color:#ffffff;">
-              <h1 style="margin:0;font-size:24px;letter-spacing:0.05em;text-transform:uppercase;">BiblioConnecte</h1>
+              <h1 style="margin:0;font-size:24px;letter-spacing:0.05em;text-transform:uppercase;">My BiblioConnect</h1>
               <p style="margin:12px 0 0;font-size:14px;opacity:0.85;">Une nouvelle amitié littéraire commence</p>
             </td>
           </tr>
@@ -156,7 +156,7 @@ const buildFriendAcceptedEmail = ({ requester, addressee, dashboardUrl }) => {
             <td style="padding:32px;color:#0f172a;">
               <p style="margin:0 0 16px;font-size:16px;">Bonjour <strong>${requester.firstName || requester.email}</strong>,</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">
-                <strong style="color:#2563eb;">${addresseeName}</strong> a accepté votre demande d'ami sur BiblioConnecte.
+                <strong style="color:#2563eb;">${addresseeName}</strong> a accepté votre demande d'ami sur My BiblioConnect.
                 Vous pouvez maintenant explorer sa bibliothèque, partager vos coups de cœur et découvrir de nouvelles lectures.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
@@ -171,12 +171,12 @@ const buildFriendAcceptedEmail = ({ requester, addressee, dashboardUrl }) => {
               <p style="margin:0 0 12px;font-size:14px;color:#475569;line-height:1.6;">
                 Conseil : pensez à recommander un livre pour célébrer cette nouvelle connexion !
               </p>
-              <p style="margin:0;font-size:14px;color:#94a3b8;">Bonne lecture sur BiblioConnecte 💙</p>
+              <p style="margin:0;font-size:14px;color:#94a3b8;">Bonne lecture sur My BiblioConnect 💙</p>
             </td>
           </tr>
           <tr>
             <td style="background-color:#0f172a;padding:20px;text-align:center;color:#e2e8f0;font-size:12px;">
-              <p style="margin:0 0 6px;">BiblioConnecte • Vos lectures, partout, tout le temps.</p>
+              <p style="margin:0 0 6px;">My BiblioConnect • Vos lectures, partout, tout le temps.</p>
               <p style="margin:0;opacity:0.7;">Si vous n'attendiez pas cette notification, vous pouvez ignorer ce message.</p>
             </td>
           </tr>
@@ -212,8 +212,8 @@ const buildProposalDecisionEmail = ({ proposer, proposal, decision, dashboardUrl
   const summaryText = proposal.summary ? proposal.summary : 'Résumé indisponible';
 
   const text = isApproved
-    ? `Bonjour ${proposerName},\n\nBonne nouvelle ! Votre proposition "${bookTitle}" a été approuvée par l'équipe de BiblioConnecte et sera disponible dans le catalogue.\n\nMerci pour votre contribution et continuez à enrichir la communauté : ${actionUrl}\n\nExtrait du livre : ${summaryText}\n\nÀ très bientôt sur BiblioConnecte !`
-    : `Bonjour ${proposerName},\n\nVotre proposition "${bookTitle}" n'a pas été retenue pour le moment.\n${proposal.rejectionReason ? `Motif : ${proposal.rejectionReason}\n` : ''}\n\nN'hésitez pas à apporter quelques ajustements et à la soumettre à nouveau.\n\nRésumé soumis : ${summaryText}\n\nRetrouvez vos propositions sur ${actionUrl}\n\nMerci pour votre engagement sur BiblioConnecte.`;
+    ? `Bonjour ${proposerName},\n\nBonne nouvelle ! Votre proposition "${bookTitle}" a été approuvée par l'équipe de My BiblioConnect et sera disponible dans le catalogue.\n\nMerci pour votre contribution et continuez à enrichir la communauté : ${actionUrl}\n\nExtrait du livre : ${summaryText}\n\nÀ très bientôt sur My BiblioConnect !`
+    : `Bonjour ${proposerName},\n\nVotre proposition "${bookTitle}" n'a pas été retenue pour le moment.\n${proposal.rejectionReason ? `Motif : ${proposal.rejectionReason}\n` : ''}\n\nN'hésitez pas à apporter quelques ajustements et à la soumettre à nouveau.\n\nRésumé soumis : ${summaryText}\n\nRetrouvez vos propositions sur ${actionUrl}\n\nMerci pour votre engagement sur My BiblioConnect.`;
 
   const html = `
   <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background-color:#f1f5f9;padding:24px 0;font-family:Segoe UI,Helvetica,Arial,sans-serif;">
@@ -222,7 +222,7 @@ const buildProposalDecisionEmail = ({ proposer, proposal, decision, dashboardUrl
         <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:640px;width:90%;background-color:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 16px 32px rgba(15,23,42,0.12);">
           <tr>
             <td style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:32px;text-align:center;color:#ffffff;">
-              <h1 style="margin:0;font-size:26px;letter-spacing:0.04em;text-transform:uppercase;">BiblioConnecte</h1>
+              <h1 style="margin:0;font-size:26px;letter-spacing:0.04em;text-transform:uppercase;">My BiblioConnect</h1>
               <p style="margin:10px 0 0;font-size:15px;opacity:0.85;">Suivi de vos propositions</p>
             </td>
           </tr>
@@ -243,18 +243,18 @@ const buildProposalDecisionEmail = ({ proposer, proposal, decision, dashboardUrl
               <p style="margin:0 0 12px;font-size:14px;color:#475569;">
                 ${isApproved
                   ? 'Merci pour votre contribution qui enrichit la communauté. Continuez à partager vos découvertes littéraires !'
-                  : 'Nous vous encourageons à réviser votre proposition et à la soumettre à nouveau. Votre enthousiasme fait vivre BiblioConnecte.'}
+                  : 'Nous vous encourageons à réviser votre proposition et à la soumettre à nouveau. Votre enthousiasme fait vivre My BiblioConnect.'}
               </p>
               <p style="margin:24px 0 0;">
                 <a href="${actionUrl}" style="display:inline-block;padding:14px 28px;font-weight:600;font-size:15px;color:#ffffff;background:linear-gradient(135deg,#2563eb,#7c3aed);text-decoration:none;border-radius:999px;box-shadow:0 10px 20px rgba(37,99,235,0.35);">
-                  Retourner sur BiblioConnecte
+                  Retourner sur My BiblioConnect
                 </a>
               </p>
             </td>
           </tr>
           <tr>
             <td style="background-color:#0f172a;padding:20px;text-align:center;color:#e2e8f0;font-size:12px;">
-              <p style="margin:0 0 6px;">BiblioConnecte • Vos lectures, partout, tout le temps.</p>
+              <p style="margin:0 0 6px;">My BiblioConnect • Vos lectures, partout, tout le temps.</p>
               <p style="margin:0;opacity:0.7;">Besoin d’aide ? Contactez l’équipe support depuis votre espace personnel.</p>
             </td>
           </tr>

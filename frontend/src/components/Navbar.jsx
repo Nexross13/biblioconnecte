@@ -90,7 +90,7 @@ const Navbar = () => {
             {isMenuOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
           </button>
           <Link to="/" className="text-lg font-semibold text-primary">
-            BiblioConnecte
+            My BiblioConnect
           </Link>
         </div>
 

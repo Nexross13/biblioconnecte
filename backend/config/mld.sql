@@ -1,5 +1,5 @@
 -- =====================================================================
--- Schema "biblio" for the BiblioConnecte backend (English conventions)
+-- Schema "biblio" for the My BiblioConnect backend (English conventions)
 -- =====================================================================
 
 CREATE SCHEMA IF NOT EXISTS biblio;
