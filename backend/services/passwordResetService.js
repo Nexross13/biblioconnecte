@@ -22,7 +22,7 @@ const generateCode = () => {
 const normalizeEmail = (email) => email?.trim().toLowerCase();
 
 const buildResetEmail = ({ code }) => {
-  const subject = 'Réinitialisation de votre mot de passe BiblioConnecte';
+  const subject = 'Réinitialisation de votre mot de passe My BiblioConnect';
   const expiresLine =
     CODE_TTL_MINUTES === 1
       ? 'Ce code expire dans 1 minute.'
@@ -32,7 +32,7 @@ const buildResetEmail = ({ code }) => {
   const text = [
     'Bonjour,',
     '',
-    'Nous avons reçu une demande de réinitialisation de votre mot de passe BiblioConnecte.',
+    'Nous avons reçu une demande de réinitialisation de votre mot de passe My BiblioConnect.',
     `Votre code de validation : ${code}`,
     expiresLine,
     '',
@@ -40,7 +40,7 @@ const buildResetEmail = ({ code }) => {
     '',
     "Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer ce message.",
     '',
-    'À très vite sur BiblioConnecte !',
+    'À très vite sur My BiblioConnect !',
   ].join('\n');
 
   const html = `
@@ -50,7 +50,7 @@ const buildResetEmail = ({ code }) => {
         <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:520px;width:92%;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 18px 32px rgba(15,23,42,0.12);">
           <tr>
             <td style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:28px;text-align:center;color:#ffffff;">
-              <h1 style="margin:0;font-size:22px;letter-spacing:0.04em;text-transform:uppercase;">BiblioConnecte</h1>
+              <h1 style="margin:0;font-size:22px;letter-spacing:0.04em;text-transform:uppercase;">My BiblioConnect</h1>
               <p style="margin:10px 0 0;font-size:14px;opacity:0.85;">Réinitialisation de mot de passe</p>
             </td>
           </tr>
@@ -58,7 +58,7 @@ const buildResetEmail = ({ code }) => {
             <td style="padding:32px;color:#0f172a;">
               <p style="margin:0 0 16px;font-size:16px;">Bonjour,</p>
               <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">
-                Nous avons reçu une demande de réinitialisation de votre mot de passe BiblioConnecte.
+                Nous avons reçu une demande de réinitialisation de votre mot de passe My BiblioConnect.
                 Saisissez le code ci-dessous pour confirmer qu'il s'agit bien de vous :
               </p>
               <div style="display:inline-block;padding:14px 28px;margin:16px 0;font-size:24px;font-weight:700;letter-spacing:0.18em;color:#1e293b;background-color:#f8fafc;border:1px solid #cbd5f5;border-radius:12px;">

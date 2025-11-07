@@ -1,4 +1,4 @@
-# BiblioConnecte
+# My BiblioConnect
 
 Plateforme sociale pour lectrices et lecteurs : gérez votre bibliothèque personnelle, suivez vos amis, partagez vos coups de cœur et proposez de nouveaux titres. L’application comprend une API Node.js/Express et un frontend React/Vite.
 
@@ -183,4 +183,4 @@ Les PR doivent obtenir une relecture et un pipeline vert avant fusion.
 ## Licence
 
 Projet sous licence ISC (voir `backend/package.json`).  
-© BiblioConnecte — communauté de lecteurs passionnés.
+© My BiblioConnect — communauté de lecteurs passionnés.

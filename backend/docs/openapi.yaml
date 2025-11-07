@@ -1,30 +1,112 @@
 openapi: 3.1.0
 info:
-  title: BiblioConnecte API
+  title: My BiblioConnect API
   version: 1.0.0
   description: |
-    API REST du projet BiblioConnecte.
+    API REST du projet My BiblioConnect.
     Permet la gestion de bibliothèques personnelles, la recherche de livres,
     la gestion des souhaits, des amis et des avis.
+    ---
+    ### Accès utilisateur simple
+    Les comptes standards peuvent :
+    - consulter le catalogue et les fiches détaillées des livres, ainsi que les avis publics ;
+    - suivre les statistiques publiques via `/stats/highlights` et `/stats/public-overview` ;
+    - gérer leur profil, leurs relations sociales et leurs listes personnelles (bibliothèque et wishlist) ;
+    - publier ou mettre à jour leurs propres avis et retirer des ouvrages de leurs listes personnelles uniquement.
+    ### Restrictions
+    - aucune suppression ou modification du catalogue (livres, auteurs, genres) n'est proposée aux utilisateurs simples ;
+    - les opérations d'administration sont documentées séparément et nécessitent un rôle interne ;
+    - les seules suppressions autorisées concernent des ressources personnelles comme la bibliothèque, la wishlist ou les relations que l'utilisateur possède.
   contact:
     name: Nexross
     url: https://github.com/Nexross13/biblioconnecte
-    email: contact@nexross.dev
+    email: noreply.biblioconnect@gmail.com
 servers:
-  - url: http://localhost:3000/api/v1
-    description: Serveur local de développement
+  - url: https://api.my-biblioconnect.fr/api/v1
+    description: Serveur principal
 tags:
   - name: Authentification
+    description: Flux publics d'inscription, de connexion et de récupération de mot de passe.
+    x-simple-user-access: public
   - name: Utilisateurs
+    description: Consultation et mise à jour de son profil, ainsi que la gestion de ses relations (amis).
+    x-simple-user-access: self
   - name: Livres
+    description: Consultation du catalogue et des détails d'ouvrages ; toute modification est réservée à l'équipe.
+    x-simple-user-access: read-only
   - name: Auteurs
+    description: Consultation des fiches auteurs ; modifications limitées au personnel interne.
+    x-simple-user-access: read-only
   - name: Genres
+    description: Navigation dans les genres référencés ; administration interne uniquement.
+    x-simple-user-access: read-only
   - name: Bibliothèque
+    description: Gestion complète de sa bibliothèque personnelle (ajout et retrait de livres appartenant à l'utilisateur).
+    x-simple-user-access: self
   - name: Wishlist
+    description: Gestion de la liste d'envies d'un utilisateur (ajout/retrait de livres suivis).
+    x-simple-user-access: self
   - name: Avis
+    description: Lecture des avis publics et contribution de l'utilisateur sur des ouvrages.
+    x-simple-user-access: self
   - name: Statistiques
+    description: Indicateurs globaux ou personnalisés accessibles en lecture seule.
+    x-simple-user-access: read-only
 security:
   - bearerAuth: []
+x-simple-user-endpoints:
+  - label: Statistiques globales
+    method: GET
+    path: /stats/highlights
+    description: Consulter les faits marquants partagés (livres récents, lecteurs actifs).
+  - label: Vue publique des métriques
+    method: GET
+    path: /stats/public-overview
+    description: Récupérer les volumes de lectures, avis et livres disponibles.
+  - label: Parcourir le catalogue
+    method: GET
+    path: /books
+    description: Liste paginée des ouvrages consultable par tout utilisateur authentifié.
+  - label: Détail d'un livre
+    method: GET
+    path: /books/{bookId}
+    description: Fiche détaillée d'un livre spécifique.
+  - label: Consulter les avis d'un livre
+    method: GET
+    path: /books/{bookId}/reviews
+    description: Lecture des avis publiés pour un ouvrage donné.
+  - label: Publier un avis
+    method: POST
+    path: /books/{bookId}/reviews
+    description: Création d'un avis associé à un livre par l'utilisateur courant.
+  - label: Gérer ma bibliothèque
+    method: GET
+    path: /library
+    description: Liste des livres ajoutés par l'utilisateur dans sa bibliothèque personnelle.
+  - label: Ajouter un livre à ma bibliothèque
+    method: POST
+    path: /library/{bookId}
+    description: Ajout d'un livre accessible au catalogue dans la bibliothèque de l'utilisateur.
+  - label: Retirer un livre de ma bibliothèque
+    method: DELETE
+    path: /library/{bookId}
+    description: Seule suppression autorisée pour un utilisateur : retirer un livre qui lui appartient.
+  - label: Consulter ma wishlist
+    method: GET
+    path: /wishlist
+    description: Visualisation de la liste d'envies personnelle.
+  - label: Ajouter un livre à ma wishlist
+    method: POST
+    path: /wishlist/{bookId}
+    description: Suivre un livre sans l'ajouter à la bibliothèque.
+  - label: Retirer un livre de ma wishlist
+    method: DELETE
+    path: /wishlist/{bookId}
+    description: Nettoyer sa liste d'envies personnelle.
+  - label: Mettre à jour mon profil
+    method: PUT
+    path: /users/{id}
+    description: Modifier ses propres informations (nom, avatar, email, mot de passe) ; l'ID doit correspondre à l'utilisateur connecté.
 paths:
   /auth/register:
     post:
@@ -620,6 +702,7 @@ paths:
       tags:
         - Utilisateurs
       summary: Supprimer un ami
+      description: Opération limitée aux utilisateurs concernés pour mettre fin à une relation existante.
       parameters:
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/FriendId'
@@ -865,6 +948,7 @@ paths:
       tags:
         - Livres
       summary: Supprimer un livre
+      description: Réservé aux administrateurs/modérateurs du catalogue.
       parameters:
         - $ref: '#/components/parameters/BookId'
       responses:
@@ -1055,6 +1139,7 @@ paths:
       tags:
         - Auteurs
       summary: Supprimer un auteur
+      description: Réservé aux administrateurs/modérateurs.
       parameters:
         - $ref: '#/components/parameters/AuthorId'
       responses:
@@ -1172,6 +1257,7 @@ paths:
       tags:
         - Genres
       summary: Supprimer un genre
+      description: Réservé aux administrateurs/modérateurs.
       parameters:
         - $ref: '#/components/parameters/GenreId'
       responses:
@@ -1241,6 +1327,7 @@ paths:
       tags:
         - Bibliothèque
       summary: Retirer un livre de ma bibliothèque
+      description: Unique suppression autorisée pour un utilisateur standard : retirer un livre qu'il possède.
       parameters:
         - $ref: '#/components/parameters/BookIdPath'
       responses:
@@ -1537,6 +1624,7 @@ paths:
       tags:
         - Wishlist
       summary: Retirer un livre de ma wishlist
+      description: Suppression limitée à la wishlist personnelle de l'utilisateur.
       parameters:
         - $ref: '#/components/parameters/BookIdPath'
       responses:
@@ -1639,6 +1727,7 @@ paths:
       tags:
         - Avis
       summary: Supprimer un avis
+      description: Seul l'auteur de l'avis ou un modérateur peut effectuer cette suppression.
       parameters:
         - $ref: '#/components/parameters/ReviewId'
       responses:

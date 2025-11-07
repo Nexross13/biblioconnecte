@@ -97,7 +97,7 @@ const Profile = () => {
               {userQuery.data.firstName} {userQuery.data.lastName}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-300">
-              Gérez les informations associées à votre compte BiblioConnecte.
+              Gérez les informations associées à votre compte My BiblioConnect.
             </p>
             <button type="button" className="btn-secondary" onClick={() => setIsEditing(true)}>
               Modifier mes informations

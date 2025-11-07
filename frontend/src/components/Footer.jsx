@@ -51,7 +51,7 @@ const Footer = () => {
       <div className="mx-auto max-w-7xl px-4 py-12 text-center md:px-6 lg:py-16 lg:text-left">
         <div className="grid gap-10 justify-items-center sm:grid-cols-2 lg:grid-cols-4 lg:items-start lg:justify-items-center">
           <div className="w-full max-w-sm space-y-4 sm:max-w-none">
-            <h2 className="text-xl font-semibold text-white">BiblioConnecte</h2>
+            <h2 className="text-xl font-semibold text-white">My BiblioConnect</h2>
             <p className="text-sm text-slate-300">
               La communauté où les lecteurs partagent leurs coups de cœur, suivent leurs amis et
               proposent les prochaines pépites du catalogue.
@@ -93,8 +93,8 @@ const Footer = () => {
             <ul className="mt-4 space-y-2 text-sm text-slate-300">
               <li>
                 <a
-                  className="flex items-center gap-2 transition hover:text-white"
-                  href="/api-docs"
+                  className="flex items-center justify-center gap-2 transition hover:text-white lg:justify-start"
+                  href="https://api.my-biblioconnect.fr/api-docs"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -159,7 +159,7 @@ const Footer = () => {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-white/70 text-center md:flex-row md:items-center md:justify-between md:px-6 md:text-left">
-          <p>© {currentYear} BiblioConnecte. Tous droits réservés.</p>
+          <p>© {currentYear} My BiblioConnect. Tous droits réservés.</p>
           <p>
             Projet communautaire pour partager, explorer et recommander des livres entre passionnés.
           </p>
@@ -184,7 +184,7 @@ const Footer = () => {
               Politique de confidentialité
             </h2>
             <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
-              Cette politique décrit la manière dont BiblioConnecte collecte, utilise et protège vos
+              Cette politique décrit la manière dont My BiblioConnect collecte, utilise et protège vos
               données personnelles. Elle s’applique à l’ensemble des services proposés sur la
               plateforme.
             </p>
@@ -194,14 +194,14 @@ const Footer = () => {
                   1. Responsable du traitement
                 </h3>
                 <p>
-                  BiblioConnecte est édité par l’équipe produit en charge de la plateforme. Pour
+                  My BiblioConnect est édité par l’équipe produit en charge de la plateforme. Pour
                   toute question relative à la protection des données, vous pouvez nous contacter à
                   l’adresse&nbsp;:
                   <a
-                    href="mailto:privacy@biblioconnecte.test"
+                    href="mailto:noreply.biblioconnect@gmail.com"
                     className="ml-1 text-primary underline hover:text-primary/80"
                   >
-                    privacy@biblioconnecte.test
+                    noreply.biblioconnect@gmail.com
                   </a>
                   .
                 </p>
@@ -259,7 +259,7 @@ const Footer = () => {
                   5. Partage et sous-traitance
                 </h3>
                 <p>
-                  BiblioConnecte ne revend pas vos données. Elles peuvent être transmises à des
+                  My BiblioConnect ne revend pas vos données. Elles peuvent être transmises à des
                   prestataires techniques (hébergement, analytics) strictement nécessaires au bon
                   fonctionnement du service, contractuellement engagés au respect de la
                   confidentialité.
@@ -292,10 +292,10 @@ const Footer = () => {
                 <p className="mt-2">
                   Pour exercer ces droits, contactez-nous à&nbsp;
                   <a
-                    href="mailto:privacy@biblioconnecte.test"
+                    href="mailto:noreply.biblioconnect@gmail.com"
                     className="text-primary underline hover:text-primary/80"
                   >
-                    privacy@biblioconnecte.test
+                    noreply.biblioconnect@gmail.com
                   </a>
                   .
                 </p>

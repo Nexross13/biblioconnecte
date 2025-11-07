@@ -110,7 +110,7 @@ const FriendCollection = () => {
             {friend.firstName} {friend.lastName}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-300">
-            Bibliothèque partagée via BiblioConnecte
+            Bibliothèque partagée via My BiblioConnect
           </p>
         </div>
       </header>

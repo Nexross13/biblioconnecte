@@ -130,7 +130,7 @@ const Home = () => {
   const hero = isAuthenticated ? (
     <header className="flex flex-col items-start gap-4 rounded-2xl bg-gradient-to-r from-primary to-secondary px-6 py-10 text-white shadow-lg md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 className="text-3xl font-bold md:text-4xl">Bienvenue sur BiblioConnecte</h1>
+        <h1 className="text-3xl font-bold md:text-4xl">Bienvenue sur My BiblioConnect</h1>
         <p className="mt-2 max-w-2xl text-sm md:text-base">
           Explorez la communauté de lecteurs, suivez l&apos;activité de vos amis et partagez vos
           découvertes littéraires.
@@ -185,7 +185,7 @@ const Home = () => {
             Partagez vos livres. Inspirez vos amis. Cultivez votre univers.
           </h1>
           <p className="text-sm text-white/80 md:text-base">
-            BiblioConnecte rassemble une communauté de lecteurs passionnés : suivez les lectures de
+            My BiblioConnect rassemble une communauté de lecteurs passionnés : suivez les lectures de
             vos amis, proposez de nouvelles parutions et créez des listes inspirantes pour ne plus
             manquer aucun coup de cœur.
           </p>
@@ -332,7 +332,7 @@ const Home = () => {
             <div>
               <h2 className="text-2xl font-semibold text-primary">Une plateforme riche et animée</h2>
               <p className="text-sm text-slate-500 dark:text-slate-300">
-                Découvrez l’ampleur de BiblioConnecte avant même de créer votre compte.
+                Découvrez l’ampleur de My BiblioConnect avant même de créer votre compte.
               </p>
             </div>
             <ArrowTrendingUpIcon className="hidden h-10 w-10 text-primary md:block" aria-hidden="true" />
@@ -411,7 +411,7 @@ const Home = () => {
               <div className="relative space-y-5">
                 <h2 className="text-2xl font-semibold text-primary">Tout ce que vous pouvez faire</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-300">
-                  BiblioConnecte est une plateforme de partage social pour lecteurs exigeants. Voici
+                  My BiblioConnect est une plateforme de partage social pour lecteurs exigeants. Voici
                   un aperçu des possibilités qui vous attendent.
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
