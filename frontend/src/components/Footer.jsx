@@ -93,7 +93,7 @@ const Footer = () => {
             <ul className="mt-4 space-y-2 text-sm text-slate-300">
               <li>
                 <a
-                  className="flex items-center gap-2 transition hover:text-white"
+                  className="flex items-center justify-center gap-2 transition hover:text-white lg:justify-start"
                   href="https://api.my-biblioconnect.fr/api-docs"
                   target="_blank"
                   rel="noreferrer"
