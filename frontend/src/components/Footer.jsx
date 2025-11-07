@@ -94,7 +94,7 @@ const Footer = () => {
               <li>
                 <a
                   className="flex items-center gap-2 transition hover:text-white"
-                  href="/api-docs"
+                  href="https://api.my-biblioconnect.fr/api-docs"
                   target="_blank"
                   rel="noreferrer"
                 >
