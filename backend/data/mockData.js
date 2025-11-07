@@ -210,6 +210,35 @@ const bookProposals = [
   },
 ];
 
+const authorProposals = [
+  {
+    id: 1,
+    firstName: 'Nnedi',
+    lastName: 'Okorafor',
+    biography: 'Autrice nigériano-américaine reconnue pour ses récits afro-futuristes.',
+    status: 'pending',
+    submittedBy: 2,
+    submittedAt: '2024-04-20T09:30:00.000Z',
+    decidedBy: null,
+    decidedAt: null,
+    rejectionReason: null,
+  },
+  {
+    id: 2,
+    firstName: 'Ken',
+    lastName: 'Liu',
+    biography: "Auteur et traducteur sino-américain, figure de l'imaginaire spéculatif.",
+    status: 'approved',
+    submittedBy: 1,
+    submittedAt: '2024-03-15T14:10:00.000Z',
+    decidedBy: 1,
+    decidedAt: '2024-03-20T08:00:00.000Z',
+    rejectionReason: null,
+  },
+];
+
+const nextAuthorId = () => (authors.length ? Math.max(...authors.map((author) => author.id)) + 1 : 1);
+
 const getUsers = () => clone(users);
 const getUserById = (id) => clone(users.find((user) => user.id === Number(id)) || null);
 
@@ -500,6 +529,110 @@ const rejectBookProposal = ({ id, decidedBy, reason }) => {
   return clone(updatedProposal);
 };
 
+const getAuthorProposals = ({ status } = {}) => {
+  let proposals = authorProposals;
+  if (status) {
+    proposals = proposals.filter((proposal) => proposal.status === status);
+  }
+  return clone(proposals);
+};
+
+const nextAuthorProposalId = () =>
+  authorProposals.length ? Math.max(...authorProposals.map((proposal) => proposal.id)) + 1 : 1;
+
+const createAuthorProposal = ({ firstName, lastName, biography = null, submittedBy }) => {
+  const timestamp = new Date().toISOString();
+  const newProposal = {
+    id: nextAuthorProposalId(),
+    firstName,
+    lastName,
+    biography: biography || null,
+    status: 'pending',
+    submittedBy: Number(submittedBy),
+    submittedAt: timestamp,
+    decidedBy: null,
+    decidedAt: null,
+    rejectionReason: null,
+  };
+  authorProposals.push(newProposal);
+  return clone(newProposal);
+};
+
+const getAuthorProposalById = (id) =>
+  clone(authorProposals.find((proposal) => proposal.id === Number(id)) || null);
+
+const approveAuthorProposal = ({ id, decidedBy }) => {
+  const index = authorProposals.findIndex((proposal) => proposal.id === Number(id));
+  if (index === -1) {
+    return null;
+  }
+  const proposal = authorProposals[index];
+  if (proposal.status !== 'pending') {
+    const error = new Error('Proposal is not pending');
+    error.status = 409;
+    throw error;
+  }
+
+  const timestamp = new Date().toISOString();
+  let author = authors.find(
+    (entry) =>
+      entry.firstName.toLowerCase() === proposal.firstName.toLowerCase() &&
+      entry.lastName.toLowerCase() === proposal.lastName.toLowerCase(),
+  );
+  if (!author) {
+    author = {
+      id: nextAuthorId(),
+      firstName: proposal.firstName,
+      lastName: proposal.lastName,
+      biography: proposal.biography || null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    authors.push(author);
+  } else if (proposal.biography && !author.biography) {
+    author.biography = proposal.biography;
+    author.updatedAt = timestamp;
+  }
+
+  const updatedProposal = {
+    ...proposal,
+    status: 'approved',
+    decidedBy: Number(decidedBy),
+    decidedAt: timestamp,
+    rejectionReason: null,
+  };
+  authorProposals[index] = updatedProposal;
+
+  return {
+    proposal: clone(updatedProposal),
+    author: clone(author),
+  };
+};
+
+const rejectAuthorProposal = ({ id, decidedBy, reason }) => {
+  const index = authorProposals.findIndex((proposal) => proposal.id === Number(id));
+  if (index === -1) {
+    return null;
+  }
+  const proposal = authorProposals[index];
+  if (proposal.status !== 'pending') {
+    const error = new Error('Proposal is not pending');
+    error.status = 409;
+    throw error;
+  }
+
+  const timestamp = new Date().toISOString();
+  const updatedProposal = {
+    ...proposal,
+    status: 'rejected',
+    decidedBy: Number(decidedBy),
+    decidedAt: timestamp,
+    rejectionReason: reason || null,
+  };
+  authorProposals[index] = updatedProposal;
+  return clone(updatedProposal);
+};
+
 module.exports = {
   mockData: {
     users,
@@ -513,6 +646,7 @@ module.exports = {
     reviews,
     friendships,
     bookProposals,
+    authorProposals,
   },
   getUsers,
   getUserById,
@@ -538,4 +672,9 @@ module.exports = {
   createBookProposal,
   approveBookProposal,
   rejectBookProposal,
+  getAuthorProposals,
+  createAuthorProposal,
+  getAuthorProposalById,
+  approveAuthorProposal,
+  rejectAuthorProposal,
 };

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { fetchBookProposals } from '../api/bookProposals'
 import { fetchAdminOverview } from '../api/stats'
+import { fetchAuthorProposals } from '../api/authorProposals'
 import Loader from '../components/Loader.jsx'
 import TimelineChart from '../components/TimelineChart.jsx'
 
@@ -14,12 +15,20 @@ const Dashboard = () => {
     queryKey: ['book-proposals', 'pending'],
     queryFn: () => fetchBookProposals({ status: 'pending' }),
   })
+  const pendingAuthorProposalsQuery = useQuery({
+    queryKey: ['author-proposals', 'pending'],
+    queryFn: () => fetchAuthorProposals({ status: 'pending' }),
+  })
 
-  if (adminOverviewQuery.isLoading || pendingProposalsQuery.isLoading) {
+  if (
+    adminOverviewQuery.isLoading ||
+    pendingProposalsQuery.isLoading ||
+    pendingAuthorProposalsQuery.isLoading
+  ) {
     return <Loader label="Chargement du tableau de bord..." />
   }
 
-  if (adminOverviewQuery.isError || pendingProposalsQuery.isError) {
+  if (adminOverviewQuery.isError || pendingProposalsQuery.isError || pendingAuthorProposalsQuery.isError) {
     return (
       <p className="text-center text-sm text-rose-600">
         Impossible de charger les métriques administrateur. Veuillez réessayer plus tard.
@@ -31,11 +40,18 @@ const Dashboard = () => {
     books: 0,
     members: 0,
     pendingProposals: 0,
+    pendingAuthorProposals: 0,
   }
   const timeline = (adminOverviewQuery.data?.timeline ?? []).slice(-30)
   const pendingProposals = pendingProposalsQuery.data?.proposals ?? []
   const pendingCount =
     pendingProposalsQuery.data?.pagination?.count ?? pendingProposals.length ?? totals.pendingProposals
+  const pendingAuthorProposals = pendingAuthorProposalsQuery.data?.proposals ?? []
+  const pendingAuthorCount =
+    pendingAuthorProposalsQuery.data?.pagination?.count ??
+    pendingAuthorProposals.length ??
+    totals.pendingAuthorProposals ??
+    0
 
   return (
     <section className="space-y-8">
@@ -46,7 +62,7 @@ const Dashboard = () => {
         </p>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
             Livres dans le catalogue
@@ -65,10 +81,18 @@ const Dashboard = () => {
         </div>
         <div className="card">
           <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            Propositions en attente
+            Livres proposés en attente
           </p>
           <p className="mt-2 text-3xl font-bold text-primary">
             {new Intl.NumberFormat('fr-FR').format(pendingCount)}
+          </p>
+        </div>
+        <div className="card">
+          <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Auteurs proposés en attente
+          </p>
+          <p className="mt-2 text-3xl font-bold text-primary">
+            {new Intl.NumberFormat('fr-FR').format(pendingAuthorCount)}
           </p>
         </div>
       </div>
@@ -140,22 +164,73 @@ const Dashboard = () => {
 
         <section className="space-y-4">
           <header>
-            <h2 className="text-xl font-semibold text-primary">Progression quotidienne</h2>
+            <h2 className="text-xl font-semibold text-primary">Auteurs proposés en attente</h2>
             <p className="text-sm text-slate-500 dark:text-slate-300">
-              Cumul des livres et des comptes créés sur les 30 derniers jours.
+              Validez les nouveaux profils suggérés par la communauté.
             </p>
           </header>
-          <div className="card">
-            {timeline.length > 1 ? (
-              <TimelineChart data={timeline} />
-            ) : (
+          <div className="card divide-y divide-slate-200/60 dark:divide-slate-700/60">
+            {pendingAuthorProposals.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-300">
-                Pas encore assez de données pour tracer la courbe.
+                Aucune proposition d’auteur n’attend votre validation pour le moment.
               </p>
+            ) : (
+              pendingAuthorProposals.map((proposal) => (
+                <article key={proposal.id} className="py-3 first:pt-0 last:pb-0">
+                  <div className="space-y-1">
+                    <Link
+                      to={`/admin/author-proposals/${proposal.id}`}
+                      className="text-base font-semibold text-primary hover:underline"
+                    >
+                      {proposal.firstName} {proposal.lastName}
+                    </Link>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Soumis par{' '}
+                      {proposal.submittedBy
+                        ? `${proposal.submittedBy.firstName ?? 'Utilisateur'} ${
+                            proposal.submittedBy.lastName ?? ''
+                          }`
+                        : 'Utilisateur inconnu'}{' '}
+                      •{' '}
+                      {proposal.submittedAt
+                        ? new Date(proposal.submittedAt).toLocaleDateString('fr-FR')
+                        : 'Date inconnue'}
+                    </p>
+                    {proposal.biography ? (
+                      <p className="text-sm text-slate-600 dark:text-slate-200 line-clamp-2">
+                        {proposal.biography}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+                      En attente
+                    </span>
+                  </div>
+                </article>
+              ))
             )}
           </div>
         </section>
       </div>
+
+      <section className="space-y-4">
+        <header>
+          <h2 className="text-xl font-semibold text-primary">Progression quotidienne</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-300">
+            Cumul des livres et des comptes créés sur les 30 derniers jours.
+          </p>
+        </header>
+        <div className="card">
+          {timeline.length > 1 ? (
+            <TimelineChart data={timeline} />
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-300">
+              Pas encore assez de données pour tracer la courbe.
+            </p>
+          )}
+        </div>
+      </section>
     </section>
   )
 }

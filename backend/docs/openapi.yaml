@@ -103,6 +103,10 @@ x-simple-user-endpoints:
     method: DELETE
     path: /wishlist/{bookId}
     description: Nettoyer sa liste d'envies personnelle.
+  - label: Proposer un nouvel auteur
+    method: POST
+    path: /author-proposals
+    description: Soumettre un auteur à l'équipe éditoriale pour validation.
   - label: Mettre à jour mon profil
     method: PUT
     path: /users/{id}
@@ -1052,6 +1056,7 @@ paths:
       tags:
         - Auteurs
       summary: Créer un auteur
+      description: Réservé aux administrateurs.
       requestBody:
         required: true
         content:
@@ -1576,6 +1581,183 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /author-proposals:
+    get:
+      tags:
+        - Auteurs
+      summary: Lister les propositions d'auteurs
+      description: Réservé aux administrateurs.
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum:
+              - pending
+              - approved
+              - rejected
+          description: Filtrer par statut
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Propositions d'auteurs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuthorProposal'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Auteurs
+      summary: Proposer un nouvel auteur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorProposalCreateRequest'
+            examples:
+              submit:
+                value:
+                  firstName: Nnedi
+                  lastName: Okorafor
+                  biography: Autrice nigériano-américaine de science-fiction.
+      responses:
+        '202':
+          description: Auteur soumis pour validation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  proposal:
+                    $ref: '#/components/schemas/AuthorProposal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /author-proposals/{id}:
+    get:
+      tags:
+        - Auteurs
+      summary: Consulter une proposition d'auteur
+      description: Réservé aux administrateurs.
+      parameters:
+        - $ref: '#/components/parameters/AuthorProposalId'
+      responses:
+        '200':
+          description: Proposition d'auteur
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposal:
+                    $ref: '#/components/schemas/AuthorProposal'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /author-proposals/{id}/approve:
+    post:
+      tags:
+        - Auteurs
+      summary: Approuver une proposition d'auteur
+      description: Réservé aux administrateurs.
+      parameters:
+        - $ref: '#/components/parameters/AuthorProposalId'
+      responses:
+        '200':
+          description: Auteur validé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposal:
+                    $ref: '#/components/schemas/AuthorProposal'
+                  author:
+                    $ref: '#/components/schemas/Author'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /author-proposals/{id}/reject:
+    post:
+      tags:
+        - Auteurs
+      summary: Refuser une proposition d'auteur
+      description: Réservé aux administrateurs.
+      parameters:
+        - $ref: '#/components/parameters/AuthorProposalId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Motif du refus
+      responses:
+        '200':
+          description: Proposition refusée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposal:
+                    $ref: '#/components/schemas/AuthorProposal'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /wishlist:
     get:
       tags:
@@ -1904,6 +2086,14 @@ components:
         type: integer
         minimum: 1
       description: Identifiant de la proposition de livre
+    AuthorProposalId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: Identifiant de la proposition d'auteur
   responses:
     BadRequest:
       description: Requête invalide
@@ -2224,6 +2414,94 @@ components:
         - status
         - submittedBy
         - submittedAt
+    AuthorProposal:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 4
+        firstName:
+          type: string
+          example: Nnedi
+        lastName:
+          type: string
+          example: Okorafor
+        biography:
+          type: string
+          nullable: true
+          example: Autrice nigériano-américaine de science-fiction.
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+          example: pending
+        submittedBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              example: 2
+            firstName:
+              type: string
+              nullable: true
+              example: Benoit
+            lastName:
+              type: string
+              nullable: true
+              example: Durand
+            email:
+              type: string
+              nullable: true
+              format: email
+              example: benoit@biblio.test
+        submittedAt:
+          type: string
+          format: date-time
+          example: '2024-04-20T09:30:00.000Z'
+        decidedBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            firstName:
+              type: string
+              nullable: true
+            lastName:
+              type: string
+              nullable: true
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rejectionReason:
+          type: string
+          nullable: true
+      required:
+        - id
+        - firstName
+        - lastName
+        - status
+        - submittedAt
+    AuthorProposalCreateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: Nnedi
+        lastName:
+          type: string
+          example: Okorafor
+        biography:
+          type: string
+          nullable: true
+          example: Autrice nigériano-américaine de science-fiction.
+      required:
+        - firstName
+        - lastName
     BookCreateRequest:
       type: object
       properties:

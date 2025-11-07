@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import {
@@ -150,14 +150,26 @@ const BookDetails = () => {
   const inLibrary = libraryQuery.data?.some((item) => item.id === book.id) ?? false
   const inWishlist = wishlistQuery.data?.some((item) => item.id === book.id) ?? false
 
-  const authorNames =
-    (Array.isArray(book.authors) && book.authors.length
-      ? book.authors
-          .map((author) => [author.firstName, author.lastName].filter(Boolean).join(' ').trim())
-          .filter(Boolean)
-      : Array.isArray(book.authorNames) && book.authorNames.length
-      ? book.authorNames.filter(Boolean)
-      : []) || []
+  const authorEntries = useMemo(() => {
+    if (Array.isArray(book.authors) && book.authors.length) {
+      return book.authors
+        .map((author) => ({
+          id: author.id,
+          name:
+            [author.firstName, author.lastName].filter(Boolean).join(' ').trim() ||
+            author.email ||
+            '',
+        }))
+        .filter((entry) => entry.name.length)
+    }
+    if (Array.isArray(book.authorNames) && book.authorNames.length) {
+      return book.authorNames
+        .filter(Boolean)
+        .map((name) => ({ id: null, name: String(name).trim() }))
+        .filter((entry) => entry.name.length)
+    }
+    return []
+  }, [book.authors, book.authorNames])
 
   const ensureAuthenticated = () => {
     if (!isAuthenticated) {
@@ -191,9 +203,20 @@ const BookDetails = () => {
             <div className="flex-1 space-y-5">
               <h1 className="flex items-center gap-20 text-3xl font-bold text-primary">
                 <span>{book.title}</span>
-                {authorNames.length > 0 && (
+                {authorEntries.length > 0 && (
                   <span className="text-sm font-medium text-slate-600 dark:text-slate-200">
-                    {authorNames.join(', ')}
+                    {authorEntries.map((entry, index) => (
+                      <Fragment key={entry.id ?? `${entry.name}-${index}`}>
+                        {entry.id ? (
+                          <Link className="text-primary hover:underline" to={`/authors/${entry.id}`}>
+                            {entry.name}
+                          </Link>
+                        ) : (
+                          entry.name
+                        )}
+                        {index < authorEntries.length - 1 && ', '}
+                      </Fragment>
+                    ))}
                   </span>
                 )}
               </h1>

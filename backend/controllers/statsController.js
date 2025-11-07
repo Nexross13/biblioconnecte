@@ -47,7 +47,7 @@ const getHighlights = async (req, res, next) => {
     const useMocks = process.env.USE_MOCKS === 'true';
 
     if (useMocks) {
-      const { users, libraryItems, books, reviews } = mockData;
+      const { users, libraryItems, books, reviews, authorProposals } = mockData;
 
       let topReader = null;
       if (libraryItems?.length) {
@@ -235,6 +235,8 @@ const getPublicOverview = async (req, res, next) => {
         genres: genres.length,
         reviews: reviews.length,
         pendingProposals: bookProposals.filter((proposal) => proposal.status === 'pending').length,
+        pendingAuthorProposals: authorProposals.filter((proposal) => proposal.status === 'pending')
+          .length,
         libraryEntries: libraryItems.length,
         acceptedFriendships: friendships.filter((friendship) => friendship.status === 'accepted')
           .length,
@@ -300,6 +302,7 @@ const getPublicOverview = async (req, res, next) => {
       genresResult,
       reviewsResult,
       pendingProposalsResult,
+      pendingAuthorProposalsResult,
       libraryEntriesResult,
       friendshipsResult,
       booksLast30DaysResult,
@@ -313,6 +316,7 @@ const getPublicOverview = async (req, res, next) => {
       query('SELECT COUNT(*) FROM genres'),
       query('SELECT COUNT(*) FROM reviews'),
       query("SELECT COUNT(*) FROM book_proposals WHERE status = 'pending'"),
+      query("SELECT COUNT(*) FROM author_proposals WHERE status = 'pending'"),
       query('SELECT COUNT(*) FROM library_items'),
       query("SELECT COUNT(*) FROM friendships WHERE status = 'accepted'"),
       query("SELECT COUNT(*) FROM books WHERE created_at >= NOW() - INTERVAL '30 days'"),
@@ -348,6 +352,7 @@ const getPublicOverview = async (req, res, next) => {
       genres: toNumber(genresResult.rows[0]?.count),
       reviews: toNumber(reviewsResult.rows[0]?.count),
       pendingProposals: toNumber(pendingProposalsResult.rows[0]?.count),
+      pendingAuthorProposals: toNumber(pendingAuthorProposalsResult.rows[0]?.count),
       libraryEntries: toNumber(libraryEntriesResult.rows[0]?.count),
       acceptedFriendships: toNumber(friendshipsResult.rows[0]?.count),
     };
@@ -383,12 +388,15 @@ const getAdminOverview = async (req, res, next) => {
     const startDateISO = startDate.toISOString().slice(0, 10);
 
     if (useMocks) {
-      const { users = [], books = [], bookProposals = [] } = mockData;
+      const { users = [], books = [], bookProposals = [], authorProposals: mockAuthorProposals = [] } =
+        mockData;
 
       const totals = {
         books: books.length,
         members: users.length,
         pendingProposals: bookProposals.filter((proposal) => proposal.status === 'pending').length,
+        pendingAuthorProposals: mockAuthorProposals.filter((proposal) => proposal.status === 'pending')
+          .length,
       };
 
       const dailyBooks = books.reduce((acc, book) => {
@@ -448,6 +456,7 @@ const getAdminOverview = async (req, res, next) => {
       totalBooksResult,
       totalMembersResult,
       pendingProposalsResult,
+      pendingAuthorProposalsResult,
       initialBooksResult,
       initialMembersResult,
       dailyBooksResult,
@@ -456,6 +465,7 @@ const getAdminOverview = async (req, res, next) => {
       query('SELECT COUNT(*) AS count FROM books'),
       query('SELECT COUNT(*) AS count FROM users'),
       query("SELECT COUNT(*) AS count FROM book_proposals WHERE status = 'pending'"),
+      query("SELECT COUNT(*) AS count FROM author_proposals WHERE status = 'pending'"),
       query('SELECT COUNT(*) AS count FROM books WHERE created_at < $1', [startDateISO]),
       query('SELECT COUNT(*) AS count FROM users WHERE created_at < $1', [startDateISO]),
       query(
@@ -478,6 +488,7 @@ const getAdminOverview = async (req, res, next) => {
       books: toNumber(totalBooksResult.rows[0]?.count),
       members: toNumber(totalMembersResult.rows[0]?.count),
       pendingProposals: toNumber(pendingProposalsResult.rows[0]?.count),
+      pendingAuthorProposals: toNumber(pendingAuthorProposalsResult.rows[0]?.count),
     };
 
     const dailyBooks = dailyBooksResult.rows.reduce((acc, row) => {
