@@ -90,7 +90,7 @@ x-simple-user-endpoints:
   - label: Retirer un livre de ma bibliothèque
     method: DELETE
     path: /library/{bookId}
-    description: Seule suppression autorisée pour un utilisateur : retirer un livre qui lui appartient.
+    description: 'Seule suppression autorisée pour un utilisateur : retirer un livre qui lui appartient.'
   - label: Consulter ma wishlist
     method: GET
     path: /wishlist
@@ -1327,7 +1327,7 @@ paths:
       tags:
         - Bibliothèque
       summary: Retirer un livre de ma bibliothèque
-      description: Unique suppression autorisée pour un utilisateur standard : retirer un livre qu'il possède.
+      description: 'Unique suppression autorisée pour un utilisateur standard : retirer un livre qu''il possède.'
       parameters:
         - $ref: '#/components/parameters/BookIdPath'
       responses:
