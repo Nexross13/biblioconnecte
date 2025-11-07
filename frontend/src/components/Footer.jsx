@@ -45,6 +45,7 @@ const Footer = () => {
   )
 
   const currentYear = new Date().getFullYear()
+  const showApiDocs = false // Allow quick toggle when public API docs are ready
 
   return (
     <footer className="mt-16 border-t border-slate-200 bg-slate-900 text-slate-200 dark:border-slate-800">
@@ -91,17 +92,19 @@ const Footer = () => {
               Ressources
             </h3>
             <ul className="mt-4 space-y-2 text-sm text-slate-300">
-              <li>
-                <a
-                  className="flex items-center justify-center gap-2 transition hover:text-white lg:justify-start"
-                  href="https://api.my-biblioconnect.fr/api-docs"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Documentation API
-                  <ArrowTopRightOnSquareIcon className="h-4 w-4" aria-hidden="true" />
-                </a>
-              </li>
+              {showApiDocs ? (
+                <li>
+                  <a
+                    className="flex items-center justify-center gap-2 transition hover:text-white lg:justify-start"
+                    href="https://api.my-biblioconnect.fr/api-docs"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Documentation API
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" aria-hidden="true" />
+                  </a>
+                </li>
+              ) : null}
               <li>
                 <span className="text-slate-400 line-through decoration-dotted decoration-white/40">
                   Guide de démarrage (bientôt)
