@@ -11,6 +11,9 @@ const {
   getUserById: getMockUserById,
   getFriendsOfUser,
 } = require('../data/mockData');
+const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
+
+const FRONTEND_BASE = PRIMARY_FRONTEND_ORIGIN.replace(/\/$/, '');
 
 const normalizeDate = (value) => {
   if (!value) {
@@ -134,7 +137,7 @@ const requestFriend = async (req, res, next) => {
     sendFriendRequestNotification({
       addressee,
       requester: requesterProfile,
-      dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/friends`,
+      dashboardUrl: `${FRONTEND_BASE}/friends`,
     }).catch((emailError) => {
       console.error('📨  Unable to send friend request email:', emailError.message);
     });
@@ -200,7 +203,7 @@ const acceptFriend = async (req, res, next) => {
       sendFriendAcceptedNotification({
         requester: requesterProfile,
         addressee: addresseeProfile,
-        dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/friends`,
+        dashboardUrl: `${FRONTEND_BASE}/friends`,
       }).catch((emailError) => {
         console.error('📨  Unable to send friend acceptance email:', emailError.message);
       });

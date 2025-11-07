@@ -11,6 +11,9 @@ const {
   rejectBookProposal: rejectMockBookProposal,
   getUserById: getMockUserById,
 } = require('../data/mockData');
+const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
+
+const FRONTEND_BASE = PRIMARY_FRONTEND_ORIGIN.replace(/\/$/, '');
 
 const fsPromises = fs.promises;
 const { PROPOSAL_COVER_DIR, PROPOSAL_COVER_RELATIVE_DIR } = bookProposalModel;
@@ -387,7 +390,7 @@ const approveProposal = async (req, res, next) => {
         },
         proposal: decision.proposal,
         decision: 'approved',
-        dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`,
+        dashboardUrl: `${FRONTEND_BASE}/dashboard`,
       }).catch((emailError) => {
         console.error('📨  Unable to send proposal approval email:', emailError.message);
       });
@@ -448,7 +451,7 @@ const rejectProposal = async (req, res, next) => {
         },
         proposal,
         decision: 'rejected',
-        dashboardUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/dashboard`,
+        dashboardUrl: `${FRONTEND_BASE}/dashboard`,
       }).catch((emailError) => {
         console.error('📨  Unable to send proposal rejection email:', emailError.message);
       });

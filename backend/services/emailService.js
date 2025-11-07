@@ -1,4 +1,7 @@
 const nodemailer = require('nodemailer');
+const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
+
+const FRONTEND_BASE = PRIMARY_FRONTEND_ORIGIN.replace(/\/$/, '');
 
 let transporter;
 
@@ -70,7 +73,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
 const buildFriendRequestEmail = ({ addressee, requester, dashboardUrl }) => {
   const fullRequesterName = [requester.firstName, requester.lastName].filter(Boolean).join(' ');
   const subject = `${fullRequesterName} souhaite devenir votre ami sur BiblioConnecte`;
-  const actionUrl = dashboardUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/friends`;
+  const actionUrl = dashboardUrl || `${FRONTEND_BASE}/friends`;
 
   const text = `Bonjour ${addressee.firstName || addressee.email},\n\n${fullRequesterName} vous a envoyé une demande d'ami sur BiblioConnecte.\nPour accepter ou refuser, rendez-vous sur votre espace amis : ${actionUrl}\n\nÀ très vite sur BiblioConnecte !`;
 
@@ -134,7 +137,7 @@ const sendFriendRequestNotification = async ({ addressee, requester, dashboardUr
 const buildFriendAcceptedEmail = ({ requester, addressee, dashboardUrl }) => {
   const addresseeName = [addressee.firstName, addressee.lastName].filter(Boolean).join(' ') || 'Votre ami';
   const subject = `${addresseeName} a accepté votre demande d'ami sur BiblioConnecte`;
-  const actionUrl = dashboardUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/friends`;
+  const actionUrl = dashboardUrl || `${FRONTEND_BASE}/friends`;
 
   const text = `Bonjour ${requester.firstName || requester.email},\n\n${addresseeName} a accepté votre demande d'ami sur BiblioConnecte.\nVous pouvez désormais consulter sa bibliothèque et partager vos lectures.\nAccédez à votre espace amis : ${actionUrl}\n\nBonne lecture sur BiblioConnecte !`;
 
@@ -203,7 +206,7 @@ const buildProposalDecisionEmail = ({ proposer, proposal, decision, dashboardUrl
   const subject = isApproved
     ? `Votre proposition "${bookTitle}" a été approuvée ✨`
     : `Votre proposition "${bookTitle}" nécessite des ajustements`;
-  const actionUrl = dashboardUrl || `${process.env.FRONTEND_URL || 'http://localhost:5173'}/`;
+  const actionUrl = dashboardUrl || `${FRONTEND_BASE}/`;
   const statusBadgeColor = isApproved ? '#16a34a' : '#dc2626';
   const statusLabel = isApproved ? 'Approuvée' : 'Refusée';
   const summaryText = proposal.summary ? proposal.summary : 'Résumé indisponible';

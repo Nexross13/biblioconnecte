@@ -6,10 +6,11 @@ const passwordResetModel = require('../models/passwordResetModel');
 const { sendEmail } = require('./emailService');
 const { getUsers } = require('../data/mockData');
 const mockPasswordResets = require('../data/mockPasswordResets');
+const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
 
 const CODE_LENGTH = 6;
 const CODE_TTL_MINUTES = Number(process.env.PASSWORD_RESET_CODE_TTL_MINUTES) || 15;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = PRIMARY_FRONTEND_ORIGIN;
 
 const hashCode = (code) => crypto.createHash('sha256').update(code).digest('hex');
 
