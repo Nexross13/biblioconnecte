@@ -277,9 +277,104 @@ const sendBookProposalDecisionNotification = async ({ proposer, proposal, decisi
   await sendEmail({ to: proposer.email, ...message });
 };
 
+const buildAuthorProposalDecisionEmail = ({ proposer, proposal, decision, dashboardUrl }) => {
+  const proposerName = [proposer.firstName, proposer.lastName].filter(Boolean).join(' ') || proposer.email;
+  const fullName = `${proposal.firstName} ${proposal.lastName}`.trim();
+  const isApproved = decision === 'approved';
+  const subject = isApproved
+    ? `Votre auteur "${fullName}" a été approuvé ✨`
+    : `Votre auteur "${fullName}" nécessite des ajustements`;
+  const actionUrl = dashboardUrl || `${FRONTEND_BASE}/`;
+  const badgeColor = isApproved ? '#16a34a' : '#dc2626';
+  const badgeLabel = isApproved ? 'Approuvé' : 'Refusé';
+  const biographyText = proposal.biography || 'Aucune biographie détaillée n’a été fournie.';
+
+  const text = isApproved
+    ? `Bonjour ${proposerName},\n\nBonne nouvelle ! L'auteur "${fullName}" a été approuvé et rejoint la base My BiblioConnect.\n\nRendez-vous sur ${actionUrl} pour suivre vos contributions.\n\nBiographie envoyée : ${biographyText}\n\nMerci pour votre engagement !`
+    : `Bonjour ${proposerName},\n\nAprès relecture, l'auteur "${fullName}" n'a pas été validé pour le moment.\n${
+        proposal.rejectionReason ? `Motif : ${proposal.rejectionReason}\n\n` : ''
+      }Nous vous invitons à ajuster sa présentation avant une nouvelle soumission.\n\nConsultez vos propositions sur ${actionUrl}`;
+
+  const html = `
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background-color:#f8fafc;padding:24px 0;font-family:Segoe UI,Helvetica,Arial,sans-serif;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:620px;width:90%;background-color:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 16px 32px rgba(15,23,42,0.12);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#2563eb,#7c3aed);padding:28px;text-align:center;color:#ffffff;">
+              <h1 style="margin:0;font-size:24px;letter-spacing:0.04em;text-transform:uppercase;">My BiblioConnect</h1>
+              <p style="margin:8px 0 0;font-size:15px;opacity:0.85;">Suivi de vos propositions d'auteurs</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;color:#0f172a;line-height:1.6;">
+              <p style="margin:0 0 16px;font-size:16px;">Bonjour <strong>${proposerName}</strong>,</p>
+              <p style="margin:0 0 16px;font-size:15px;">
+                ${
+                  isApproved
+                    ? 'Bonne nouvelle ! Votre proposition rejoint le catalogue et sera visible par la communauté.'
+                    : 'Merci pour votre proposition. Quelques ajustements sont nécessaires avant validation.'
+                }
+              </p>
+              <div style="margin:24px 0;padding:20px;border-radius:20px;background-color:#eef2ff;border:1px solid #c7d2fe;">
+                <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:#312e81;">${fullName}</p>
+                <p style="margin:0 0 12px;font-size:13px;">
+                  <span style="display:inline-block;padding:4px 12px;border-radius:12px;background-color:${badgeColor}20;color:${badgeColor};font-weight:600;">${badgeLabel}</span>
+                </p>
+                <p style="margin:0;font-size:14px;color:#312e81;">${biographyText}</p>
+                ${
+                  proposal.rejectionReason && !isApproved
+                    ? `<p style="margin:12px 0 0;font-size:14px;color:#dc2626;"><strong>Motif :</strong> ${proposal.rejectionReason}</p>`
+                    : ''
+                }
+              </div>
+              <p style="margin:0 0 12px;font-size:14px;color:#475569;">
+                ${
+                  isApproved
+                    ? 'Merci de contribuer à faire découvrir de nouveaux talents aux lecteurs.'
+                    : 'Mettez à jour la fiche et soumettez à nouveau pour partager ce talent avec la communauté.'
+                }
+              </p>
+              <p style="margin:24px 0 0;">
+                <a href="${actionUrl}" style="display:inline-block;padding:14px 28px;font-weight:600;font-size:15px;color:#ffffff;background:linear-gradient(135deg,#2563eb,#7c3aed);text-decoration:none;border-radius:999px;box-shadow:0 10px 20px rgba(37,99,235,0.35);">
+                  Accéder au tableau de bord
+                </a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#0f172a;padding:18px;text-align:center;color:#e2e8f0;font-size:12px;">
+              <p style="margin:0;">My BiblioConnect • Vos lectures, partout, tout le temps.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  `;
+
+  return { subject, text, html };
+};
+
+const sendAuthorProposalDecisionNotification = async ({
+  proposer,
+  proposal,
+  decision,
+  dashboardUrl,
+}) => {
+  if (!proposer?.email) {
+    console.warn('📨  Email skipped: proposer email missing');
+    return;
+  }
+
+  const message = buildAuthorProposalDecisionEmail({ proposer, proposal, decision, dashboardUrl });
+  await sendEmail({ to: proposer.email, ...message });
+};
+
 module.exports = {
   sendEmail,
   sendFriendRequestNotification,
   sendFriendAcceptedNotification,
   sendBookProposalDecisionNotification,
+  sendAuthorProposalDecisionNotification,
 };

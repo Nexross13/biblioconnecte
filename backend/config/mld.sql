@@ -167,6 +167,23 @@ CREATE TABLE IF NOT EXISTS book_proposals (
 CREATE INDEX IF NOT EXISTS idx_book_proposals_status ON book_proposals (status);
 CREATE INDEX IF NOT EXISTS idx_book_proposals_submitted_by ON book_proposals (submitted_by);
 
+CREATE TABLE IF NOT EXISTS author_proposals (
+  id               BIGSERIAL PRIMARY KEY,
+  first_name       VARCHAR(120) NOT NULL,
+  last_name        VARCHAR(120) NOT NULL,
+  biography        TEXT,
+  status           VARCHAR(20) NOT NULL DEFAULT 'pending'
+                   CHECK (status IN ('pending', 'approved', 'rejected')),
+  submitted_by     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  submitted_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decided_by       BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  decided_at       TIMESTAMPTZ,
+  rejection_reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_author_proposals_status ON author_proposals (status);
+CREATE INDEX IF NOT EXISTS idx_author_proposals_submitted_by ON author_proposals (submitted_by);
+
 INSERT INTO genres (name) VALUES
 ('Roman contemporain'),
 ('Roman historique'),
