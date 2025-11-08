@@ -23,7 +23,42 @@ const initialState = {
   summary: '',
 }
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+const STORAGE_KEY = 'book-proposal-draft'
+
+const loadDraft = () => {
+  if (typeof window === 'undefined') {
+    return null
+  }
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+const saveDraft = (draft) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
+  } catch {
+    /* no-op */
+  }
+}
+
+const clearDraft = () => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    /* no-op */
+  }
+}
 
 const BookProposalForm = () => {
   const [searchParams] = useSearchParams()
@@ -73,10 +108,46 @@ const BookProposalForm = () => {
   )
 
   useEffect(() => {
+    const draft = loadDraft()
+    if (!draft) {
+      return
+    }
+    if (draft.formValues) {
+      setFormValues((prev) => ({ ...prev, ...draft.formValues }))
+    }
+    if (Array.isArray(draft.authors)) {
+      setAuthors(draft.authors)
+    }
+    if (Array.isArray(draft.genres)) {
+      setGenres(draft.genres)
+    }
+  }, [])
+
+  useEffect(() => {
     if (prefilledTitle) {
       setFormValues((prev) => ({ ...prev, title: prefilledTitle }))
     }
   }, [prefilledTitle])
+
+  useEffect(() => {
+    const hasDraftContent =
+      Object.values(formValues).some((value) =>
+        typeof value === 'string' ? value.trim().length > 0 : Boolean(value),
+      ) ||
+      authors.length ||
+      genres.length
+
+    if (!hasDraftContent) {
+      clearDraft()
+      return
+    }
+
+    saveDraft({
+      formValues,
+      authors,
+      genres,
+    })
+  }, [formValues, authors, genres])
 
   const mutation = useMutation({
     mutationFn: createBookProposal,
@@ -95,6 +166,7 @@ const BookProposalForm = () => {
       setCoverImageData(null)
       setCoverPreviewUrl(null)
       setCoverError('')
+      clearDraft()
     },
     onError: (error) => {
       const message =
@@ -502,6 +574,7 @@ const BookProposalForm = () => {
               setCoverImageData(null)
               setCoverPreviewUrl(null)
               setCoverError('')
+              clearDraft()
             }}
           >
             Réinitialiser le formulaire
