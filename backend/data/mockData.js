@@ -3,6 +3,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const users = [
   {
     id: 1,
+    login: 'alice',
     firstName: 'Alice',
     lastName: 'Martin',
     email: 'alice@biblio.test',
@@ -11,6 +12,7 @@ const users = [
   },
   {
     id: 2,
+    login: 'benoit',
     firstName: 'Benoit',
     lastName: 'Durand',
     email: 'benoit@biblio.test',
@@ -19,6 +21,7 @@ const users = [
   },
   {
     id: 3,
+    login: 'test',
     firstName: 'Claire',
     lastName: 'Faure',
     email: 'claire@biblio.test',
@@ -258,6 +261,7 @@ const getFriendsOfUser = (userId) => {
     return friend
       ? {
           id: friend.id,
+          login: friend.login,
           firstName: friend.firstName,
           lastName: friend.lastName,
           email: friend.email,

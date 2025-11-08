@@ -130,6 +130,7 @@ paths:
                 value:
                   firstName: Alice
                   lastName: Martin
+                  login: alice
                   email: alice@example.com
                   password: Mot2PasseSecurise!
                   dateOfBirth: '1990-03-12'
@@ -146,6 +147,7 @@ paths:
                     token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
                     user:
                       id: 42
+                      login: alice
                       firstName: Alice
                       lastName: Martin
                       email: alice@example.com
@@ -180,7 +182,7 @@ paths:
             examples:
               login:
                 value:
-                  email: alice@example.com
+                  identifier: alice
                   password: Mot2PasseSecurise!
       responses:
         '200':
@@ -195,6 +197,7 @@ paths:
                     token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
                     user:
                       id: 42
+                      login: alice
                       firstName: Alice
                       lastName: Martin
                       email: alice@example.com
@@ -383,11 +386,13 @@ paths:
                   value:
                     users:
                       - id: 1
+                        login: alice
                         firstName: Alice
                         lastName: Martin
                         email: alice@biblio.test
                         createdAt: '2024-01-10T08:00:00.000Z'
                       - id: 2
+                        login: benoit
                         firstName: Benoit
                         lastName: Durand
                         email: benoit@biblio.test
@@ -2162,6 +2167,9 @@ components:
         id:
           type: integer
           example: 1
+        login:
+          type: string
+          example: alice
         firstName:
           type: string
           example: Alice
@@ -2189,6 +2197,7 @@ components:
           example: user
       required:
         - id
+        - login
         - firstName
         - lastName
         - email
@@ -2759,6 +2768,9 @@ components:
           type: string
         lastName:
           type: string
+        login:
+          type: string
+          description: Identifiant unique (3-30 caractères alphanumériques avec .-_).
         email:
           type: string
           format: email
@@ -2772,20 +2784,34 @@ components:
       required:
         - firstName
         - lastName
+        - login
         - email
         - password
     AuthRequest:
       type: object
       properties:
+        identifier:
+          type: string
+          description: Login unique ou adresse email (prioritaire s'il est fourni).
+        login:
+          type: string
+          description: Alias de `identifier` pour rétrocompatibilité.
         email:
           type: string
           format: email
+          description: Adresse email (utilisée si `identifier` et `login` sont absents).
         password:
           type: string
           format: password
       required:
-        - email
         - password
+      anyOf:
+        - required:
+            - identifier
+        - required:
+            - login
+        - required:
+            - email
     AuthResponse:
       type: object
       properties:

@@ -20,7 +20,7 @@ Plateforme sociale pour lectrices et lecteurs : gérez votre bibliothèque perso
 
 ## Fonctionnalités
 
-- **Authentification sécurisée** : inscription / connexion par email + mot de passe, prise en charge du SSO Google OAuth 2.0.
+- **Authentification sécurisée** : inscription / connexion par login unique ou email + mot de passe, prise en charge du SSO Google OAuth 2.0.
 - **Gestion de bibliothèque personnelle** : ajout de livres, wishlist, suivi des prêts.
 - **Dimension sociale** : demandes d’amis, partage de bibliothèques, fil d’activité, avis/commentaires (arrivent bientôt).
 - **Catalogue collaboratif** : proposition de nouveaux ouvrages, validation par les administrateurs, statistiques publiques.
@@ -140,7 +140,7 @@ cp .env.example .env.local   # renseigner VITE_API_URL & VITE_GOOGLE_CLIENT_ID
 ## Déploiement
 
 ### Backend
-1. Provisionner une base PostgreSQL et exécuter les migrations.
+1. Provisionner une base PostgreSQL et exécuter les migrations (dont `backend/resources/migrations/20240614_add_user_login.sql` pour le login unique).
 2. Déployer le code (docker, PM2, systemd…) puis `npm ci --production`.
 3. Fournir un fichier `.env` complet (cf. plus haut) et vérifier :
    - accès base, SMTP, JWT, Google OAuth.

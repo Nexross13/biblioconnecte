@@ -2,7 +2,7 @@ const { query } = require('../config/db');
 
 const listFriends = async (userId) => {
   const result = await query(
-    `SELECT u.id, u.first_name, u.last_name, u.email, f.accepted_at
+    `SELECT u.id, u.login, u.first_name, u.last_name, u.email, f.accepted_at
      FROM friendships f
      JOIN users u ON u.id = CASE WHEN f.requester_id = $1 THEN f.addressee_id ELSE f.requester_id END
      WHERE (f.requester_id = $1 OR f.addressee_id = $1)
@@ -13,6 +13,7 @@ const listFriends = async (userId) => {
 
   return result.rows.map((row) => ({
     id: row.id,
+    login: row.login,
     firstName: row.first_name,
     lastName: row.last_name,
     email: row.email,
@@ -22,7 +23,7 @@ const listFriends = async (userId) => {
 
 const listIncomingRequests = async (userId) => {
   const result = await query(
-    `SELECT u.id, u.first_name, u.last_name, u.email, f.requested_at
+    `SELECT u.id, u.login, u.first_name, u.last_name, u.email, f.requested_at
      FROM friendships f
      JOIN users u ON u.id = f.requester_id
      WHERE f.addressee_id = $1 AND f.status = 'pending'
@@ -32,6 +33,7 @@ const listIncomingRequests = async (userId) => {
 
   return result.rows.map((row) => ({
     requesterId: row.id,
+    login: row.login,
     firstName: row.first_name,
     lastName: row.last_name,
     email: row.email,
