@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import Loader from '../components/Loader.jsx'
@@ -52,14 +51,8 @@ const AuthorDetails = () => {
   const author = authorQuery.data
   const books = booksQuery.data ?? []
   const formattedName = [author.firstName, author.lastName].filter(Boolean).join(' ').trim()
-  const librarySet = useMemo(
-    () => new Set((libraryQuery.data ?? []).map((entry) => entry.id)),
-    [libraryQuery.data],
-  )
-  const wishlistSet = useMemo(
-    () => new Set((wishlistQuery.data ?? []).map((entry) => entry.id)),
-    [wishlistQuery.data],
-  )
+  const librarySet = new Set((libraryQuery.data ?? []).map((entry) => entry.id))
+  const wishlistSet = new Set((wishlistQuery.data ?? []).map((entry) => entry.id))
 
   return (
     <section className="space-y-8">
