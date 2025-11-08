@@ -1,11 +1,16 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import Loader from '../components/Loader.jsx'
 import BookCard from '../components/BookCard.jsx'
 import { fetchAuthorById, fetchAuthorBooks } from '../api/authors'
+import { fetchLibrary } from '../api/library'
+import { fetchWishlist } from '../api/wishlist'
+import useAuth from '../hooks/useAuth'
 
 const AuthorDetails = () => {
   const { id } = useParams()
+  const { isAuthenticated } = useAuth()
 
   const authorQuery = useQuery({
     queryKey: ['author', id],
@@ -15,6 +20,18 @@ const AuthorDetails = () => {
   const booksQuery = useQuery({
     queryKey: ['author-books', id],
     queryFn: () => fetchAuthorBooks(id),
+  })
+
+  const libraryQuery = useQuery({
+    queryKey: ['library'],
+    queryFn: fetchLibrary,
+    enabled: isAuthenticated,
+  })
+
+  const wishlistQuery = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: fetchWishlist,
+    enabled: isAuthenticated,
   })
 
   if (authorQuery.isLoading) {
@@ -35,6 +52,14 @@ const AuthorDetails = () => {
   const author = authorQuery.data
   const books = booksQuery.data ?? []
   const formattedName = [author.firstName, author.lastName].filter(Boolean).join(' ').trim()
+  const librarySet = useMemo(
+    () => new Set((libraryQuery.data ?? []).map((entry) => entry.id)),
+    [libraryQuery.data],
+  )
+  const wishlistSet = useMemo(
+    () => new Set((wishlistQuery.data ?? []).map((entry) => entry.id)),
+    [wishlistQuery.data],
+  )
 
   return (
     <section className="space-y-8">
@@ -63,7 +88,12 @@ const AuthorDetails = () => {
                 return dateB - dateA
               })
               .map((book) => (
-                <BookCard key={book.id} book={book} />
+                <BookCard
+                  key={book.id}
+                  book={book}
+                  inLibrary={librarySet.has(book.id)}
+                  inWishlist={!librarySet.has(book.id) && wishlistSet.has(book.id)}
+                />
               ))}
           </div>
         ) : (
