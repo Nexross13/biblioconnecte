@@ -7,6 +7,12 @@ const { verifyGoogleCredential } = require('../services/googleAuthService');
 const { getUsers, getUserById } = require('../data/mockData');
 const { getRoleForEmail } = require('../utils/roles');
 const { IS_PRIMARY_FRONTEND_SECURE } = require('../config/frontend');
+const {
+  normalizeLoginInput,
+  isLoginFormatValid,
+  buildLoginCandidate,
+  MAX_LOGIN_LENGTH,
+} = require('../utils/login');
 
 const THIRTEEN_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 13;
 const SESSION_COOKIE_NAME = 'biblio_session';
@@ -55,10 +61,35 @@ const clearSessionCookie = (res) => {
 
 const generateRandomPassword = () => crypto.randomBytes(32).toString('hex');
 
+const normalizeIdentifierInput = (value) =>
+  typeof value === 'string' ? value.trim().toLowerCase() : '';
+
+const generateAvailableLogin = async (seed) => {
+  const base = buildLoginCandidate(seed || `reader${Date.now().toString(36)}`);
+  let candidate = base;
+
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await userModel.findByLogin(candidate);
+    if (!exists) {
+      return candidate;
+    }
+
+    const suffix = `${attempt + 1}`;
+    const trimmedBase = base.slice(0, MAX_LOGIN_LENGTH - suffix.length);
+    candidate = `${trimmedBase}${suffix}`;
+  }
+
+  const error = new Error('Unable to allocate a unique login');
+  error.status = 500;
+  throw error;
+};
+
 const createToken = (user) => {
   const role = user.role || getRoleForEmail(user.email);
   const payload = {
     id: user.id,
+    login: user.login,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -86,31 +117,61 @@ const normalizeDate = (value) => {
 
 const register = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
-    const rawDateOfBirth = req.body.dateOfBirth ?? req.body.date_naissance;
+    const firstName = typeof req.body?.firstName === 'string' ? req.body.firstName.trim() : '';
+    const lastName = typeof req.body?.lastName === 'string' ? req.body.lastName.trim() : '';
+    const emailInput = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    const loginInput = normalizeLoginInput(req.body?.login);
+    const rawDateOfBirth = req.body?.dateOfBirth ?? req.body?.date_naissance;
     const dateOfBirth = normalizeDate(rawDateOfBirth);
 
+    if (!firstName || !lastName || !emailInput || !password || !loginInput) {
+      const error = new Error('Missing registration fields');
+      error.status = 400;
+      throw error;
+    }
+
+    if (!isLoginFormatValid(loginInput)) {
+      const error = new Error('Login must contain 3 to 30 characters using letters, numbers, dots, hyphens or underscores');
+      error.status = 400;
+      throw error;
+    }
+
+    if (rawDateOfBirth && !dateOfBirth) {
+      const error = new Error('Invalid date_of_birth format');
+      error.status = 400;
+      throw error;
+    }
+
     if (process.env.USE_MOCKS === 'true') {
-      if (!firstName || !lastName || !email || !password) {
-        const error = new Error('Missing registration fields');
-        error.status = 400;
+      const mockUsers = getUsers();
+      const existingMockLogin = mockUsers.find(
+        (user) => user.login?.toLowerCase() === loginInput.toLowerCase(),
+      );
+      if (existingMockLogin) {
+        const error = new Error('Login already in use');
+        error.status = 409;
         throw error;
       }
-      if (rawDateOfBirth && !dateOfBirth) {
-        const error = new Error('Invalid date_of_birth format');
-        error.status = 400;
+      const existingMockEmail = mockUsers.find(
+        (user) => user.email.toLowerCase() === emailInput.toLowerCase(),
+      );
+      if (existingMockEmail) {
+        const error = new Error('An account already exists with this email');
+        error.status = 409;
         throw error;
       }
 
-      const role = getRoleForEmail(email);
+      const role = getRoleForEmail(emailInput);
       setSessionCookie(res, 'mock-jwt-token');
       return res.status(201).json({
         token: 'mock-jwt-token',
         user: {
           id: 999,
+          login: loginInput,
           firstName,
           lastName,
-          email,
+          email: emailInput,
           role,
           dateOfBirth,
           createdAt: new Date().toISOString(),
@@ -118,19 +179,18 @@ const register = async (req, res, next) => {
       });
     }
 
-    if (!firstName || !lastName || !email || !password) {
-      const error = new Error('Missing registration fields');
-      error.status = 400;
-      throw error;
-    }
-    if (rawDateOfBirth && !dateOfBirth) {
-      const error = new Error('Invalid date_of_birth format');
-      error.status = 400;
+    const [existingLogin, existingEmail] = await Promise.all([
+      userModel.findByLogin(loginInput),
+      userModel.findByEmail(emailInput),
+    ]);
+
+    if (existingLogin) {
+      const error = new Error('Login already in use');
+      error.status = 409;
       throw error;
     }
 
-    const existing = await userModel.findByEmail(email);
-    if (existing) {
+    if (existingEmail) {
       const error = new Error('An account already exists with this email');
       error.status = 409;
       throw error;
@@ -138,9 +198,10 @@ const register = async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await userModel.createUser({
+      login: loginInput,
       firstName,
       lastName,
-      email,
+      email: emailInput,
       passwordHash,
       dateOfBirth,
     });
@@ -159,15 +220,23 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      const error = new Error('Email and password are required');
+    const identifierInput = normalizeIdentifierInput(
+      req.body?.identifier ?? req.body?.login ?? req.body?.email,
+    );
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!identifierInput || !password) {
+      const error = new Error('Login/email and password are required');
       error.status = 400;
       throw error;
     }
 
     if (process.env.USE_MOCKS === 'true') {
-      const mockUser = getUsers().find((user) => user.email === email);
+      const lowered = identifierInput.toLowerCase();
+      const mockUser = getUsers().find(
+        (user) =>
+          user.email.toLowerCase() === lowered || user.login?.toLowerCase() === lowered,
+      );
       if (!mockUser) {
         const error = new Error('Invalid credentials');
         error.status = 401;
@@ -182,7 +251,7 @@ const login = async (req, res, next) => {
       });
     }
 
-    const user = await userModel.findByEmail(email);
+    const user = await userModel.findByLoginOrEmail(identifierInput);
     if (!user) {
       const error = new Error('Invalid credentials');
       error.status = 401;
@@ -204,6 +273,7 @@ const login = async (req, res, next) => {
       token,
       user: {
         id: user.id,
+        login: user.login,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
@@ -321,10 +391,12 @@ const loginWithGoogle = async (req, res, next) => {
       const mockUsers = getUsers();
       const existing = mockUsers.find((user) => user.email === payload.email);
       const role = getRoleForEmail(payload.email);
+      const fallBackLogin = normalizeLoginInput(payload.email?.split('@')[0]) || 'google-user';
       const user =
         existing ||
         {
           id: 1000,
+          login: fallBackLogin,
           firstName: payload.firstName || 'Utilisateur',
           lastName: payload.lastName || '',
           email: payload.email,
@@ -348,18 +420,22 @@ const loginWithGoogle = async (req, res, next) => {
       throw error;
     }
 
+    const normalizedEmail = payload.email.trim().toLowerCase();
     let user = await userModel.findByGoogleId(payload.googleId);
     if (!user) {
-      const existingByEmail = await userModel.findByEmail(payload.email);
+      const existingByEmail = await userModel.findByEmail(normalizedEmail);
       if (existingByEmail) {
         await userModel.setGoogleId(existingByEmail.id, payload.googleId);
         user = { ...existingByEmail, googleId: payload.googleId };
       } else {
         const passwordHash = await bcrypt.hash(generateRandomPassword(), 10);
+        const loginSeed = payload.email?.split('@')[0] || payload.firstName || payload.lastName || 'reader';
+        const login = await generateAvailableLogin(loginSeed);
         user = await userModel.createUser({
+          login,
           firstName: payload.firstName || 'Utilisateur',
           lastName: payload.lastName || '',
-          email: payload.email,
+          email: normalizedEmail,
           passwordHash,
           googleId: payload.googleId,
         });
@@ -374,6 +450,7 @@ const loginWithGoogle = async (req, res, next) => {
       token,
       user: {
         id: user.id,
+        login: user.login,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,

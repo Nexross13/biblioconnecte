@@ -12,6 +12,7 @@ const {
   getFriendsOfUser,
 } = require('../data/mockData');
 const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
+const { normalizeLoginInput, isLoginFormatValid } = require('../utils/login');
 
 const FRONTEND_BASE = PRIMARY_FRONTEND_ORIGIN.replace(/\/$/, '');
 
@@ -268,6 +269,7 @@ const listFriendRequests = async (req, res, next) => {
           return requester
             ? {
                 requesterId: requester.id,
+                login: requester.login,
                 firstName: requester.firstName,
                 lastName: requester.lastName,
                 email: requester.email,
@@ -391,14 +393,21 @@ const updateProfile = async (req, res, next) => {
 
     const firstName = req.body?.firstName?.trim();
     const lastName = req.body?.lastName?.trim();
-    const email = req.body?.email?.trim();
+    const loginInput = normalizeLoginInput(req.body?.login);
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const passwordInput = typeof req.body?.password === 'string' ? req.body.password : undefined;
     const trimmedPassword = passwordInput?.trim();
     const rawDateOfBirth = req.body?.dateOfBirth ?? req.body?.date_naissance;
     const dateOfBirth = normalizeDate(rawDateOfBirth);
 
-    if (!firstName || !lastName || !email) {
-      const err = new Error('firstName, lastName and email are required');
+    if (!firstName || !lastName || !email || !loginInput) {
+      const err = new Error('firstName, lastName, login and email are required');
+      err.status = 400;
+      throw err;
+    }
+
+    if (!isLoginFormatValid(loginInput)) {
+      const err = new Error('Login must contain 3 to 30 characters using letters, numbers, dots, hyphens or underscores');
       err.status = 400;
       throw err;
     }
@@ -419,6 +428,7 @@ const updateProfile = async (req, res, next) => {
       return res.json({
         user: {
           id: userId,
+          login: loginInput,
           firstName,
           lastName,
           email,
@@ -428,7 +438,15 @@ const updateProfile = async (req, res, next) => {
       });
     }
 
+    const existingLogin = await userModel.findByLogin(loginInput);
+    if (existingLogin && Number(existingLogin.id) !== Number(userId)) {
+      const err = new Error('Login already in use');
+      err.status = 409;
+      throw err;
+    }
+
     const updatedUser = await userModel.updateUser(userId, {
+      login: loginInput,
       firstName,
       lastName,
       email,
