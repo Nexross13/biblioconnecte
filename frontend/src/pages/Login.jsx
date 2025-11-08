@@ -79,7 +79,6 @@ const Login = () => {
             name="identifier"
             type="text"
             autoComplete="username"
-            placeholder="ex: alice ou alice@example.com"
           />
         </div>
         <div className="space-y-2">
