@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { isLoginValid, normalizeLogin } from '../utils/login'
 
 const MAX_IMAGE_SIZE_MB = 5
 
 const EditProfileModal = ({ user, onClose, onUpdated }) => {
   const [firstName, setFirstName] = useState(user.firstName || '')
   const [lastName, setLastName] = useState(user.lastName || '')
+  const [login, setLogin] = useState(user.login || '')
   const [email, setEmail] = useState(user.email || '')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -47,8 +49,15 @@ const EditProfileModal = ({ user, onClose, onUpdated }) => {
     event.preventDefault()
     setError(null)
 
-    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      setError('Les champs prénom, nom et email sont obligatoires')
+    const normalizedLogin = normalizeLogin(login)
+
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !normalizedLogin) {
+      setError('Les champs prénom, nom, login et email sont obligatoires')
+      return
+    }
+
+    if (!isLoginValid(normalizedLogin)) {
+      setError('Le login doit contenir 3 à 30 caractères (lettres/chiffres .-_).')
       return
     }
 
@@ -66,6 +75,7 @@ const EditProfileModal = ({ user, onClose, onUpdated }) => {
     const formData = new FormData()
     formData.append('firstName', firstName.trim())
     formData.append('lastName', lastName.trim())
+    formData.append('login', normalizedLogin)
     formData.append('email', email.trim())
 
     if (password) {
@@ -123,6 +133,19 @@ const EditProfileModal = ({ user, onClose, onUpdated }) => {
               />
             </label>
           </div>
+          <label className="space-y-2 text-sm text-slate-500 dark:text-slate-300">
+            <span>Login (public)</span>
+            <input
+              className="input"
+              value={login}
+              onChange={(event) => setLogin(event.target.value)}
+              autoComplete="username"
+              required
+            />
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              3-30 caractères, lettres/chiffres et .-_ uniquement.
+            </span>
+          </label>
           <label className="space-y-2 text-sm text-slate-500 dark:text-slate-300">
             <span>Email</span>
             <input

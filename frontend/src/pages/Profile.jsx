@@ -127,6 +127,14 @@ const Profile = () => {
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              Login
+            </dt>
+            <dd className="text-base text-slate-700 dark:text-slate-100">
+              @{userQuery.data.login}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
               Email
             </dt>
             <dd className="text-base text-slate-700 dark:text-slate-100">

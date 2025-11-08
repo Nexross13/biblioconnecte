@@ -81,6 +81,7 @@ test('authController.register crée un utilisateur mock', async () => {
     body: {
       firstName: 'John',
       lastName: 'Doe',
+      login: 'johnny',
       email: 'john@biblio.test',
       password: 'secret',
       dateOfBirth: '1991-04-20',
@@ -88,6 +89,7 @@ test('authController.register crée un utilisateur mock', async () => {
   });
 
   assert.equal(res.statusCode, 201);
+  assert.equal(res.body.user.login, 'johnny');
   assert.equal(res.body.user.email, 'john@biblio.test');
   assert.equal(res.body.user.role, 'user');
   assert.equal(res.body.user.dateOfBirth, '1991-04-20');
@@ -110,13 +112,23 @@ test('authController.register rejette les champs manquants', async () => {
 
 test('authController.login renvoie un jeton mock', async () => {
   const res = await callController(authController.login, {
-    body: { email: 'alice@biblio.test', password: 'secret' },
+    body: { login: 'alice', password: 'secret' },
   });
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.token, 'mock-jwt-token');
   assert.equal(res.body.user.email, 'alice@biblio.test');
+  assert.equal(res.body.user.login, 'alice');
   assert.equal(res.body.user.role, 'admin');
+});
+
+test('authController.login accepte un identifiant email legacy', async () => {
+  const res = await callController(authController.login, {
+    body: { email: 'alice@biblio.test', password: 'secret' },
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.user.email, 'alice@biblio.test');
 });
 
 test('authController.login renvoie 401 pour un utilisateur inconnu', async () => {

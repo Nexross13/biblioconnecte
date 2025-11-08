@@ -90,8 +90,8 @@ const Friends = () => {
     onError: () => toast.error('Impossible de refuser la demande'),
   })
 
-  const friendsEmails = useMemo(
-    () => new Set((friendsQuery.data || []).map((friend) => friend.email.toLowerCase())),
+  const friendsIds = useMemo(
+    () => new Set((friendsQuery.data || []).map((friend) => friend.id)),
     [friendsQuery.data],
   )
 
@@ -101,7 +101,9 @@ const Friends = () => {
     if (!term) return []
     return usersQuery.data.filter((candidate) => {
       if (candidate.id === user.id) return false
-      return candidate.email.toLowerCase().includes(term)
+      const emailMatch = candidate.email.toLowerCase().includes(term)
+      const loginMatch = (candidate.login?.toLowerCase() || '').includes(term)
+      return emailMatch || loginMatch
     })
   }, [usersQuery.data, user.id, searchTerm])
 
@@ -119,7 +121,7 @@ const Friends = () => {
             type="search"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Rechercher un profil par email"
+            placeholder="Rechercher un profil par login ou email"
             className="input"
           />
         </div>
@@ -133,7 +135,7 @@ const Friends = () => {
           ) : filteredCandidates.length ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredCandidates.map((candidate) => {
-                const alreadyFriend = friendsEmails.has(candidate.email.toLowerCase())
+                const alreadyFriend = friendsIds.has(candidate.id)
                 const pending = pendingTargets.has(candidate.id)
                 const isActive = activeTarget === candidate.id && sendRequestMutation.isPending
 
@@ -161,6 +163,9 @@ const Friends = () => {
                       <h3 className="text-base font-semibold text-primary">
                         {candidate.firstName} {candidate.lastName}
                       </h3>
+                      {candidate.login && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">@{candidate.login}</p>
+                      )}
                     </div>
                     <button
                       type="button"
