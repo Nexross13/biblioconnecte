@@ -337,7 +337,7 @@ const buildAuthorProposalDecisionEmail = ({ proposer, proposal, decision }) => {
               </p>
               <p style="margin:24px 0 0;">
                 <a href="${actionUrl}" style="display:inline-block;padding:14px 28px;font-weight:600;font-size:15px;color:#ffffff;background:linear-gradient(135deg,#2563eb,#7c3aed);text-decoration:none;border-radius:999px;box-shadow:0 10px 20px rgba(37,99,235,0.35);">
-                  Accéder au tableau de bord
+                  Aller sur l'application
                 </a>
               </p>
             </td>
