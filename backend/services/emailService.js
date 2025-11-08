@@ -277,14 +277,14 @@ const sendBookProposalDecisionNotification = async ({ proposer, proposal, decisi
   await sendEmail({ to: proposer.email, ...message });
 };
 
-const buildAuthorProposalDecisionEmail = ({ proposer, proposal, decision, dashboardUrl }) => {
+const buildAuthorProposalDecisionEmail = ({ proposer, proposal, decision }) => {
   const proposerName = [proposer.firstName, proposer.lastName].filter(Boolean).join(' ') || proposer.email;
   const fullName = `${proposal.firstName} ${proposal.lastName}`.trim();
   const isApproved = decision === 'approved';
   const subject = isApproved
     ? `Votre auteur "${fullName}" a été approuvé ✨`
     : `Votre auteur "${fullName}" nécessite des ajustements`;
-  const actionUrl = dashboardUrl || `${FRONTEND_BASE}/`;
+  const actionUrl = `${FRONTEND_BASE}/`;
   const badgeColor = isApproved ? '#16a34a' : '#dc2626';
   const badgeLabel = isApproved ? 'Approuvé' : 'Refusé';
   const biographyText = proposal.biography || 'Aucune biographie détaillée n’a été fournie.';
@@ -356,18 +356,13 @@ const buildAuthorProposalDecisionEmail = ({ proposer, proposal, decision, dashbo
   return { subject, text, html };
 };
 
-const sendAuthorProposalDecisionNotification = async ({
-  proposer,
-  proposal,
-  decision,
-  dashboardUrl,
-}) => {
+const sendAuthorProposalDecisionNotification = async ({ proposer, proposal, decision }) => {
   if (!proposer?.email) {
     console.warn('📨  Email skipped: proposer email missing');
     return;
   }
 
-  const message = buildAuthorProposalDecisionEmail({ proposer, proposal, decision, dashboardUrl });
+  const message = buildAuthorProposalDecisionEmail({ proposer, proposal, decision });
   await sendEmail({ to: proposer.email, ...message });
 };
 
