@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { GoogleLogin } from '@react-oauth/google'
 import useAuth from '../hooks/useAuth'
+import { isLoginValid, normalizeLogin } from '../utils/login'
 
 const Register = () => {
   const { register, googleLogin, isAuthenticated, registerStatus, googleLoginStatus } = useAuth()
@@ -21,13 +22,19 @@ const Register = () => {
     const payload = {
       firstName: formData.get('firstName'),
       lastName: formData.get('lastName'),
+      login: normalizeLogin(formData.get('login')),
       email: formData.get('email'),
       password: formData.get('password'),
       dateOfBirth: formData.get('dateOfBirth') || null,
     }
 
-    if (!payload.firstName || !payload.lastName || !payload.email || !payload.password) {
+    if (!payload.firstName || !payload.lastName || !payload.login || !payload.email || !payload.password) {
       toast.error('Tous les champs sont obligatoires')
+      return
+    }
+
+    if (!isLoginValid(payload.login)) {
+      toast.error('Le login doit contenir 3 à 30 caractères (lettres/chiffres .-_).')
       return
     }
 
@@ -88,6 +95,21 @@ const Register = () => {
             </label>
             <input className="input" id="lastName" name="lastName" autoComplete="family-name" />
           </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-600 dark:text-slate-300" htmlFor="login">
+            Login (public)
+          </label>
+          <input
+            className="input"
+            id="login"
+            name="login"
+            autoComplete="username"
+            placeholder="ex: bibliogirl92"
+          />
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            3-30 caractères, lettres/chiffres avec .-_ uniquement.
+          </p>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-600 dark:text-slate-300" htmlFor="email">
