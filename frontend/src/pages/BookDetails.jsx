@@ -150,9 +150,8 @@ const BookDetails = () => {
   const inLibrary = libraryQuery.data?.some((item) => item.id === book.id) ?? false
   const inWishlist = wishlistQuery.data?.some((item) => item.id === book.id) ?? false
 
-  const authorEntries = useMemo(() => {
-    if (Array.isArray(book.authors) && book.authors.length) {
-      return book.authors
+  const authorEntries = Array.isArray(book.authors) && book.authors.length
+    ? book.authors
         .map((author) => ({
           id: author.id,
           name:
@@ -161,15 +160,12 @@ const BookDetails = () => {
             '',
         }))
         .filter((entry) => entry.name.length)
-    }
-    if (Array.isArray(book.authorNames) && book.authorNames.length) {
-      return book.authorNames
+    : Array.isArray(book.authorNames) && book.authorNames.length
+    ? book.authorNames
         .filter(Boolean)
         .map((name) => ({ id: null, name: String(name).trim() }))
         .filter((entry) => entry.name.length)
-    }
-    return []
-  }, [book.authors, book.authorNames])
+    : []
 
   const ensureAuthenticated = () => {
     if (!isAuthenticated) {
