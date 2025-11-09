@@ -484,6 +484,41 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Utilisateurs
+      summary: Mettre à jour le rôle d'un utilisateur
+      description: Réservé aux administrateurs.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRoleUpdateRequest'
+      responses:
+        '200':
+          description: Rôle mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /users/{id}/friends:
     get:
       tags:
@@ -1934,6 +1969,61 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /reviews/moderation-feed:
+    get:
+      tags:
+        - Avis
+      summary: Suivre les derniers avis pour la modération
+      description: Retourne les avis les plus récents avec les informations nécessaires pour que les modérateurs puissent agir.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Nombre maximum d'avis à retourner.
+      responses:
+        '200':
+          description: Avis prêts à être modérés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReviewModerationEntry'
+              examples:
+                feed:
+                  value:
+                    reviews:
+                      - id: 42
+                        userId: 5
+                        bookId: 9
+                        rating: 4
+                        comment: Passionnant mais un peu long sur la fin.
+                        createdAt: '2024-05-05T09:30:00.000Z'
+                        updatedAt: '2024-05-05T09:30:00.000Z'
+                        author:
+                          firstName: Marie
+                          lastName: Lefèvre
+                          email: marie@example.com
+                        book:
+                          id: 9
+                          title: Astérix
+                          volume: '2'
+                          volumeTitle: La Serpe d'or
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       tags:
         - Avis
@@ -1941,9 +2031,41 @@ paths:
       description: Seul l'auteur de l'avis ou un modérateur peut effectuer cette suppression.
       parameters:
         - $ref: '#/components/parameters/ReviewId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewDeleteRequest'
       responses:
         '204':
           description: Avis supprimé
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /reviews/{id}/approve:
+    post:
+      tags:
+        - Avis
+      summary: Valider un avis
+      description: Action réservée aux modérateurs et administrateurs pour signaler qu'un avis respecte les règles de la communauté.
+      parameters:
+        - $ref: '#/components/parameters/ReviewId'
+      responses:
+        '200':
+          description: Avis validé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  review:
+                    $ref: '#/components/schemas/Review'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2217,6 +2339,7 @@ components:
           type: string
           enum:
             - user
+            - moderator
             - admin
           example: user
       required:
@@ -2226,6 +2349,19 @@ components:
         - lastName
         - email
         - createdAt
+    UserRoleUpdateRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+            - user
+            - moderator
+            - admin
+          example: moderator
+      required:
+        - role
+      additionalProperties: false
         - role
     Friend:
       type: object
@@ -2744,6 +2880,41 @@ components:
           type: string
           format: date-time
           example: '2024-03-12T10:00:00.000Z'
+        moderationStatus:
+          type: string
+          enum:
+            - pending
+            - approved
+          example: approved
+        moderatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        moderatedBy:
+          type: integer
+          nullable: true
+        moderator:
+          type: object
+          nullable: true
+          properties:
+            firstName:
+              type: string
+            lastName:
+              type: string
+          required:
+            - firstName
+            - lastName
+        author:
+          type: object
+          nullable: true
+          properties:
+            firstName:
+              type: string
+            lastName:
+              type: string
+          required:
+            - firstName
+            - lastName
       required:
         - id
         - userId
@@ -2751,6 +2922,28 @@ components:
         - rating
         - createdAt
         - updatedAt
+    ReviewModerationEntry:
+      allOf:
+        - $ref: '#/components/schemas/Review'
+        - type: object
+          properties:
+            book:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: integer
+                title:
+                  type: string
+                volume:
+                  type: string
+                  nullable: true
+                volumeTitle:
+                  type: string
+                  nullable: true
+              required:
+                - id
+                - title
     ReviewCreateRequest:
       type: object
       properties:
@@ -2771,6 +2964,15 @@ components:
           maximum: 5
         comment:
           type: string
+          nullable: true
+      additionalProperties: false
+    ReviewDeleteRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Motif requis lorsque la suppression est réalisée par un modérateur ou un administrateur.
+      additionalProperties: false
     LibraryEntry:
       type: object
       properties:

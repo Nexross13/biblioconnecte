@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const userController = require('../controllers/userController');
-const { authenticate } = require('../middleware/authMiddleware');
+const { authenticate, requireAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -68,6 +68,7 @@ const profileImageUpload = multer({
 });
 
 router.get('/', authenticate, userController.listUsers);
+router.patch('/:id/role', authenticate, requireAdmin, userController.updateUserRole);
 router.get('/:id/friends/requests', authenticate, userController.listFriendRequests);
 router.post('/:id/friends/:friendId/reject', authenticate, userController.rejectFriend);
 router.get('/:id/library', authenticate, userController.getUserLibrary);

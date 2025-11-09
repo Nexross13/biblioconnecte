@@ -1,4 +1,5 @@
 const { query } = require('../config/db');
+const { normalizeRole } = require('../utils/roles');
 
 const formatUser = (row) => ({
   id: row.id,
@@ -8,6 +9,7 @@ const formatUser = (row) => ({
   email: row.email,
   googleId: row.google_id || null,
   dateOfBirth: row.date_of_birth || null,
+  role: row.role || 'user',
   createdAt: row.created_at,
 });
 
@@ -29,19 +31,21 @@ const createUser = async ({
   passwordHash,
   dateOfBirth = null,
   googleId = null,
+  role = 'user',
 }) => {
+  const persistedRole = normalizeRole(role) || 'user';
   const result = await query(
-    `INSERT INTO users (login, first_name, last_name, email, password_hash, date_of_birth, google_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING id, login, first_name, last_name, email, date_of_birth, created_at, google_id`,
-    [login, firstName, lastName, email, passwordHash, dateOfBirth, googleId],
+    `INSERT INTO users (login, first_name, last_name, email, password_hash, date_of_birth, google_id, role)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, login, first_name, last_name, email, date_of_birth, created_at, google_id, role`,
+    [login, firstName, lastName, email, passwordHash, dateOfBirth, googleId, persistedRole],
   );
   return mapUser(result.rows[0]);
 };
 
 const findByEmail = async (email) => {
   const result = await query(
-    `SELECT id, login, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id
+    `SELECT id, login, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id, role
      FROM users WHERE LOWER(email) = LOWER($1)`,
     [email],
   );
@@ -50,7 +54,7 @@ const findByEmail = async (email) => {
 
 const findByLogin = async (login) => {
   const result = await query(
-    `SELECT id, login, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id
+    `SELECT id, login, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id, role
      FROM users
      WHERE LOWER(login) = LOWER($1)`,
     [login],
@@ -60,7 +64,7 @@ const findByLogin = async (login) => {
 
 const findByLoginOrEmail = async (identifier) => {
   const result = await query(
-    `SELECT id, login, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id
+    `SELECT id, login, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id, role
      FROM users
      WHERE LOWER(login) = LOWER($1) OR LOWER(email) = LOWER($1)
      LIMIT 1`,
@@ -71,7 +75,7 @@ const findByLoginOrEmail = async (identifier) => {
 
 const findByGoogleId = async (googleId) => {
   const result = await query(
-    `SELECT id, login, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id
+    `SELECT id, login, first_name, last_name, email, password_hash, date_of_birth, created_at, google_id, role
      FROM users
      WHERE google_id = $1`,
     [googleId],
@@ -81,7 +85,7 @@ const findByGoogleId = async (googleId) => {
 
 const findById = async (id) => {
   const result = await query(
-    `SELECT id, login, first_name, last_name, email, google_id, date_of_birth, created_at
+    `SELECT id, login, first_name, last_name, email, google_id, date_of_birth, created_at, role
      FROM users WHERE id = $1`,
     [id],
   );
@@ -98,7 +102,7 @@ const updateUser = async (id, { login, firstName, lastName, email, dateOfBirth }
          date_of_birth = COALESCE($6, date_of_birth),
          updated_at = NOW()
      WHERE id = $1
-     RETURNING id, login, first_name, last_name, email, date_of_birth, created_at, google_id`,
+     RETURNING id, login, first_name, last_name, email, date_of_birth, created_at, google_id, role`,
     [id, login, firstName, lastName, email, dateOfBirth ?? null],
   );
   return mapUser(result.rows[0]);
@@ -106,7 +110,7 @@ const updateUser = async (id, { login, firstName, lastName, email, dateOfBirth }
 
 const listUsers = async () => {
   const result = await query(
-    `SELECT id, login, first_name, last_name, email, google_id, date_of_birth, created_at
+    `SELECT id, login, first_name, last_name, email, google_id, date_of_birth, created_at, role
      FROM users
      ORDER BY created_at DESC`,
   );
@@ -133,6 +137,19 @@ const setGoogleId = async (id, googleId) => {
   );
 };
 
+const updateUserRole = async (id, role) => {
+  const persistedRole = normalizeRole(role) || 'user';
+  const result = await query(
+    `UPDATE users
+     SET role = $2,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, login, first_name, last_name, email, date_of_birth, created_at, google_id, role`,
+    [id, persistedRole],
+  );
+  return mapUser(result.rows[0]);
+};
+
 module.exports = {
   createUser,
   findByEmail,
@@ -144,4 +161,5 @@ module.exports = {
   updateUserPassword,
   setGoogleId,
   listUsers,
+  updateUserRole,
 };

@@ -10,9 +10,11 @@ const {
   getUsers: getMockUsers,
   getUserById: getMockUserById,
   getFriendsOfUser,
+  setUserRole: setMockUserRole,
 } = require('../data/mockData');
 const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
 const { normalizeLoginInput, isLoginFormatValid } = require('../utils/login');
+const { normalizeRole } = require('../utils/roles');
 
 const FRONTEND_BASE = PRIMARY_FRONTEND_ORIGIN.replace(/\/$/, '');
 
@@ -69,6 +71,51 @@ const ensureSelfAction = (req, targetId) => {
     const error = new Error('You are not allowed to perform this action');
     error.status = 403;
     throw error;
+  }
+};
+
+const updateUserRole = async (req, res, next) => {
+  try {
+    const targetId = Number(req.params.id);
+    if (!Number.isInteger(targetId)) {
+      const err = new Error('Invalid user identifier');
+      err.status = 400;
+      throw err;
+    }
+
+    const desiredRole = normalizeRole(req.body?.role);
+    if (!desiredRole) {
+      const err = new Error('Invalid role value. Expected user, moderator or admin.');
+      err.status = 400;
+      throw err;
+    }
+
+    if (Number(targetId) === Number(req.user.id)) {
+      const err = new Error('You cannot modify your own role.');
+      err.status = 400;
+      throw err;
+    }
+
+    if (process.env.USE_MOCKS === 'true') {
+      const updated = setMockUserRole(targetId, desiredRole);
+      if (!updated) {
+        const err = new Error('User not found');
+        err.status = 404;
+        throw err;
+      }
+      return res.json({ user: updated });
+    }
+
+    const updated = await userModel.updateUserRole(targetId, desiredRole);
+    if (!updated) {
+      const err = new Error('User not found');
+      err.status = 404;
+      throw err;
+    }
+
+    res.json({ user: updated });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -469,6 +516,7 @@ module.exports = {
   getUserById,
   listFriends,
   listFriendRequests,
+  updateUserRole,
   requestFriend,
   acceptFriend,
   removeFriend,

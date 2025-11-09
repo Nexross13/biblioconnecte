@@ -5,7 +5,7 @@ const userModel = require('../models/userModel');
 const passwordResetService = require('../services/passwordResetService');
 const { verifyGoogleCredential } = require('../services/googleAuthService');
 const { getUsers, getUserById } = require('../data/mockData');
-const { getRoleForEmail } = require('../utils/roles');
+const { normalizeRole } = require('../utils/roles');
 const { IS_PRIMARY_FRONTEND_SECURE } = require('../config/frontend');
 const {
   normalizeLoginInput,
@@ -85,8 +85,10 @@ const generateAvailableLogin = async (seed) => {
   throw error;
 };
 
+const resolveUserRole = (user) => (user ? normalizeRole(user.role) || 'user' : 'user');
+
 const createToken = (user) => {
-  const role = user.role || getRoleForEmail(user.email);
+  const role = resolveUserRole(user);
   const payload = {
     id: user.id,
     login: user.login,
@@ -162,7 +164,7 @@ const register = async (req, res, next) => {
         throw error;
       }
 
-      const role = getRoleForEmail(emailInput);
+      const role = 'user';
       setSessionCookie(res, 'mock-jwt-token');
       return res.status(201).json({
         token: 'mock-jwt-token',
@@ -197,6 +199,7 @@ const register = async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const derivedRole = 'user';
     const user = await userModel.createUser({
       login: loginInput,
       firstName,
@@ -204,8 +207,9 @@ const register = async (req, res, next) => {
       email: emailInput,
       passwordHash,
       dateOfBirth,
+      role: derivedRole,
     });
-    const role = getRoleForEmail(user.email);
+    const role = resolveUserRole(user);
     const token = createToken({ ...user, role });
 
     setSessionCookie(res, token);
@@ -243,7 +247,7 @@ const login = async (req, res, next) => {
         throw error;
       }
 
-      const role = getRoleForEmail(mockUser.email);
+      const role = resolveUserRole(mockUser);
       setSessionCookie(res, 'mock-jwt-token');
       return res.json({
         token: 'mock-jwt-token',
@@ -265,7 +269,7 @@ const login = async (req, res, next) => {
       throw error;
     }
 
-    const role = getRoleForEmail(user.email);
+    const role = resolveUserRole(user);
     const token = createToken({ ...user, role });
 
     setSessionCookie(res, token);
@@ -296,7 +300,7 @@ const me = async (req, res, next) => {
         error.status = 404;
         throw error;
       }
-      const role = getRoleForEmail(mockUser.email);
+      const role = resolveUserRole(mockUser);
       return res.json({ user: { ...mockUser, role } });
     }
 
@@ -306,7 +310,7 @@ const me = async (req, res, next) => {
       error.status = 404;
       throw error;
     }
-    const role = getRoleForEmail(user.email);
+    const role = resolveUserRole(user);
     res.json({ user: { ...user, role } });
   } catch (error) {
     next(error);
@@ -390,7 +394,7 @@ const loginWithGoogle = async (req, res, next) => {
       const payload = await verifyGoogleCredential(credential);
       const mockUsers = getUsers();
       const existing = mockUsers.find((user) => user.email === payload.email);
-      const role = getRoleForEmail(payload.email);
+      const role = resolveUserRole(payload);
       const fallBackLogin = normalizeLoginInput(payload.email?.split('@')[0]) || 'google-user';
       const user =
         existing ||
@@ -401,6 +405,7 @@ const loginWithGoogle = async (req, res, next) => {
           lastName: payload.lastName || '',
           email: payload.email,
           createdAt: new Date().toISOString(),
+          role,
         };
 
       setSessionCookie(res, 'mock-jwt-token');
@@ -431,6 +436,7 @@ const loginWithGoogle = async (req, res, next) => {
         const passwordHash = await bcrypt.hash(generateRandomPassword(), 10);
         const loginSeed = payload.email?.split('@')[0] || payload.firstName || payload.lastName || 'reader';
         const login = await generateAvailableLogin(loginSeed);
+        const derivedRole = 'user';
         user = await userModel.createUser({
           login,
           firstName: payload.firstName || 'Utilisateur',
@@ -438,11 +444,12 @@ const loginWithGoogle = async (req, res, next) => {
           email: normalizedEmail,
           passwordHash,
           googleId: payload.googleId,
+          role: derivedRole,
         });
       }
     }
 
-    const role = getRoleForEmail(user.email);
+    const role = resolveUserRole(user);
     const token = createToken({ ...user, role });
 
     setSessionCookie(res, token);
