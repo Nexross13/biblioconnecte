@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
@@ -79,6 +79,7 @@ const BookProposalForm = () => {
   const [titleSearchTerm, setTitleSearchTerm] = useState('')
   const [debouncedTitleSearch, setDebouncedTitleSearch] = useState('')
   const [isTitleDropdownOpen, setIsTitleDropdownOpen] = useState(false)
+  const [hasPrefillFromSuggestion, setHasPrefillFromSuggestion] = useState(false)
   const titleFieldRef = useRef(null)
   const authorFieldRef = useRef(null)
   const genreFieldRef = useRef(null)
@@ -146,6 +147,20 @@ const BookProposalForm = () => {
       .filter((author) => getAuthorDisplayName(author).toLowerCase().includes(lower))
       .slice(0, 6)
   }, [authorsQuery.data, authorSearchTerm])
+
+  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  const getSeriesDisplayTitle = (book) => {
+    const baseTitle = (book?.title || '').trim()
+    const volumeTitle = (book?.volumeTitle || '').trim()
+    if (baseTitle && volumeTitle) {
+      const pattern = new RegExp(`\\s*[-–—]\\s*${escapeRegExp(volumeTitle)}$`, 'i')
+      if (pattern.test(baseTitle)) {
+        return baseTitle.replace(pattern, '').trim()
+      }
+    }
+    return baseTitle || volumeTitle || ''
+  }
 
   const titleSuggestions = useMemo(() => {
     if (!Array.isArray(titleSuggestionsQuery.data)) {
@@ -229,6 +244,7 @@ const BookProposalForm = () => {
       setTitleSearchTerm('')
       setAuthorSearchTerm('')
       setGenreSearchTerm('')
+      setHasPrefillFromSuggestion(false)
       clearDraft()
     },
     onError: (error) => {
@@ -340,6 +356,7 @@ const BookProposalForm = () => {
     } catch {
       toast.error("Impossible de récupérer les informations de la série.")
     }
+    setHasPrefillFromSuggestion(true)
   }
 
   const handleAuthorSuggestionSelect = (author) => {
@@ -422,6 +439,55 @@ const BookProposalForm = () => {
     mutation.mutate(payload)
   }
 
+  const resetFormForNewSeries = useCallback(
+    (nextTitle) => {
+      setFormValues({
+        ...initialState,
+        title: nextTitle,
+      })
+      setErrors({})
+      setAuthors([])
+      setAuthorSearchTerm('')
+      setIsAuthorDropdownOpen(false)
+      setGenres([])
+      setGenreSearchTerm('')
+      setIsGenreDropdownOpen(false)
+      setCoverImageData(null)
+      setCoverPreviewUrl(null)
+      setCoverError('')
+      setTitleSearchTerm(nextTitle)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!hasPrefillFromSuggestion) {
+      return
+    }
+    if (titleSearchTerm.trim().length < 2) {
+      return
+    }
+    if (titleSuggestionsQuery.isLoading) {
+      return
+    }
+    if (titleSuggestions.length > 0) {
+      return
+    }
+    const currentTitle = formValues.title.trim()
+    if (!currentTitle.length) {
+      return
+    }
+    resetFormForNewSeries(currentTitle)
+    setHasPrefillFromSuggestion(false)
+  }, [
+    hasPrefillFromSuggestion,
+    titleSearchTerm,
+    titleSuggestionsQuery.isLoading,
+    titleSuggestions.length,
+    formValues.title,
+    resetFormForNewSeries,
+  ])
+
   if (mutation.isPending) {
     return <Loader label="Enregistrement en cours..." />
   }
@@ -476,7 +542,7 @@ const BookProposalForm = () => {
                       onClick={() => handleTitleSuggestionSelect(book)}
                     >
                       <span className="font-medium text-slate-700 dark:text-slate-100">
-                        {book.title || 'Titre inconnu'}
+                        {getSeriesDisplayTitle(book) || 'Titre inconnu'}
                       </span>
                       {book.edition && (
                         <span className="text-xs text-slate-400 dark:text-slate-500">{book.edition}</span>
