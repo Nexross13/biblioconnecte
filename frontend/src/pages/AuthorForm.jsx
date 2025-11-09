@@ -8,6 +8,8 @@ const initialValues = {
   biography: '',
 }
 
+const BIO_MAX_LENGTH = 2000
+
 const AuthorForm = () => {
   const [formValues, setFormValues] = useState(initialValues)
   const [feedback, setFeedback] = useState(null)
@@ -84,7 +86,10 @@ const AuthorForm = () => {
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="firstName" className="text-sm font-semibold text-primary">
-                Prénom *
+                <span className="text-rose-500" aria-hidden="true">
+                  *
+                </span>{' '}
+                Prénom
               </label>
               <input
                 id="firstName"
@@ -101,7 +106,10 @@ const AuthorForm = () => {
 
             <div className="space-y-2">
               <label htmlFor="lastName" className="text-sm font-semibold text-primary">
-                Nom *
+                <span className="text-rose-500" aria-hidden="true">
+                  *
+                </span>{' '}
+                Nom
               </label>
               <input
                 id="lastName"
@@ -129,9 +137,11 @@ const AuthorForm = () => {
               rows={6}
               className="input min-h-[160px]"
               placeholder="Parle-nous de son univers, de ses œuvres marquantes ou de son impact sur la communauté..."
-              maxLength={2000}
+              maxLength={BIO_MAX_LENGTH}
             />
-            <span className="text-xs text-slate-500 dark:text-slate-400">2 000 caractères maximum</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {formValues.biography.length}/{BIO_MAX_LENGTH} caractères
+            </span>
           </div>
 
           <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-800/50 dark:text-slate-300">
@@ -144,7 +154,6 @@ const AuthorForm = () => {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-500 dark:text-slate-400">* Champs obligatoires</p>
             <button
               type="submit"
               className="btn w-full sm:w-auto"
@@ -152,6 +161,7 @@ const AuthorForm = () => {
             >
               {createAuthorMutation.isLoading ? 'Envoi en cours…' : 'Envoyer ma proposition'}
             </button>
+            <p className="text-right text-xs text-rose-500 dark:text-rose-400">* Champs obligatoires</p>
           </div>
         </form>
       </div>
