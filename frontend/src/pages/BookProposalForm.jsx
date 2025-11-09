@@ -338,7 +338,7 @@ const BookProposalForm = () => {
           })
         }
       }
-    } catch (error) {
+    } catch {
       toast.error("Impossible de récupérer les informations de la série.")
     }
   }

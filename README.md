@@ -89,7 +89,6 @@ cp .env.example .env.local   # renseigner VITE_API_URL & VITE_GOOGLE_CLIENT_ID
 | `JWT_SECRET` | Secret pour signer les JWT | `super-secret` |
 | `FRONTEND_URL` | Origines autorisées pour CORS (séparées par virgules, la première sert de base pour les liens/cookies) | `https://my-biblioconnect.fr,http://localhost:5173` |
 | `SESSION_COOKIE_SECURE` | Force/relâche le flag `Secure` (`true/false/1/0`, laisser vide pour auto) | `true` |
-| `ADMIN_EMAILS` | Liste d’emails admin (séparés par virgules) | `alice@biblio.test,bob@biblio.test` |
 | `USE_MOCKS` | `true` pour bypasser PostgreSQL (démo) | `false` |
 | `SMTP_*` / `SMTP_URL` / `EMAIL_FROM` | Paramètres SMTP | voir `.env.example` |
 | `PASSWORD_RESET_CODE_TTL_MINUTES` | Durée de validité du code OTP | `15` |

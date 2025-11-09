@@ -366,10 +366,91 @@ const sendAuthorProposalDecisionNotification = async ({ proposer, proposal, deci
   await sendEmail({ to: proposer.email, ...message });
 };
 
+const buildReviewDeletionEmail = ({ reviewer, moderator, reason, bookTitle, comment }) => {
+  const reviewerName = reviewer.firstName || reviewer.email || 'Lecteur';
+  const moderatorName =
+    [moderator?.firstName, moderator?.lastName].filter(Boolean).join(' ') || 'L’équipe My BiblioConnect';
+  const sanitizedReason = reason || 'Raison non spécifiée';
+  const safeComment = comment ? comment.slice(0, 300) : '';
+  const bookLabel = bookTitle ? ` concernant « ${bookTitle} »` : '';
+
+  const subject = `Votre avis${bookTitle ? ` sur ${bookTitle}` : ''} a été retiré`;
+  const text = `Bonjour ${reviewerName},
+
+Votre avis${bookLabel} a été supprimé par ${moderatorName}.
+
+Motif :
+${sanitizedReason}
+
+Texte de l'avis :
+${safeComment || '—'}
+
+Pour toute question, vous pouvez répondre à ce message.
+
+L'équipe My BiblioConnect`;
+
+  const html = `
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background-color:#f8fafc;padding:24px 0;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;width:92%;background-color:#ffffff;border-radius:20px;box-shadow:0 16px 32px rgba(15,23,42,0.15);overflow:hidden;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#7c3aed,#2563eb);padding:28px;text-align:center;color:#ffffff;">
+              <h1 style="margin:0;font-size:22px;">My BiblioConnect</h1>
+              <p style="margin:8px 0 0;font-size:14px;opacity:0.85;">Modération des avis</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;color:#0f172a;">
+              <p style="margin:0 0 16px;font-size:16px;">Bonjour <strong>${reviewerName}</strong>,</p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">
+                Votre avis${bookLabel} a été retiré par <strong>${moderatorName}</strong>.
+              </p>
+              <div style="border-left:4px solid #f97316;padding:12px 16px;margin:20px 0;background-color:#fff7ed;">
+                <p style="margin:0;font-size:14px;"><strong>Motif :</strong></p>
+                <p style="margin:6px 0 0;font-size:14px;color:#7c2d12;">${sanitizedReason}</p>
+              </div>
+              ${
+                safeComment
+                  ? `<div style="margin:20px 0;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
+                      <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#475569;">Extrait de votre avis :</p>
+                      <p style="margin:0;font-size:14px;color:#0f172a;line-height:1.6;">${safeComment}</p>
+                    </div>`
+                  : ''
+              }
+              <p style="margin:0;font-size:14px;color:#475569;">
+                Pour toute question, vous pouvez répondre à ce message afin que nous examinions la situation.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#0f172a;padding:18px;text-align:center;color:#e2e8f0;font-size:12px;">
+              <p style="margin:0;">My BiblioConnect • Vos lectures, partout, tout le temps.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  `;
+
+  return { subject, text, html };
+};
+
+const sendReviewDeletionNotification = async ({ reviewer, moderator, reason, bookTitle, comment }) => {
+  if (!reviewer?.email) {
+    console.warn('📨  Email skipped: reviewer email missing');
+    return;
+  }
+  const message = buildReviewDeletionEmail({ reviewer, moderator, reason, bookTitle, comment });
+  await sendEmail({ to: reviewer.email, ...message });
+};
+
 module.exports = {
   sendEmail,
   sendFriendRequestNotification,
   sendFriendAcceptedNotification,
   sendBookProposalDecisionNotification,
   sendAuthorProposalDecisionNotification,
+  sendReviewDeletionNotification,
 };

@@ -1,23 +1,14 @@
-const normalizeEmail = (email) => (typeof email === 'string' ? email.trim().toLowerCase() : '');
+const VALID_ROLES = ['user', 'moderator', 'admin'];
 
-const parseAdminEmails = () =>
-  (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map(normalizeEmail)
-    .filter(Boolean);
-
-const isAdminEmail = (email) => {
-  const normalized = normalizeEmail(email);
-  if (!normalized) {
-    return false;
+const normalizeRole = (value) => {
+  if (typeof value !== 'string') {
+    return null;
   }
-  const adminEmails = parseAdminEmails();
-  return adminEmails.includes(normalized);
+  const normalized = value.trim().toLowerCase();
+  return VALID_ROLES.includes(normalized) ? normalized : null;
 };
 
-const getRoleForEmail = (email) => (isAdminEmail(email) ? 'admin' : 'user');
-
 module.exports = {
-  getRoleForEmail,
-  isAdminEmail,
+  VALID_ROLES,
+  normalizeRole,
 };

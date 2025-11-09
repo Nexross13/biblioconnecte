@@ -1,21 +1,38 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
-import { deleteReview, updateReview } from '../api/reviews'
+import { approveReview, deleteReview, updateReview } from '../api/reviews'
 import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
 
 const ReviewCard = ({ review }) => {
   const { user } = useAuth()
   const canManage = user?.id === review.userId
+  const canModerate = user?.role === 'admin' || user?.role === 'moderator'
   const queryClient = useQueryClient()
+  const isApproved = review.moderationStatus === 'approved'
+  const moderatorName = [review.moderator?.firstName, review.moderator?.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteReview(review.id),
+    mutationFn: (payload) => deleteReview(review.id, payload),
     onSuccess: () => {
       toast.success('Avis supprimé')
       queryClient.invalidateQueries({ queryKey: ['bookReviews', review.bookId] })
+      queryClient.invalidateQueries({ queryKey: ['moderation-feed'] })
     },
     onError: () => toast.error("Impossible de supprimer l'avis"),
+  })
+
+  const approveMutation = useMutation({
+    mutationFn: () => approveReview(review.id),
+    onSuccess: () => {
+      toast.success('Avis validé')
+      queryClient.invalidateQueries({ queryKey: ['bookReviews', review.bookId] })
+      queryClient.invalidateQueries({ queryKey: ['moderation-feed'] })
+    },
+    onError: () => toast.error("Impossible de valider l'avis"),
   })
 
   const updateMutation = useMutation({
@@ -39,6 +56,26 @@ const ReviewCard = ({ review }) => {
     updateMutation.mutate({ rating: newRating, comment: newComment })
   }
 
+  const handleDelete = () => {
+    let payload
+    if (!canManage && canModerate) {
+      const reason = window.prompt('Motif de la suppression (obligatoire) :')
+      if (!reason || !reason.trim()) {
+        toast.error('Merci de saisir un motif de suppression')
+        return
+      }
+      payload = { reason: reason.trim() }
+    } else {
+      const confirmed = window.confirm('Confirmer la suppression de cet avis ?')
+      if (!confirmed) {
+        return
+      }
+    }
+    deleteMutation.mutate(payload)
+  }
+
+  const showModerationActions = canManage || canModerate
+
   return (
     <div className="card space-y-2">
       <div className="flex items-center justify-between">
@@ -50,23 +87,44 @@ const ReviewCard = ({ review }) => {
         </span>
       </div>
       <p className="text-sm text-slate-600 dark:text-slate-300">{review.comment}</p>
-      <p className="text-xs text-slate-400 dark:text-slate-500">
-        Publié le {formatDate(review.createdAt)}
-      </p>
-      {canManage && (
-        <div className="flex gap-2 text-xs">
-          <button
-            type="button"
-            className="rounded-lg border border-primary px-3 py-1 font-medium text-primary transition hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-            onClick={handleUpdate}
-            disabled={updateMutation.isPending}
-          >
-            {updateMutation.isPending ? 'Enregistrement...' : 'Modifier'}
-          </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Publié le {formatDate(review.createdAt)}
+        </p>
+        {isApproved ? (
+          <p className="text-xs font-semibold text-emerald-600">
+            Validé {moderatorName ? `par ${moderatorName}` : ''}
+          </p>
+        ) : (
+          <p className="text-xs font-semibold text-amber-600">En attente de validation</p>
+        )}
+      </div>
+      {showModerationActions && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {canModerate && !isApproved && (
+            <button
+              type="button"
+              className="rounded-lg border border-emerald-500 px-3 py-1 font-medium text-emerald-600 transition hover:bg-emerald-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              onClick={() => approveMutation.mutate()}
+              disabled={approveMutation.isPending}
+            >
+              {approveMutation.isPending ? 'Validation...' : 'Valider'}
+            </button>
+          )}
+          {canManage && (
+            <button
+              type="button"
+              className="rounded-lg border border-primary px-3 py-1 font-medium text-primary transition hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              onClick={handleUpdate}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? 'Enregistrement...' : 'Modifier'}
+            </button>
+          )}
           <button
             type="button"
             className="rounded-lg border border-rose-500 px-3 py-1 font-medium text-rose-600 transition hover:bg-rose-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-            onClick={() => deleteMutation.mutate()}
+            onClick={handleDelete}
             disabled={deleteMutation.isPending}
           >
             {deleteMutation.isPending ? 'Suppression...' : 'Supprimer'}

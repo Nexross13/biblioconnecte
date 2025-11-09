@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminRoute from './components/AdminRoute.jsx'
+import ModeratorRoute from './components/ModeratorRoute.jsx'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
@@ -18,6 +19,7 @@ import Profile from './pages/Profile.jsx'
 import Friends from './pages/Friends.jsx'
 import FriendCollection from './pages/FriendCollection.jsx'
 import Dashboard from './pages/Dashboard.jsx'
+import ModerationDashboard from './pages/ModerationDashboard.jsx'
 import Unauthorized from './pages/Unauthorized.jsx'
 import NotFound from './pages/NotFound.jsx'
 
@@ -82,6 +84,16 @@ const App = () => (
             <AdminRoute>
               <Dashboard />
             </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/moderation"
+        element={
+          <ProtectedRoute>
+            <ModeratorRoute>
+              <ModerationDashboard />
+            </ModeratorRoute>
           </ProtectedRoute>
         }
       />

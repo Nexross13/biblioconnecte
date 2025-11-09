@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { getUserById } = require('../data/mockData');
-const { getRoleForEmail } = require('../utils/roles');
+const { normalizeRole } = require('../utils/roles');
 
 const SESSION_COOKIE_NAME = 'biblio_session';
 
@@ -11,11 +11,14 @@ const buildAuthError = (message = 'Authentication required') => {
 };
 
 const attachRole = (user = {}) => {
-  const role = user.role || getRoleForEmail(user.email) || 'user';
+  const role = normalizeRole(user.role) || 'user';
+  const isAdmin = role === 'admin';
+  const isModerator = role === 'moderator' || isAdmin;
   return {
     ...user,
     role,
-    isAdmin: role === 'admin',
+    isAdmin,
+    isModerator,
   };
 };
 
@@ -45,8 +48,9 @@ const authenticate = (req, res, next) => {
             email: mockUser.email,
             firstName: mockUser.firstName,
             lastName: mockUser.lastName,
+            role: mockUser.role,
           }
-        : { id: 1, email: 'mock@biblio.test' },
+        : { id: 1, email: 'mock@biblio.test', role: 'user' },
     );
     return next();
   }
@@ -72,15 +76,26 @@ const authenticate = (req, res, next) => {
   }
 };
 
-module.exports = {
-  authenticate,
-  requireAdmin: (req, res, next) => {
-    if (!req.user || !req.user.isAdmin) {
-      const error = new Error('Administrator privileges required');
-      error.status = 403;
-      return next(error);
-    }
-    return next();
-  },
+const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    const error = new Error('Administrator privileges required');
+    error.status = 403;
+    return next(error);
+  }
+  return next();
 };
 
+const requireModerator = (req, res, next) => {
+  if (!req.user || !req.user.isModerator) {
+    const error = new Error('Moderator privileges required');
+    error.status = 403;
+    return next(error);
+  }
+  return next();
+};
+
+module.exports = {
+  authenticate,
+  requireAdmin,
+  requireModerator,
+};
