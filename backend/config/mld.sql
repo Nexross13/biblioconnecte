@@ -10,12 +10,15 @@ SET search_path TO biblio, public;
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS users (
   id             BIGSERIAL PRIMARY KEY,
+  login          VARCHAR(60) NOT NULL UNIQUE,
   first_name     VARCHAR(100) NOT NULL,
   last_name      VARCHAR(100) NOT NULL,
   email          VARCHAR(150) NOT NULL UNIQUE,
   google_id      VARCHAR(255) UNIQUE,
   password_hash  TEXT NOT NULL,
   date_of_birth  DATE,
+  role           VARCHAR(20) NOT NULL DEFAULT 'user'
+                 CHECK (role IN ('user', 'moderator', 'admin')),
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT users_email_format CHECK (position('@' IN email) > 1)
@@ -123,6 +126,10 @@ CREATE TABLE IF NOT EXISTS reviews (
   comment    TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  moderation_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+                    CHECK (moderation_status IN ('pending', 'approved')),
+  moderated_by BIGINT REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  moderated_at TIMESTAMPTZ,
   CONSTRAINT reviews_user_book_unique UNIQUE (user_id, book_id)
 );
 

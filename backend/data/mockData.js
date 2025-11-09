@@ -7,6 +7,7 @@ const users = [
     firstName: 'Alice',
     lastName: 'Martin',
     email: 'alice@biblio.test',
+    role: 'admin',
     dateOfBirth: '1990-03-12',
     createdAt: '2024-01-10T08:00:00.000Z',
   },
@@ -16,6 +17,7 @@ const users = [
     firstName: 'Benoit',
     lastName: 'Durand',
     email: 'benoit@biblio.test',
+    role: 'moderator',
     dateOfBirth: '1988-07-22',
     createdAt: '2024-01-12T10:15:00.000Z',
   },
@@ -25,6 +27,7 @@ const users = [
     firstName: 'Claire',
     lastName: 'Faure',
     email: 'claire@biblio.test',
+    role: 'user',
     dateOfBirth: '1992-11-03',
     createdAt: '2024-02-01T09:05:00.000Z',
   },
@@ -142,6 +145,9 @@ const reviews = [
     comment: 'Un classique touchant qui fait réfléchir.',
     createdAt: '2024-03-12T10:00:00.000Z',
     updatedAt: '2024-03-12T10:00:00.000Z',
+    moderationStatus: 'approved',
+    moderatedBy: 1,
+    moderatedAt: '2024-03-12T10:30:00.000Z',
   },
   {
     id: 2,
@@ -151,6 +157,9 @@ const reviews = [
     comment: 'Vision glaçante mais brillante.',
     createdAt: '2024-03-15T11:45:00.000Z',
     updatedAt: '2024-03-15T11:45:00.000Z',
+    moderationStatus: 'pending',
+    moderatedBy: null,
+    moderatedAt: null,
   },
 ];
 
@@ -264,6 +273,14 @@ const nextAuthorId = () => (authors.length ? Math.max(...authors.map((author) =>
 
 const getUsers = () => clone(users);
 const getUserById = (id) => clone(users.find((user) => user.id === Number(id)) || null);
+const setUserRole = (id, role) => {
+  const index = users.findIndex((user) => user.id === Number(id));
+  if (index === -1) {
+    return null;
+  }
+  users[index].role = role;
+  return clone(users[index]);
+};
 
 const getFriendships = () => clone(friendships);
 
@@ -393,27 +410,82 @@ const getWishlistItems = (userId) => {
   return clone(matches);
 };
 
+const buildReviewPayload = (review, { includeBook = false, includeEmail = false } = {}) => {
+  if (!review) {
+    return null;
+  }
+
+  const author = users.find((user) => user.id === review.userId);
+  const moderator = review.moderatedBy
+    ? users.find((user) => user.id === review.moderatedBy)
+    : null;
+  const book = includeBook ? books.find((entry) => entry.id === review.bookId) : null;
+
+  return {
+    ...review,
+    author: author
+      ? {
+          firstName: author.firstName,
+          lastName: author.lastName,
+          ...(includeEmail ? { email: author.email } : {}),
+        }
+      : null,
+    moderator: moderator
+      ? {
+          firstName: moderator.firstName,
+          lastName: moderator.lastName,
+        }
+      : null,
+    book: book
+      ? {
+          id: book.id,
+          title: book.title,
+          volume: book.volume,
+          volumeTitle: book.volumeTitle || null,
+        }
+      : null,
+  };
+};
+
 const getReviewsByBook = (bookId) => {
   const matches = reviews
     .filter((review) => review.bookId === Number(bookId))
-    .map((review) => {
-      const author = users.find((user) => user.id === review.userId);
-      return {
-        ...review,
-        author: author
-          ? {
-              firstName: author.firstName,
-              lastName: author.lastName,
-            }
-          : null,
-      };
-    });
+    .map((review) => buildReviewPayload(review));
 
   return clone(matches);
 };
 
 const getReviewById = (reviewId) =>
   clone(reviews.find((review) => review.id === Number(reviewId)) || null);
+
+const getRecentReviews = ({ limit = 20 } = {}) => {
+  const normalizedLimit = Math.max(1, Math.min(Number(limit) || 20, 100));
+  const sorted = reviews
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+    )
+    .slice(0, normalizedLimit)
+    .map((review) => buildReviewPayload(review, { includeBook: true, includeEmail: true }));
+
+  return clone(sorted);
+};
+
+const approveReview = ({ reviewId, moderatorId }) => {
+  const index = reviews.findIndex((review) => review.id === Number(reviewId));
+  if (index === -1) {
+    return null;
+  }
+  const timestamp = new Date().toISOString();
+  reviews[index] = {
+    ...reviews[index],
+    moderationStatus: 'approved',
+    moderatedBy: Number(moderatorId),
+    moderatedAt: timestamp,
+  };
+  return clone(buildReviewPayload(reviews[index], { includeBook: true }));
+};
 
 const getBookProposals = ({ status } = {}) => {
   let proposals = bookProposals;
@@ -680,6 +752,7 @@ module.exports = {
   },
   getUsers,
   getUserById,
+  setUserRole,
   getFriendships,
   getFriendsOfUser,
   getBooks,
@@ -696,6 +769,8 @@ module.exports = {
   getWishlistItems,
   getReviewsByBook,
   getReviewById,
+  getRecentReviews,
+  approveReview,
   getBookProposals,
   getBookProposalsForUser,
   getBookProposalById,
