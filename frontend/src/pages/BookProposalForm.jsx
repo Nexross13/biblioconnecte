@@ -27,6 +27,7 @@ const initialState = {
 }
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+const SUMMARY_MAX_LENGTH = 2000
 const STORAGE_KEY = 'book-proposal-draft'
 
 const loadDraft = () => {
@@ -439,6 +440,9 @@ const BookProposalForm = () => {
       <form className="card space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2" ref={titleFieldRef}>
           <label htmlFor="title" className="text-sm font-semibold text-primary">
+            <span className="text-rose-500" aria-hidden="true">
+              *
+            </span>{' '}
             Titre
           </label>
           <div className="relative">
@@ -494,6 +498,9 @@ const BookProposalForm = () => {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <label htmlFor="isbn" className="text-sm font-semibold text-primary">
+              <span className="text-rose-500" aria-hidden="true">
+                *
+              </span>{' '}
               ISBN
             </label>
             <input
@@ -509,6 +516,9 @@ const BookProposalForm = () => {
 
           <div className="space-y-2">
             <label htmlFor="edition" className="text-sm font-semibold text-primary">
+              <span className="text-rose-500" aria-hidden="true">
+                *
+              </span>{' '}
               Édition
             </label>
             <input
@@ -554,6 +564,9 @@ const BookProposalForm = () => {
           </div>
           <div className="space-y-2">
             <label htmlFor="releaseDate" className="text-sm font-semibold text-primary">
+              <span className="text-rose-500" aria-hidden="true">
+                *
+              </span>{' '}
               Date de sortie
             </label>
             <input
@@ -579,11 +592,20 @@ const BookProposalForm = () => {
             placeholder="Partagez un résumé ou les éléments clés de l’ouvrage."
             value={formValues.summary}
             onChange={handleChange}
+            maxLength={SUMMARY_MAX_LENGTH}
           />
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {formValues.summary.length}/{SUMMARY_MAX_LENGTH} caractères
+          </p>
         </div>
 
         <div className="space-y-2" ref={authorFieldRef}>
-          <span className="text-sm font-semibold text-primary">Auteur(s)</span>
+          <span className="text-sm font-semibold text-primary">
+            <span className="text-rose-500" aria-hidden="true">
+              *
+            </span>{' '}
+            Auteur(s)
+          </span>
           <div className="relative">
             <input
               type="text"
@@ -663,7 +685,12 @@ const BookProposalForm = () => {
         </div>
 
         <div className="space-y-2" ref={genreFieldRef}>
-          <span className="text-sm font-semibold text-primary">Genre(s)</span>
+          <span className="text-sm font-semibold text-primary">
+            <span className="text-rose-500" aria-hidden="true">
+              *
+            </span>{' '}
+            Genre(s)
+          </span>
           <div className="relative">
             <input
               type="text"
@@ -758,7 +785,7 @@ const BookProposalForm = () => {
           )}
         </div>
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <button type="submit" className="btn">
             Envoyer la proposition
           </button>
@@ -781,6 +808,7 @@ const BookProposalForm = () => {
           >
             Réinitialiser le formulaire
           </button>
+          <p className="text-right text-xs text-rose-500 dark:text-rose-400 md:ml-auto">* Champs obligatoires</p>
         </div>
       </form>
     </section>
