@@ -242,6 +242,31 @@ const bookProposals = [
   },
 ];
 
+const bookReports = [
+  {
+    id: 1,
+    bookId: 2,
+    reportedBy: 3,
+    reason: 'Informations inexactes sur la maison d’édition.',
+    status: 'open',
+    createdAt: '2024-05-10T08:30:00.000Z',
+    updatedAt: '2024-05-10T08:30:00.000Z',
+    closedAt: null,
+    closedBy: null,
+  },
+  {
+    id: 2,
+    bookId: 1,
+    reportedBy: 2,
+    reason: 'Image de couverture inappropriée.',
+    status: 'closed',
+    createdAt: '2024-04-20T09:00:00.000Z',
+    updatedAt: '2024-04-21T09:00:00.000Z',
+    closedAt: '2024-04-21T09:00:00.000Z',
+    closedBy: 1,
+  },
+];
+
 const authorProposals = [
   {
     id: 1,
@@ -273,6 +298,7 @@ const nextAuthorId = () => (authors.length ? Math.max(...authors.map((author) =>
 
 const getUsers = () => clone(users);
 const getUserById = (id) => clone(users.find((user) => user.id === Number(id)) || null);
+const getAdmins = () => clone(users.filter((user) => user.role === 'admin'));
 const setUserRole = (id, role) => {
   const index = users.findIndex((user) => user.id === Number(id));
   if (index === -1) {
@@ -485,6 +511,84 @@ const approveReview = ({ reviewId, moderatorId }) => {
     moderatedAt: timestamp,
   };
   return clone(buildReviewPayload(reviews[index], { includeBook: true }));
+};
+
+const nextBookReportId = () =>
+  bookReports.length ? Math.max(...bookReports.map((report) => report.id)) + 1 : 1;
+
+const buildBookReportPayload = (report) => {
+  if (!report) {
+    return null;
+  }
+  const reporter = users.find((user) => user.id === report.reportedBy);
+  const book = books.find((entry) => entry.id === report.bookId);
+  const moderator = report.closedBy ? users.find((user) => user.id === report.closedBy) : null;
+  return {
+    ...report,
+    reporter: reporter
+      ? {
+          id: reporter.id,
+          firstName: reporter.firstName,
+          lastName: reporter.lastName,
+          email: reporter.email,
+        }
+      : null,
+    book: book
+      ? {
+          id: book.id,
+          title: book.title,
+          isbn: book.isbn,
+        }
+      : null,
+    moderator: moderator
+      ? {
+          id: moderator.id,
+          firstName: moderator.firstName,
+          lastName: moderator.lastName,
+        }
+      : null,
+  };
+};
+
+const getBookReports = ({ status } = {}) => {
+  let reports = bookReports;
+  if (status) {
+    reports = reports.filter((report) => report.status === status);
+  }
+  return clone(reports.map((report) => buildBookReportPayload(report)));
+};
+
+const createBookReport = ({ bookId, reportedBy, reason }) => {
+  const timestamp = new Date().toISOString();
+  const report = {
+    id: nextBookReportId(),
+    bookId,
+    reportedBy,
+    reason,
+    status: 'open',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    closedAt: null,
+    closedBy: null,
+  };
+  bookReports.unshift(report);
+  return clone(buildBookReportPayload(report));
+};
+
+const closeBookReport = ({ reportId, closedBy }) => {
+  const index = bookReports.findIndex((report) => report.id === Number(reportId));
+  if (index === -1 || bookReports[index].status === 'closed') {
+    return null;
+  }
+  const timestamp = new Date().toISOString();
+  bookReports[index] = {
+    ...bookReports[index],
+    status: 'closed',
+    closedBy: Number(closedBy),
+    closedAt: timestamp,
+    updatedAt: timestamp,
+  };
+  return clone(buildBookReportPayload(bookReports[index]));
 };
 
 const getBookProposals = ({ status } = {}) => {
@@ -748,10 +852,12 @@ module.exports = {
     reviews,
     friendships,
     bookProposals,
+    bookReports,
     authorProposals,
   },
   getUsers,
   getUserById,
+  getAdmins,
   setUserRole,
   getFriendships,
   getFriendsOfUser,
@@ -771,6 +877,9 @@ module.exports = {
   getReviewById,
   getRecentReviews,
   approveReview,
+  getBookReports,
+  createBookReport,
+  closeBookReport,
   getBookProposals,
   getBookProposalsForUser,
   getBookProposalById,
