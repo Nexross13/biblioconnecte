@@ -7,7 +7,6 @@ import { fetchGenres } from '../api/genres'
 import { fetchAuthors } from '../api/authors'
 import { fetchBooks, fetchBookSeriesPrefill } from '../api/books'
 import Loader from '../components/Loader.jsx'
-import formatBookTitle from '../utils/formatBookTitle'
 
 const getAuthorDisplayName = (author) => {
   const firstName = author.firstName ?? ''
@@ -477,7 +476,7 @@ const BookProposalForm = () => {
                       onClick={() => handleTitleSuggestionSelect(book)}
                     >
                       <span className="font-medium text-slate-700 dark:text-slate-100">
-                        {formatBookTitle(book)}
+                        {book.title || 'Titre inconnu'}
                       </span>
                       {book.edition && (
                         <span className="text-xs text-slate-400 dark:text-slate-500">{book.edition}</span>
