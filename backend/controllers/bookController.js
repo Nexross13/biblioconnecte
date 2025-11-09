@@ -35,6 +35,14 @@ const normalizeReleaseDate = (value) => {
   return parsed.toISOString().slice(0, 10);
 };
 
+const normalizeVolumeTitle = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const normalized = String(value).trim();
+  return normalized.length ? normalized : null;
+};
+
 const listBooks = async (req, res, next) => {
   try {
     const { limit, offset } = parsePagination(req);
@@ -120,8 +128,17 @@ const normalizeIds = (ids = []) =>
 
 const createBook = async (req, res, next) => {
   try {
-    const { title, isbn, edition, volume, summary, releaseDate: rawReleaseDate, authorIds, genreIds } =
-      req.body;
+    const {
+      title,
+      isbn,
+      edition,
+      volume,
+      volumeTitle,
+      summary,
+      releaseDate: rawReleaseDate,
+      authorIds,
+      genreIds,
+    } = req.body;
     if (!title) {
       const err = new Error('Title is required');
       err.status = 400;
@@ -129,6 +146,7 @@ const createBook = async (req, res, next) => {
     }
 
     const releaseDate = normalizeReleaseDate(rawReleaseDate);
+    const normalizedVolumeTitle = normalizeVolumeTitle(volumeTitle);
 
     if (process.env.USE_MOCKS === 'true') {
       const allAuthors = getMockAuthors();
@@ -147,6 +165,7 @@ const createBook = async (req, res, next) => {
           isbn: isbn || null,
           edition: edition || null,
           volume: volume || null,
+          volumeTitle: normalizedVolumeTitle,
           summary: summary || null,
           releaseDate,
           createdAt: new Date().toISOString(),
@@ -176,6 +195,7 @@ const createBook = async (req, res, next) => {
         isbn,
         edition,
         volume,
+        volumeTitle: normalizedVolumeTitle,
         summary,
         publicationDate: releaseDate,
         submittedBy,
@@ -187,7 +207,15 @@ const createBook = async (req, res, next) => {
       });
     }
 
-    const book = await bookModel.createBook({ title, isbn, edition, volume, releaseDate, summary });
+    const book = await bookModel.createBook({
+      title,
+      isbn,
+      edition,
+      volume,
+      volumeTitle: normalizedVolumeTitle,
+      releaseDate,
+      summary,
+    });
 
     const [authors, genres] = await Promise.all([
       bookModel.setBookAuthors(book.id, normalizeIds(authorIds)),
@@ -221,6 +249,10 @@ const updateBook = async (req, res, next) => {
       const genres = genreIds
         ? genreIds.map((id) => allGenres.find((genre) => genre.id === id)).filter(Boolean)
         : getMockBookGenres(existing.id);
+      const nextVolumeTitle =
+        req.body.volumeTitle === undefined
+          ? existing.volumeTitle
+          : normalizeVolumeTitle(req.body.volumeTitle);
 
       const book = {
         ...existing,
@@ -228,6 +260,7 @@ const updateBook = async (req, res, next) => {
         isbn: req.body.isbn ?? existing.isbn,
         edition: req.body.edition ?? existing.edition,
         volume: req.body.volume ?? existing.volume,
+        volumeTitle: nextVolumeTitle,
         summary: req.body.summary ?? existing.summary,
         releaseDate: normalizeReleaseDate(
           req.body.releaseDate === undefined ? existing.releaseDate : req.body.releaseDate,
@@ -250,6 +283,10 @@ const updateBook = async (req, res, next) => {
       isbn: req.body.isbn ?? existing.isbn,
       edition: req.body.edition ?? existing.edition,
       volume: req.body.volume ?? existing.volume,
+      volumeTitle:
+        req.body.volumeTitle === undefined
+          ? existing.volumeTitle
+          : normalizeVolumeTitle(req.body.volumeTitle),
       releaseDate: normalizeReleaseDate(
         req.body.releaseDate === undefined ? existing.releaseDate : req.body.releaseDate,
       ),
@@ -289,6 +326,57 @@ const deleteBook = async (req, res, next) => {
   }
 };
 
+const getSeriesPrefill = async (req, res, next) => {
+  try {
+    if (process.env.USE_MOCKS === 'true') {
+      const book = getMockBookById(req.params.id);
+      if (!book) {
+        const err = new Error('Book not found');
+        err.status = 404;
+        throw err;
+      }
+      const normalizedTitle = (book.title || '').trim().toLowerCase();
+      const allMatching = getMockBooks()
+        .filter((entry) => (entry.title || '').trim().toLowerCase() === normalizedTitle)
+        .map((entry) => Number(entry.volume))
+        .filter((value) => Number.isFinite(value));
+      const nextVolume = allMatching.length ? String(Math.max(...allMatching) + 1) : '1';
+      const genreNames = getMockBookGenres(book.id).map((genre) => genre.name);
+      return res.json({
+        prefill: {
+          title: book.title,
+          edition: book.edition || null,
+          nextVolume,
+          genreNames,
+        },
+      });
+    }
+
+    const book = await bookModel.findById(req.params.id);
+    if (!book) {
+      const err = new Error('Book not found');
+      err.status = 404;
+      throw err;
+    }
+
+    const [genres, nextVolume] = await Promise.all([
+      bookModel.getBookGenres(book.id),
+      bookModel.getNextVolumeNumberForTitle(book.title),
+    ]);
+
+    res.json({
+      prefill: {
+        title: book.title,
+        edition: book.edition || null,
+        nextVolume: nextVolume || '1',
+        genreNames: genres.map((genre) => genre.name),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listBooks,
   getBookById,
@@ -297,4 +385,5 @@ module.exports = {
   createBook,
   updateBook,
   deleteBook,
+  getSeriesPrefill,
 };

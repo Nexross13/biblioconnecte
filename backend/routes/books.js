@@ -6,6 +6,7 @@ const { authenticate } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 router.get('/', authenticate, bookController.listBooks);
+router.get('/:id/series-prefill', authenticate, bookController.getSeriesPrefill);
 router.get('/:id', authenticate, bookController.getBookById);
 router.get('/:id/authors', authenticate, bookController.getBookAuthors);
 router.get('/:id/genres', authenticate, bookController.getBookGenres);

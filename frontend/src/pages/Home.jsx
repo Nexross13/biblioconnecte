@@ -23,6 +23,7 @@ import { fetchWishlist } from '../api/wishlist'
 import { fetchHighlights, fetchPublicOverview } from '../api/stats'
 import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
+import formatBookTitle from '../utils/formatBookTitle'
 import { ASSETS_BOOKS_BASE_URL, ASSETS_PROFILE_BASE_URL } from '../api/axios'
 
 const statNumberFormatter = new Intl.NumberFormat('fr-FR')
@@ -479,7 +480,7 @@ const Home = () => {
                     className="rounded-2xl border border-slate-100 bg-white p-4 transition hover:-translate-y-1 hover:border-primary hover:shadow-md dark:border-slate-700 dark:bg-slate-900/60"
                   >
                     <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">
-                      {book.title}
+                      {formatBookTitle(book)}
                     </p>
                     {book.summary ? (
                       <p className="mt-1 text-xs text-slate-500 dark:text-slate-300 line-clamp-2">
@@ -649,7 +650,7 @@ const Home = () => {
                     <div className="relative aspect-[3/4] w-28 flex-shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 md:w-32">
                       <img
                         src={topRatedCoverSrc}
-                        alt={`Couverture de ${topRatedBook.book.title}`}
+                        alt={`Couverture de ${formatBookTitle(topRatedBook.book) || 'livre'}`}
                         className="h-full w-full object-cover"
                         onError={(event) => {
                           if (topRatedCoverIndex < topRatedCoverCandidates.length - 1) {
@@ -667,7 +668,7 @@ const Home = () => {
                         to={`/books/${topRatedBook.book.id}`}
                         className="text-lg font-semibold text-slate-700 hover:text-primary dark:text-slate-100"
                       >
-                        {topRatedBook.book.title}
+                        {formatBookTitle(topRatedBook.book)}
                       </Link>
                       <p className="text-sm text-slate-500 dark:text-slate-300">
                         Note moyenne :
@@ -715,7 +716,7 @@ const Home = () => {
                           to={`/books/${book.id}`}
                           className="text-sm font-semibold text-slate-700 hover:text-primary dark:text-slate-100"
                         >
-                          {book.title}
+                          {formatBookTitle(book)}
                         </Link>
                         {book.summary && (
                           <p className="text-xs text-slate-500 dark:text-slate-300 line-clamp-2">

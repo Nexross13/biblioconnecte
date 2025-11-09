@@ -44,7 +44,7 @@ const findById = async (id) => {
 
 const getAuthorBooks = async (authorId) => {
   const result = await query(
-    `SELECT b.id, b.title, b.isbn, b.edition, b.volume, b.summary
+    `SELECT b.id, b.title, b.isbn, b.edition, b.volume, b.volume_title, b.summary
      FROM book_authors ba
      JOIN books b ON b.id = ba.book_id
      WHERE ba.author_id = $1

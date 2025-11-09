@@ -11,7 +11,7 @@ const listGenres = async () => {
 
 const getGenreBooks = async (genreId) => {
   const result = await query(
-    `SELECT b.id, b.title, b.isbn, b.edition, b.volume
+    `SELECT b.id, b.title, b.isbn, b.edition, b.volume, b.volume_title
      FROM book_genres bg
      JOIN books b ON b.id = bg.book_id
      WHERE bg.genre_id = $1

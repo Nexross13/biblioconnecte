@@ -52,6 +52,7 @@ const mapProposal = (row) =>
     isbn: row.isbn,
     edition: row.edition,
     volume: row.volume,
+    volumeTitle: row.volume_title || null,
     releaseDate: normalizeDate(row.publication_date),
     summary: row.summary,
     status: row.status,
@@ -87,6 +88,7 @@ const baseSelect = `
     bp.isbn,
     bp.edition,
     bp.volume,
+    bp.volume_title,
     bp.publication_date,
     bp.summary,
     bp.status,
@@ -115,6 +117,7 @@ const createProposal = async ({
   isbn,
   edition,
   volume,
+  volumeTitle,
   summary,
   publicationDate = null,
   submittedBy,
@@ -123,14 +126,15 @@ const createProposal = async ({
   coverImagePath = null,
 }) => {
   const result = await query(
-    `INSERT INTO book_proposals (title, isbn, edition, volume, summary, publication_date, status, submitted_by, author_names, genre_names, cover_image_path)
-     VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10)
-     RETURNING id, title, isbn, edition, volume, summary, publication_date, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
+    `INSERT INTO book_proposals (title, isbn, edition, volume, volume_title, summary, publication_date, status, submitted_by, author_names, genre_names, cover_image_path)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11)
+     RETURNING id, title, isbn, edition, volume, volume_title, summary, publication_date, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
     [
       title,
       isbn,
       edition,
       volume,
+      volumeTitle,
       summary,
       publicationDate,
       submittedBy,
@@ -204,7 +208,7 @@ const approveProposal = async (id, { decidedBy }) => {
   try {
     await client.query('BEGIN');
     const proposalResult = await client.query(
-      `SELECT id, title, isbn, edition, volume, summary, publication_date, status, author_names, genre_names, cover_image_path
+      `SELECT id, title, isbn, edition, volume, volume_title, summary, publication_date, status, author_names, genre_names, cover_image_path
        FROM book_proposals
        WHERE id = $1
        FOR UPDATE`,
@@ -222,14 +226,15 @@ const approveProposal = async (id, { decidedBy }) => {
     }
 
     const bookResult = await client.query(
-      `INSERT INTO books (title, isbn, edition, volume, publication_date, summary)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, title, isbn, edition, volume, publication_date, summary, created_at, updated_at`,
+      `INSERT INTO books (title, isbn, edition, volume, volume_title, publication_date, summary)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, title, isbn, edition, volume, volume_title, publication_date, summary, created_at, updated_at`,
       [
         proposal.title,
         proposal.isbn,
         proposal.edition,
         proposal.volume,
+        proposal.volume_title,
         proposal.publication_date,
         proposal.summary,
       ],
@@ -243,7 +248,7 @@ const approveProposal = async (id, { decidedBy }) => {
            rejection_reason = NULL,
            updated_at = NOW()
        WHERE id = $1
-       RETURNING id, title, isbn, edition, volume, summary, publication_date, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
+       RETURNING id, title, isbn, edition, volume, volume_title, summary, publication_date, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
       [id, decidedBy],
     );
 
@@ -255,6 +260,7 @@ const approveProposal = async (id, { decidedBy }) => {
       isbn: bookRow.isbn,
       edition: bookRow.edition,
       volume: bookRow.volume,
+      volumeTitle: bookRow.volume_title || null,
       releaseDate: normalizeDate(bookRow.publication_date),
       summary: bookRow.summary,
       createdAt: bookRow.created_at,
@@ -376,7 +382,7 @@ const rejectProposal = async (id, { decidedBy, reason }) => {
          rejection_reason = $3,
          updated_at = NOW()
      WHERE id = $1 AND status = 'pending'
-     RETURNING id, title, isbn, edition, volume, summary, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
+     RETURNING id, title, isbn, edition, volume, volume_title, summary, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
     [id, decidedBy, reason || null],
   );
   const baseProposal = mapProposal(result.rows[0]);

@@ -4,6 +4,7 @@ import BookCard from '../components/BookCard.jsx'
 import Loader from '../components/Loader.jsx'
 import { fetchLibrary } from '../api/library'
 import { fetchWishlist } from '../api/wishlist'
+import formatBookTitle from '../utils/formatBookTitle'
 
 const FILTERS = [
   { id: 'all', label: 'Tout' },
@@ -90,7 +91,7 @@ const Library = () => {
         : []
 
       const haystack = [
-        book.title,
+        formatBookTitle(book),
         book.summary,
         book.isbn,
         authorTokens.join(' '),

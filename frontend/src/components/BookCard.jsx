@@ -7,6 +7,7 @@ import { addBookToLibrary, removeBookFromLibrary } from '../api/library'
 import { addBookToWishlist, removeBookFromWishlist } from '../api/wishlist'
 import useAuth from '../hooks/useAuth'
 import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
+import formatBookTitle from '../utils/formatBookTitle'
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
@@ -125,12 +126,14 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
       ? book.reviewCount
       : 0
 
+  const displayTitle = formatBookTitle(book)
+
   return (
     <article className="card flex h-full flex-col gap-4">
       <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
         <img
           src={coverSrc}
-          alt={`Couverture de ${book.title}`}
+          alt={`Couverture de ${displayTitle || 'livre'}`}
           onError={(event) => {
             if (candidateIndex < coverCandidates.length - 1) {
               const nextIndex = candidateIndex + 1
@@ -146,7 +149,7 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
       </div>
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-lg font-semibold text-primary">{book.title}</h3>
+          <h3 className="text-lg font-semibold text-primary">{displayTitle}</h3>
           {averageRating !== null && !Number.isNaN(averageRating) && reviewCount > 0 && (
             <span className="rounded-full bg-amber-400/90 px-3 py-1 text-xs font-semibold text-amber-900">
               ⭐ {averageRating.toFixed(1)}

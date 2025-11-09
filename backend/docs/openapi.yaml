@@ -917,6 +917,30 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  /books/{id}/series-prefill:
+    get:
+      tags:
+        - Livres
+      summary: Préparer les valeurs par défaut pour un nouveau tome
+      description: Retourne l'édition, le prochain numéro et les genres associés au livre sélectionné afin de pré-remplir un formulaire.
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      responses:
+        '200':
+          description: Pré-remplissage calculé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prefill:
+                    $ref: '#/components/schemas/BookSeriesPrefill'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     put:
       tags:
         - Livres
@@ -2287,6 +2311,11 @@ components:
           type: string
           nullable: true
           example: '1'
+        volumeTitle:
+          type: string
+          nullable: true
+          description: Intitulé propre au tome lorsqu'une série partage un titre commun.
+          example: La Communauté de l’Anneau
         releaseDate:
           type: string
           format: date
@@ -2338,6 +2367,11 @@ components:
           type: string
           nullable: true
           example: '1'
+        volumeTitle:
+          type: string
+          nullable: true
+          description: Nom précis du tome.
+          example: Les Fiancés de l’hiver
         summary:
           type: string
           nullable: true
@@ -2522,6 +2556,10 @@ components:
           type: string
         volume:
           type: string
+        volumeTitle:
+          type: string
+          nullable: true
+          description: Intitulé spécifique du tome.
         releaseDate:
           type: string
           format: date
@@ -2552,6 +2590,28 @@ components:
           description: Image de couverture encodée en base64 (data URL)
       required:
         - title
+    BookSeriesPrefill:
+      type: object
+      properties:
+        title:
+          type: string
+          example: Astérix
+        edition:
+          type: string
+          nullable: true
+          example: Dargaud
+        nextVolume:
+          type: string
+          nullable: true
+          description: Numéro suggéré pour le prochain tome.
+          example: '40'
+        genreNames:
+          type: array
+          items:
+            type: string
+          example:
+            - Bande dessinée franco-belge
+            - Aventure
     BookUpdateRequest:
       type: object
       properties:
@@ -2563,6 +2623,9 @@ components:
           type: string
         volume:
           type: string
+        volumeTitle:
+          type: string
+          nullable: true
         releaseDate:
           type: string
           format: date

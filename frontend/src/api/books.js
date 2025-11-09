@@ -20,6 +20,11 @@ export const fetchBookGenres = async (id) => {
   return data.genres
 }
 
+export const fetchBookSeriesPrefill = async (id) => {
+  const { data } = await apiClient.get(`/books/${id}/series-prefill`)
+  return data.prefill
+}
+
 export const fetchBookReviews = async (bookId) => {
   const { data } = await apiClient.get(`/books/${bookId}/reviews`)
   return data.reviews

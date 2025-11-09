@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { createBookProposal } from '../api/bookProposals'
 import { fetchGenres } from '../api/genres'
 import { fetchAuthors } from '../api/authors'
+import { fetchBooks, fetchBookSeriesPrefill } from '../api/books'
 import Loader from '../components/Loader.jsx'
+import formatBookTitle from '../utils/formatBookTitle'
 
 const getAuthorDisplayName = (author) => {
   const firstName = author.firstName ?? ''
@@ -19,6 +21,7 @@ const initialState = {
   isbn: '',
   edition: '',
   volume: '',
+  volumeTitle: '',
   releaseDate: '',
   summary: '',
 }
@@ -65,16 +68,20 @@ const BookProposalForm = () => {
   const [formValues, setFormValues] = useState(initialState)
   const [errors, setErrors] = useState({})
   const [authors, setAuthors] = useState([])
-  const [isAuthorModalOpen, setIsAuthorModalOpen] = useState(false)
-  const [authorModalSearch, setAuthorModalSearch] = useState('')
-  const [authorModalSelection, setAuthorModalSelection] = useState([])
+  const [authorSearchTerm, setAuthorSearchTerm] = useState('')
+  const [isAuthorDropdownOpen, setIsAuthorDropdownOpen] = useState(false)
   const [genres, setGenres] = useState([])
-  const [isGenreModalOpen, setIsGenreModalOpen] = useState(false)
-  const [genreModalSelection, setGenreModalSelection] = useState([])
-  const [genreModalSearch, setGenreModalSearch] = useState('')
+  const [genreSearchTerm, setGenreSearchTerm] = useState('')
+  const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false)
   const [coverImageData, setCoverImageData] = useState(null)
   const [coverPreviewUrl, setCoverPreviewUrl] = useState(null)
   const [coverError, setCoverError] = useState('')
+  const [titleSearchTerm, setTitleSearchTerm] = useState('')
+  const [debouncedTitleSearch, setDebouncedTitleSearch] = useState('')
+  const [isTitleDropdownOpen, setIsTitleDropdownOpen] = useState(false)
+  const titleFieldRef = useRef(null)
+  const authorFieldRef = useRef(null)
+  const genreFieldRef = useRef(null)
 
   const genresQuery = useQuery({
     queryKey: ['genres'],
@@ -86,21 +93,74 @@ const BookProposalForm = () => {
     queryFn: fetchAuthors,
   })
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedTitleSearch(titleSearchTerm.trim())
+    }, 250)
+    return () => clearTimeout(handler)
+  }, [titleSearchTerm])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (titleFieldRef.current && !titleFieldRef.current.contains(event.target)) {
+        setIsTitleDropdownOpen(false)
+      }
+      if (authorFieldRef.current && !authorFieldRef.current.contains(event.target)) {
+        setIsAuthorDropdownOpen(false)
+      }
+      if (genreFieldRef.current && !genreFieldRef.current.contains(event.target)) {
+        setIsGenreDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const titleSuggestionsQuery = useQuery({
+    queryKey: ['book-title-suggestions', debouncedTitleSearch],
+    queryFn: async () => {
+      const data = await fetchBooks({ search: debouncedTitleSearch, limit: 5 })
+      return data.books ?? []
+    },
+    enabled: debouncedTitleSearch.length >= 2,
+  })
+
   const filteredGenres = useMemo(() => {
     const availableGenres = genresQuery.data ?? []
-    const lower = genreModalSearch.trim().toLowerCase()
-    return availableGenres.filter((genre) =>
-      genre.name.toLowerCase().includes(lower),
-    )
-  }, [genresQuery.data, genreModalSearch])
+    const lower = genreSearchTerm.trim().toLowerCase()
+    if (!lower.length) {
+      return availableGenres.slice(0, 6)
+    }
+    return availableGenres
+      .filter((genre) => genre.name.toLowerCase().includes(lower))
+      .slice(0, 6)
+  }, [genresQuery.data, genreSearchTerm])
 
   const filteredAuthors = useMemo(() => {
     const availableAuthors = authorsQuery.data ?? []
-    const lower = authorModalSearch.trim().toLowerCase()
-    return availableAuthors.filter((author) =>
-      getAuthorDisplayName(author).toLowerCase().includes(lower),
-    )
-  }, [authorsQuery.data, authorModalSearch])
+    const lower = authorSearchTerm.trim().toLowerCase()
+    if (!lower.length) {
+      return availableAuthors.slice(0, 6)
+    }
+    return availableAuthors
+      .filter((author) => getAuthorDisplayName(author).toLowerCase().includes(lower))
+      .slice(0, 6)
+  }, [authorsQuery.data, authorSearchTerm])
+
+  const titleSuggestions = useMemo(() => {
+    if (!Array.isArray(titleSuggestionsQuery.data)) {
+      return []
+    }
+    const seen = new Set()
+    return titleSuggestionsQuery.data.filter((book) => {
+      const normalized = (book.title || '').trim().toLowerCase()
+      if (!normalized || seen.has(normalized)) {
+        return false
+      }
+      seen.add(normalized)
+      return true
+    })
+  }, [titleSuggestionsQuery.data])
 
   const prefilledTitle = useMemo(
     () => searchParams.get('title')?.trim() || '',
@@ -114,6 +174,9 @@ const BookProposalForm = () => {
     }
     if (draft.formValues) {
       setFormValues((prev) => ({ ...prev, ...draft.formValues }))
+      if (draft.formValues.title) {
+        setTitleSearchTerm(draft.formValues.title)
+      }
     }
     if (Array.isArray(draft.authors)) {
       setAuthors(draft.authors)
@@ -126,6 +189,7 @@ const BookProposalForm = () => {
   useEffect(() => {
     if (prefilledTitle) {
       setFormValues((prev) => ({ ...prev, title: prefilledTitle }))
+      setTitleSearchTerm(prefilledTitle)
     }
   }, [prefilledTitle])
 
@@ -158,14 +222,13 @@ const BookProposalForm = () => {
       setFormValues(initialState)
       setErrors({})
       setAuthors([])
-      setAuthorModalSelection([])
-      setAuthorModalSearch('')
       setGenres([])
-      setGenreModalSelection([])
-      setGenreModalSearch('')
       setCoverImageData(null)
       setCoverPreviewUrl(null)
       setCoverError('')
+      setTitleSearchTerm('')
+      setAuthorSearchTerm('')
+      setGenreSearchTerm('')
       clearDraft()
     },
     onError: (error) => {
@@ -178,6 +241,10 @@ const BookProposalForm = () => {
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormValues((prev) => ({ ...prev, [name]: value }))
+    if (name === 'title') {
+      setTitleSearchTerm(value)
+      setIsTitleDropdownOpen(true)
+    }
     if (errors[name]) {
       setErrors((prev) => {
         const next = { ...prev }
@@ -187,79 +254,100 @@ const BookProposalForm = () => {
     }
   }
 
-  const handleAuthorRemove = (name) => {
-    setAuthors((prev) => prev.filter((value) => value !== name))
-    setAuthorModalSelection((prev) => prev.filter((value) => value !== name))
-  }
-
-  const handleGenreRemove = (name) => {
-    setGenres((prev) => prev.filter((value) => value !== name))
-    setGenreModalSelection((prev) => prev.filter((value) => value !== name))
-  }
-
-  const openAuthorModal = () => {
-    setAuthorModalSelection(authors)
-    setAuthorModalSearch('')
-    setIsAuthorModalOpen(true)
-  }
-
-  const closeAuthorModal = () => {
-    setAuthorModalSelection(authors)
-    setAuthorModalSearch('')
-    setIsAuthorModalOpen(false)
-  }
-
-  const toggleAuthorSelection = (author) => {
-    const displayName = getAuthorDisplayName(author)
-    setAuthorModalSelection((prev) =>
-      prev.includes(displayName)
-        ? prev.filter((value) => value !== displayName)
-        : [...prev, displayName],
-    )
-  }
-
-  const confirmAuthorSelection = () => {
-    setAuthors(authorModalSelection)
-    if (errors.authorNames && authorModalSelection.length) {
+  const addAuthor = (name) => {
+    const normalized = name.trim()
+    if (!normalized || authors.includes(normalized)) {
+      return
+    }
+    setAuthors((prev) => [...prev, normalized])
+    setAuthorSearchTerm('')
+    setIsAuthorDropdownOpen(false)
+    if (errors.authorNames) {
       setErrors((prev) => {
         const next = { ...prev }
         delete next.authorNames
         return next
       })
     }
-    setIsAuthorModalOpen(false)
-    setAuthorModalSearch('')
   }
 
-  const openGenreModal = () => {
-    setGenreModalSelection(genres)
-    setGenreModalSearch('')
-    setIsGenreModalOpen(true)
-  }
-
-  const closeGenreModal = () => {
-    setGenreModalSelection(genres)
-    setGenreModalSearch('')
-    setIsGenreModalOpen(false)
-  }
-
-  const toggleGenreSelection = (name) => {
-    setGenreModalSelection((prev) =>
-      prev.includes(name) ? prev.filter((value) => value !== name) : [...prev, name],
-    )
-  }
-
-  const confirmGenreSelection = () => {
-    setGenres(genreModalSelection)
-    if (errors.genreNames && genreModalSelection.length) {
+  const addGenre = (name) => {
+    const normalized = name.trim()
+    if (!normalized || genres.includes(normalized)) {
+      return
+    }
+    setGenres((prev) => [...prev, normalized])
+    setGenreSearchTerm('')
+    setIsGenreDropdownOpen(false)
+    if (errors.genreNames) {
       setErrors((prev) => {
         const next = { ...prev }
         delete next.genreNames
         return next
       })
     }
-    setIsGenreModalOpen(false)
-    setGenreModalSearch('')
+  }
+
+  const handleAuthorRemove = (name) => {
+    setAuthors((prev) => prev.filter((value) => value !== name))
+  }
+
+  const handleGenreRemove = (name) => {
+    setGenres((prev) => prev.filter((value) => value !== name))
+  }
+
+  const handleAuthorInputKeyDown = (event) => {
+    if (event.key === 'Enter' && authorSearchTerm.trim()) {
+      event.preventDefault()
+      addAuthor(authorSearchTerm)
+    }
+  }
+
+  const handleGenreInputKeyDown = (event) => {
+    if (event.key === 'Enter' && genreSearchTerm.trim()) {
+      event.preventDefault()
+      addGenre(genreSearchTerm)
+    }
+  }
+
+  const handleTitleSuggestionSelect = async (book) => {
+    const nextTitle = book.title || ''
+    setTitleSearchTerm(nextTitle)
+    setIsTitleDropdownOpen(false)
+    setFormValues((prev) => ({
+      ...prev,
+      title: nextTitle,
+      edition: book.edition ?? prev.edition,
+    }))
+    try {
+      const prefill = await fetchBookSeriesPrefill(book.id)
+      setFormValues((prev) => ({
+        ...prev,
+        title: nextTitle || prev.title,
+        edition: prefill?.edition ?? book.edition ?? prev.edition,
+        volume: prefill?.nextVolume ?? prev.volume,
+      }))
+      if (prefill?.genreNames?.length) {
+        setGenres(prefill.genreNames)
+        if (errors.genreNames) {
+          setErrors((prev) => {
+            const next = { ...prev }
+            delete next.genreNames
+            return next
+          })
+        }
+      }
+    } catch (error) {
+      toast.error("Impossible de récupérer les informations de la série.")
+    }
+  }
+
+  const handleAuthorSuggestionSelect = (author) => {
+    addAuthor(getAuthorDisplayName(author))
+  }
+
+  const handleGenreSuggestionSelect = (genreName) => {
+    addGenre(genreName)
   }
 
   const handleCoverChange = (event) => {
@@ -323,6 +411,7 @@ const BookProposalForm = () => {
       isbn: formValues.isbn.trim() || null,
       edition: formValues.edition.trim() || null,
       volume: formValues.volume.trim() || null,
+      volumeTitle: formValues.volumeTitle.trim() || null,
       releaseDate: formValues.releaseDate.trim() || null,
       summary: formValues.summary.trim() || null,
       authorNames: authors,
@@ -348,20 +437,57 @@ const BookProposalForm = () => {
       </header>
 
       <form className="card space-y-4" onSubmit={handleSubmit}>
-        <div className="space-y-2">
+        <div className="space-y-2" ref={titleFieldRef}>
           <label htmlFor="title" className="text-sm font-semibold text-primary">
             Titre
           </label>
-          <input
-            id="title"
-            name="title"
-            type="text"
-            className="input"
-            placeholder="Ex. La Horde du Contrevent"
-            value={formValues.title}
-            onChange={handleChange}
-            required
-          />
+          <div className="relative">
+            <input
+              id="title"
+              name="title"
+              type="text"
+              className="input"
+              placeholder="Ex. La Horde du Contrevent"
+              value={formValues.title}
+              onChange={handleChange}
+              onFocus={() => {
+                if (titleSearchTerm.trim().length >= 2) {
+                  setIsTitleDropdownOpen(true)
+                }
+              }}
+              autoComplete="off"
+              required
+            />
+            {isTitleDropdownOpen && titleSearchTerm.trim().length >= 2 && (
+              <div className="absolute left-0 right-0 z-20 mt-1 rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                {titleSuggestionsQuery.isLoading ? (
+                  <p className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">Recherche...</p>
+                ) : titleSuggestionsQuery.isError ? (
+                  <p className="px-4 py-3 text-sm text-rose-600">Erreur lors de la recherche</p>
+                ) : titleSuggestions.length ? (
+                  titleSuggestions.map((book) => (
+                    <button
+                      key={book.id}
+                      type="button"
+                      className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                      onClick={() => handleTitleSuggestionSelect(book)}
+                    >
+                      <span className="font-medium text-slate-700 dark:text-slate-100">
+                        {formatBookTitle(book)}
+                      </span>
+                      {book.edition && (
+                        <span className="text-xs text-slate-400 dark:text-slate-500">{book.edition}</span>
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">
+                    Aucun résultat pour « {titleSearchTerm.trim()} »
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
           {errors.title && <p className="text-xs text-rose-600">{errors.title}</p>}
         </div>
 
@@ -397,7 +523,7 @@ const BookProposalForm = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <label htmlFor="volume" className="text-sm font-semibold text-primary">
               Tome / Volume
@@ -412,7 +538,20 @@ const BookProposalForm = () => {
               onChange={handleChange}
             />
           </div>
-
+          <div className="space-y-2">
+            <label htmlFor="volumeTitle" className="text-sm font-semibold text-primary">
+              Titre du tome
+            </label>
+            <input
+              id="volumeTitle"
+              name="volumeTitle"
+              type="text"
+              className="input h-10"
+              placeholder="Ex. La Communauté de l’Anneau"
+              value={formValues.volumeTitle}
+              onChange={handleChange}
+            />
+          </div>
           <div className="space-y-2">
             <label htmlFor="releaseDate" className="text-sm font-semibold text-primary">
               Date de sortie
@@ -443,27 +582,63 @@ const BookProposalForm = () => {
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2" ref={authorFieldRef}>
           <span className="text-sm font-semibold text-primary">Auteur(s)</span>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <button
-              type="button"
-              className="btn-secondary sm:w-auto"
-              onClick={openAuthorModal}
+          <div className="relative">
+            <input
+              type="text"
+              className="input"
+              placeholder="Recherchez un auteur existant ou ajoutez-en un nouveau"
+              value={authorSearchTerm}
+              onChange={(event) => {
+                setAuthorSearchTerm(event.target.value)
+                setIsAuthorDropdownOpen(true)
+              }}
+              onFocus={() => setIsAuthorDropdownOpen(true)}
+              onKeyDown={handleAuthorInputKeyDown}
               disabled={authorsQuery.isLoading || authorsQuery.isError}
-            >
-              Sélectionner les auteurs
-            </button>
-            <span className="text-xs text-slate-500 dark:text-slate-300">
-              {authors.length ? `${authors.length} auteur(s) sélectionné(s)` : 'Aucun auteur sélectionné'}
-            </span>
+            />
+            {isAuthorDropdownOpen && authorSearchTerm.trim().length > 0 && (
+              <div className="absolute left-0 right-0 z-20 mt-1 rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                {authorsQuery.isLoading ? (
+                  <p className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">Chargement...</p>
+                ) : authorsQuery.isError ? (
+                  <p className="px-4 py-3 text-sm text-rose-600">Impossible de charger les auteurs.</p>
+                ) : filteredAuthors.length ? (
+                  filteredAuthors.map((author) => {
+                    const displayName = getAuthorDisplayName(author)
+                    return (
+                      <button
+                        key={author.id}
+                        type="button"
+                        className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                        onClick={() => handleAuthorSuggestionSelect(author)}
+                      >
+                        <span className="font-medium text-slate-700 dark:text-slate-100">{displayName}</span>
+                        {author.email && (
+                          <span className="text-xs text-slate-400 dark:text-slate-500">{author.email}</span>
+                        )}
+                      </button>
+                    )
+                  })
+                ) : authorSearchTerm.trim() ? (
+                  <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">
+                    Aucun auteur ne correspond à « {authorSearchTerm.trim()} ».{' '}
+                    <Link
+                      to="/authors/new"
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      Ajouter un nouvel auteur
+                    </Link>
+                  </div>
+                ) : (
+                  <p className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">
+                    Commencez à taper pour rechercher un auteur.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-          {authorsQuery.isLoading ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400">Chargement des auteurs...</p>
-          ) : null}
-          {authorsQuery.isError ? (
-            <p className="text-xs text-rose-600">Impossible de charger les auteurs enregistrés.</p>
-          ) : null}
           {errors.authorNames && <p className="text-xs text-rose-600">{errors.authorNames}</p>}
           {authors.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -487,27 +662,55 @@ const BookProposalForm = () => {
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2" ref={genreFieldRef}>
           <span className="text-sm font-semibold text-primary">Genre(s)</span>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <button
-              type="button"
-              className="btn-secondary sm:w-auto"
-              onClick={openGenreModal}
+          <div className="relative">
+            <input
+              type="text"
+              className="input"
+              placeholder="Recherchez un genre"
+              value={genreSearchTerm}
+              onChange={(event) => {
+                setGenreSearchTerm(event.target.value)
+                setIsGenreDropdownOpen(true)
+              }}
+              onFocus={() => setIsGenreDropdownOpen(true)}
+              onKeyDown={handleGenreInputKeyDown}
               disabled={genresQuery.isLoading || genresQuery.isError}
-            >
-              Sélectionner les genres
-            </button>
-            <span className="text-xs text-slate-500 dark:text-slate-300">
-              {genres.length ? `${genres.length} genre(s) sélectionné(s)` : 'Aucun genre sélectionné'}
-            </span>
+            />
+            {isGenreDropdownOpen && genreSearchTerm.trim().length > 0 && (
+              <div className="absolute left-0 right-0 z-20 mt-1 rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                {genresQuery.isLoading ? (
+                  <p className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">Chargement...</p>
+                ) : genresQuery.isError ? (
+                  <p className="px-4 py-3 text-sm text-rose-600">Impossible de charger les genres.</p>
+                ) : filteredGenres.length ? (
+                  filteredGenres.map((genre) => (
+                    <button
+                      key={genre.id}
+                      type="button"
+                      className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                      onClick={() => handleGenreSuggestionSelect(genre.name)}
+                    >
+                      <span className="font-medium text-slate-700 dark:text-slate-100">{genre.name}</span>
+                    </button>
+                  ))
+                ) : genreSearchTerm.trim() ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-primary hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onClick={() => addGenre(genreSearchTerm)}
+                  >
+                    Ajouter « {genreSearchTerm.trim()} »
+                  </button>
+                ) : (
+                  <p className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">
+                    Commencez à taper pour rechercher un genre.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-          {genresQuery.isLoading ? (
-            <p className="text-xs text-slate-500 dark:text-slate-400">Chargement des genres...</p>
-          ) : null}
-          {genresQuery.isError ? (
-            <p className="text-xs text-rose-600">Impossible de charger les genres enregistrés.</p>
-          ) : null}
           {errors.genreNames && <p className="text-xs text-rose-600">{errors.genreNames}</p>}
           {genres.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -566,14 +769,13 @@ const BookProposalForm = () => {
               setFormValues({ ...initialState, title: prefilledTitle })
               setErrors({})
               setAuthors([])
-              setAuthorModalSelection([])
               setGenres([])
-              setGenreModalSelection([])
-              setGenreModalSearch('')
-              setAuthorModalSearch('')
+              setAuthorSearchTerm('')
+              setGenreSearchTerm('')
               setCoverImageData(null)
               setCoverPreviewUrl(null)
               setCoverError('')
+              setTitleSearchTerm(prefilledTitle || '')
               clearDraft()
             }}
           >
@@ -581,178 +783,6 @@ const BookProposalForm = () => {
           </button>
         </div>
       </form>
-      {isAuthorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-primary">Sélectionner les auteurs</h2>
-              <button
-                type="button"
-                className="text-slate-500 transition hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
-                onClick={closeAuthorModal}
-                aria-label="Fermer"
-              >
-                ×
-              </button>
-            </div>
-
-            <input
-              type="text"
-              className="input"
-              placeholder="Rechercher un auteur"
-              value={authorModalSearch}
-              onChange={(event) => setAuthorModalSearch(event.target.value)}
-              disabled={authorsQuery.isLoading || authorsQuery.isError}
-            />
-
-            <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700">
-              {authorsQuery.isLoading ? (
-                <p className="p-3 text-sm text-slate-500 dark:text-slate-300">Chargement...</p>
-              ) : filteredAuthors.length ? (
-                filteredAuthors.map((author) => {
-                  const displayName = getAuthorDisplayName(author)
-                  const isSelected = authorModalSelection.includes(displayName)
-                  return (
-                    <button
-                      key={author.id}
-                      type="button"
-                      onClick={() => toggleAuthorSelection(author)}
-                      className={`flex w-full items-center justify-between px-4 py-2 text-sm transition ${
-                        isSelected
-                          ? 'bg-primary text-white hover:bg-primary-dark'
-                          : 'text-slate-600 hover:bg-primary/10 dark:text-slate-200 dark:hover:bg-primary/20'
-                      }`}
-                    >
-                      <span>{displayName}</span>
-                      {isSelected ? <span className="text-xs">Sélectionné</span> : null}
-                    </button>
-                  )
-                })
-              ) : (
-                <p className="p-3 text-sm text-slate-500 dark:text-slate-300">
-                  Aucun auteur ne correspond à votre recherche.
-                </p>
-              )}
-            </div>
-
-            {authorModalSelection.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {authorModalSelection.map((author) => (
-                  <span
-                    key={author}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
-                  >
-                    {author}
-                    <button
-                      type="button"
-                      className="text-xs text-primary hover:text-primary-dark"
-                      onClick={() => {
-                        setAuthors((prev) => prev.filter((value) => value !== author))
-                        setAuthorModalSelection((prev) => prev.filter((value) => value !== author))
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3">
-              <button type="button" className="btn-secondary" onClick={closeAuthorModal}>
-                Annuler
-              </button>
-              <button type="button" className="btn" onClick={confirmAuthorSelection}>
-                Valider
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {isGenreModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-primary">Sélectionner les genres</h2>
-              <button
-                type="button"
-                className="text-slate-500 transition hover:text-slate-700 dark:text-slate-300 dark:hover:text-white"
-                onClick={closeGenreModal}
-                aria-label="Fermer"
-              >
-                ×
-              </button>
-            </div>
-
-            <input
-              type="text"
-              className="input"
-              placeholder="Rechercher un genre"
-              value={genreModalSearch}
-              onChange={(event) => setGenreModalSearch(event.target.value)}
-              disabled={genresQuery.isLoading || genresQuery.isError}
-            />
-
-            <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700">
-              {genresQuery.isLoading ? (
-                <p className="p-3 text-sm text-slate-500 dark:text-slate-300">Chargement...</p>
-              ) : filteredGenres.length ? (
-                filteredGenres.map((genre) => {
-                  const isSelected = genreModalSelection.includes(genre.name)
-                  return (
-                    <button
-                      key={genre.id}
-                      type="button"
-                      onClick={() => toggleGenreSelection(genre.name)}
-                      className={`flex w-full items-center justify-between px-4 py-2 text-sm transition ${
-                        isSelected
-                          ? 'bg-primary text-white hover:bg-primary-dark'
-                          : 'text-slate-600 hover:bg-primary/10 dark:text-slate-200 dark:hover:bg-primary/20'
-                      }`}
-                    >
-                      <span>{genre.name}</span>
-                      {isSelected ? <span className="text-xs">Sélectionné</span> : null}
-                    </button>
-                  )
-                })
-              ) : (
-                <p className="p-3 text-sm text-slate-500 dark:text-slate-300">
-                  Aucun genre ne correspond à votre recherche.
-                </p>
-              )}
-            </div>
-
-            {genreModalSelection.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {genreModalSelection.map((genre) => (
-                  <span
-                    key={genre}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
-                  >
-                    {genre}
-                    <button
-                      type="button"
-                      className="text-xs text-primary hover:text-primary-dark"
-                      onClick={() => toggleGenreSelection(genre)}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3">
-              <button type="button" className="btn-secondary" onClick={closeGenreModal}>
-                Annuler
-              </button>
-              <button type="button" className="btn" onClick={confirmGenreSelection}>
-                Valider
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

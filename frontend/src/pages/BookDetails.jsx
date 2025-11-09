@@ -16,6 +16,7 @@ import ReviewCard from '../components/ReviewCard.jsx'
 import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
 import getAverageRating from '../utils/getAverageRating'
+import formatBookTitle from '../utils/formatBookTitle'
 import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
@@ -146,6 +147,7 @@ const BookDetails = () => {
     authors: authorsQuery.data,
     genres: genresQuery.data,
   }
+  const displayTitle = formatBookTitle(book)
 
   const inLibrary = libraryQuery.data?.some((item) => item.id === book.id) ?? false
   const inWishlist = wishlistQuery.data?.some((item) => item.id === book.id) ?? false
@@ -183,7 +185,7 @@ const BookDetails = () => {
             <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800 md:w-64">
               <img
                 src={coverSrc}
-                alt={`Couverture de ${book.title}`}
+                alt={`Couverture de ${displayTitle || 'livre'}`}
                 onError={(event) => {
                   if (candidateIndex < coverCandidates.length - 1) {
                     const nextIndex = candidateIndex + 1
@@ -197,27 +199,9 @@ const BookDetails = () => {
               />
             </div>
             <div className="flex-1 space-y-5">
-              <h1 className="flex items-center gap-20 text-3xl font-bold text-primary">
-                <span>{book.title}</span>
-                {authorEntries.length > 0 && (
-                  <span className="text-sm font-medium text-slate-600 dark:text-slate-200">
-                    {authorEntries.map((entry, index) => (
-                      <Fragment key={entry.id ?? `${entry.name}-${index}`}>
-                        {entry.id ? (
-                          <Link className="text-primary hover:underline" to={`/authors/${entry.id}`}>
-                            {entry.name}
-                          </Link>
-                        ) : (
-                          entry.name
-                        )}
-                        {index < authorEntries.length - 1 && ', '}
-                      </Fragment>
-                    ))}
-                  </span>
-                )}
-              </h1>
+              <h1 className="text-3xl font-bold text-primary">{displayTitle}</h1>
 
-              <dl className="grid gap-3 text-xs text-slate-500 dark:text-slate-300 md:grid-cols-3">
+              <dl className="grid gap-3 text-xs text-slate-500 dark:text-slate-300 md:grid-cols-3 lg:grid-cols-4">
                 <div>
                   <dt className="font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                     ISBN
@@ -236,6 +220,38 @@ const BookDetails = () => {
                   </dt>
                   <dd>{book.releaseDate ? formatDate(book.releaseDate) : 'Inconnue'}</dd>
                 </div>
+                {(book.volume || book.volumeTitle) && (
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      Tome
+                    </dt>
+                    <dd>
+                      {[book.volume ? `Tome ${book.volume}` : null, book.volumeTitle]
+                        .filter(Boolean)
+                        .join(' — ')}
+                    </dd>
+                  </div>
+                )}
+                {authorEntries.length > 0 && (
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      Auteur(s)
+                    </dt>
+                    <dd className="mt-1 space-y-1">
+                      {authorEntries.map((entry, index) => (
+                        <div key={entry.id ?? `${entry.name}-${index}`}>
+                          {entry.id ? (
+                            <Link className="text-primary hover:underline" to={`/authors/${entry.id}`}>
+                              {entry.name}
+                            </Link>
+                          ) : (
+                            entry.name
+                          )}
+                        </div>
+                      ))}
+                    </dd>
+                  </div>
+                )}
               </dl>
 
               {book.summary && (
