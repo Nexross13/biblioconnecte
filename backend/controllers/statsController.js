@@ -30,6 +30,8 @@ const mapBookRow = (row) =>
     id: row.id,
     isbn: row.isbn,
     title: row.title,
+    volume: row.volume,
+    volumeTitle: row.volume_title || null,
     releaseDate: normalizeDate(row.publication_date),
     summary: row.summary,
     createdAt: row.created_at,
@@ -123,6 +125,8 @@ const getHighlights = async (req, res, next) => {
           id: book.id,
           isbn: book.isbn,
           title: book.title,
+          volume: book.volume,
+          volumeTitle: book.volumeTitle || null,
           releaseDate: book.releaseDate || null,
           summary: book.summary,
           createdAt: book.createdAt,
@@ -153,6 +157,8 @@ const getHighlights = async (req, res, next) => {
         `SELECT b.id,
                 b.isbn,
                 b.title,
+                b.volume,
+                b.volume_title,
                 b.publication_date,
                 b.summary,
                 b.created_at,
@@ -161,7 +167,15 @@ const getHighlights = async (req, res, next) => {
                 COUNT(r.id) AS review_count
          FROM reviews r
          JOIN books b ON b.id = r.book_id
-         GROUP BY b.id, b.isbn, b.title, b.publication_date, b.summary, b.created_at, b.updated_at
+         GROUP BY b.id,
+                  b.isbn,
+                  b.title,
+                  b.volume,
+                  b.volume_title,
+                  b.publication_date,
+                  b.summary,
+                  b.created_at,
+                  b.updated_at
          HAVING COUNT(r.id) > 0
          ORDER BY average_rating DESC, review_count DESC
          LIMIT 1`,
@@ -169,8 +183,10 @@ const getHighlights = async (req, res, next) => {
       query(
         `SELECT id,
                 isbn,
-                publication_date,
                 title,
+                volume,
+                volume_title,
+                publication_date,
                 summary,
                 created_at,
                 updated_at
@@ -264,6 +280,8 @@ const getPublicOverview = async (req, res, next) => {
           id: book.id,
           isbn: book.isbn,
           title: book.title,
+          volume: book.volume,
+          volumeTitle: book.volumeTitle || null,
           releaseDate: book.releaseDate || null,
           summary: book.summary,
           createdAt: book.createdAt,
@@ -324,8 +342,10 @@ const getPublicOverview = async (req, res, next) => {
       query(
         `SELECT id,
                 isbn,
-                publication_date,
                 title,
+                volume,
+                volume_title,
+                publication_date,
                 summary,
                 created_at,
                 updated_at
