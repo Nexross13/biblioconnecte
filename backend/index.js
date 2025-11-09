@@ -55,7 +55,13 @@ if (process.env.NODE_ENV !== 'test') {
   console.log(`🔐 Allowed CORS origins: ${originsList}`);
 }
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '5mb',
+  }),
+);
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 const openApiPath = path.join(__dirname, 'docs', 'openapi.yaml');
