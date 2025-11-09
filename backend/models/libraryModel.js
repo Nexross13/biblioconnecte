@@ -7,6 +7,7 @@ const listLibraryBooks = async (userId) => {
             b.isbn,
             b.edition,
             b.volume,
+            b.volume_title,
             b.publication_date,
             li.added_at,
             COALESCE(
@@ -27,7 +28,7 @@ const listLibraryBooks = async (userId) => {
      LEFT JOIN book_genres bg ON bg.book_id = b.id
      LEFT JOIN genres g ON g.id = bg.genre_id
      WHERE li.user_id = $1
-     GROUP BY b.id, li.added_at
+     GROUP BY b.id, b.title, b.isbn, b.edition, b.volume, b.volume_title, b.publication_date, li.added_at
      ORDER BY li.added_at DESC`,
     [userId],
   );
@@ -37,6 +38,7 @@ const listLibraryBooks = async (userId) => {
     isbn: row.isbn,
     edition: row.edition,
     volume: row.volume,
+    volumeTitle: row.volume_title || null,
     releaseDate: row.publication_date || null,
     addedAt: row.added_at,
     authorNames: row.author_names,
@@ -71,6 +73,7 @@ const listWishlistBooks = async (userId) => {
             b.isbn,
             b.edition,
             b.volume,
+            b.volume_title,
             b.publication_date,
             wi.added_at,
             COALESCE(
@@ -91,7 +94,7 @@ const listWishlistBooks = async (userId) => {
      LEFT JOIN book_genres bg ON bg.book_id = b.id
      LEFT JOIN genres g ON g.id = bg.genre_id
      WHERE wi.user_id = $1
-     GROUP BY b.id, wi.added_at
+     GROUP BY b.id, b.title, b.isbn, b.edition, b.volume, b.volume_title, b.publication_date, wi.added_at
      ORDER BY wi.added_at DESC`,
     [userId],
   );
@@ -101,6 +104,7 @@ const listWishlistBooks = async (userId) => {
     isbn: row.isbn,
     edition: row.edition,
     volume: row.volume,
+    volumeTitle: row.volume_title || null,
     releaseDate: row.publication_date || null,
     addedAt: row.added_at,
     authorNames: row.author_names,

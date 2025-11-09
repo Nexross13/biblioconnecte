@@ -305,28 +305,28 @@ VALUES
 -- SEED : BOOKS
 -- =====================================================================
 
-INSERT INTO books (title, isbn, edition, volume, publication_date, summary)
+INSERT INTO books (title, isbn, edition, volume, volume_title, publication_date, summary)
 VALUES
-('L’Étranger', '9782070360024', 'Gallimard', NULL, '1942-05-19', 'Roman philosophique d’Albert Camus explorant l’absurdité de la condition humaine.'),
-('1984', '9780451524935', 'Secker & Warburg', NULL, '1949-06-08', 'Roman dystopique où le gouvernement contrôle la pensée et la vérité.'),
-('Orgueil et Préjugés', '9780141439518', 'Penguin Classics', NULL, '1813-01-28', 'Comédie romantique et critique sociale de la noblesse anglaise.'),
-('Vingt mille lieues sous les mers', '9782253006329', 'Hetzel', NULL, '1870-06-20', 'Aventure sous-marine avec le capitaine Nemo à bord du Nautilus.'),
-('Les Misérables', '9782070409181', 'Gallimard', NULL, '1862-04-03', 'Roman social et historique explorant la justice, la misère et la rédemption.'),
-('Crime et Châtiment', '9782070360025', 'Gallimard', NULL, '1866-01-01', 'Chef-d’œuvre de la littérature russe sur la culpabilité et la morale.'),
-('Frankenstein', '9780143131847', 'Penguin Classics', NULL, '1818-01-01', 'Roman gothique sur la création de la vie et la responsabilité scientifique.'),
-('Les Aventures de Sherlock Holmes', '9780007350858', 'HarperCollins', NULL, '1892-10-14', 'Recueil d’enquêtes du détective emblématique créé par Conan Doyle.'),
-('Le Comte de Monte-Cristo', '9782253009405', 'Calmann-Lévy', NULL, '1845-08-28', 'Roman d’aventure et de vengeance d’Alexandre Dumas.'),
-('Le Seigneur des Anneaux : La Communauté de l’Anneau', '9780261102385', 'Allen & Unwin', '1', '1954-07-29', 'Premier tome de la trilogie de J. R. R. Tolkien sur la quête de l’anneau unique.'),
-('Harry Potter à l’école des sorciers', '9780747532699', 'Bloomsbury', '1', '1997-06-26', 'Premier tome de la célèbre saga de J. K. Rowling.'),
-('Le Nom du vent', '9788401337208', 'DAW Books', '1', '2007-03-27', 'Roman de fantasy suivant le parcours de Kvothe, un héros légendaire.'),
-('Mistborn : L’Empire Ultime', '9780765311788', 'Tor Books', '1', '2006-07-17', 'Roman de fantasy épique dans un monde gouverné par un tyran immortel.'),
-('Game of Thrones', '9780553573404', 'Bantam Spectra', '1', '1996-08-06', 'Premier tome de la saga de fantasy "Le Trône de fer" de George R. R. Martin.'),
-('Fahrenheit 451', '9781451673319', 'Ballantine Books', NULL, '1953-10-19', 'Roman d’anticipation dénonçant la censure et la perte de la culture.'),
-('Fondation', '9782070378570', 'Gallimard', '1', '1951-01-01', 'Cycle de science-fiction d’Isaac Asimov sur la chute d’un empire galactique.'),
-('L’Alchimiste', '9780061122415', 'HarperOne', NULL, '1988-01-01', 'Conte philosophique sur la quête de soi et le destin.'),
-('Shining', '9780307743657', 'Doubleday', NULL, '1977-01-28', 'Roman d’horreur psychologique dans un hôtel isolé enneigé.'),
-('La Servante écarlate', '9780385490818', 'McClelland & Stewart', NULL, '1985-09-01', 'Roman dystopique sur une société totalitaire et patriarcale.'),
-('Les Cerfs-volants de Kaboul', '9781594631931', 'Riverhead Books', NULL, '2003-05-29', 'Roman poignant sur l’amitié et la rédemption en Afghanistan.');
+('L’Étranger', '9782070360024', 'Gallimard', NULL, NULL, '1942-05-19', 'Roman philosophique d’Albert Camus explorant l’absurdité de la condition humaine.'),
+('1984', '9780451524935', 'Secker & Warburg', NULL, NULL, '1949-06-08', 'Roman dystopique où le gouvernement contrôle la pensée et la vérité.'),
+('Orgueil et Préjugés', '9780141439518', 'Penguin Classics', NULL, NULL, '1813-01-28', 'Comédie romantique et critique sociale de la noblesse anglaise.'),
+('Vingt mille lieues sous les mers', '9782253006329', 'Hetzel', NULL, NULL, '1870-06-20', 'Aventure sous-marine avec le capitaine Nemo à bord du Nautilus.'),
+('Les Misérables', '9782070409181', 'Gallimard', NULL, NULL, '1862-04-03', 'Roman social et historique explorant la justice, la misère et la rédemption.'),
+('Crime et Châtiment', '9782070360025', 'Gallimard', NULL, NULL, '1866-01-01', 'Chef-d’œuvre de la littérature russe sur la culpabilité et la morale.'),
+('Frankenstein', '9780143131847', 'Penguin Classics', NULL, NULL, '1818-01-01', 'Roman gothique sur la création de la vie et la responsabilité scientifique.'),
+('Les Aventures de Sherlock Holmes', '9780007350858', 'HarperCollins', NULL, NULL, '1892-10-14', 'Recueil d’enquêtes du détective emblématique créé par Conan Doyle.'),
+('Le Comte de Monte-Cristo', '9782253009405', 'Calmann-Lévy', NULL, NULL, '1845-08-28', 'Roman d’aventure et de vengeance d’Alexandre Dumas.'),
+('Le Seigneur des Anneaux : La Communauté de l’Anneau', '9780261102385', 'Allen & Unwin', '1', 'La Communauté de l’Anneau', '1954-07-29', 'Premier tome de la trilogie de J. R. R. Tolkien sur la quête de l’anneau unique.'),
+('Harry Potter à l’école des sorciers', '9780747532699', 'Bloomsbury', '1', NULL, '1997-06-26', 'Premier tome de la célèbre saga de J. K. Rowling.'),
+('Le Nom du vent', '9788401337208', 'DAW Books', '1', NULL, '2007-03-27', 'Roman de fantasy suivant le parcours de Kvothe, un héros légendaire.'),
+('Mistborn : L’Empire Ultime', '9780765311788', 'Tor Books', '1', NULL, '2006-07-17', 'Roman de fantasy épique dans un monde gouverné par un tyran immortel.'),
+('Game of Thrones', '9780553573404', 'Bantam Spectra', '1', 'A Game of Thrones', '1996-08-06', 'Premier tome de la saga de fantasy "Le Trône de fer" de George R. R. Martin.'),
+('Fahrenheit 451', '9781451673319', 'Ballantine Books', NULL, NULL, '1953-10-19', 'Roman d’anticipation dénonçant la censure et la perte de la culture.'),
+('Fondation', '9782070378570', 'Gallimard', '1', 'Fondation', '1951-01-01', 'Cycle de science-fiction d’Isaac Asimov sur la chute d’un empire galactique.'),
+('L’Alchimiste', '9780061122415', 'HarperOne', NULL, NULL, '1988-01-01', 'Conte philosophique sur la quête de soi et le destin.'),
+('Shining', '9780307743657', 'Doubleday', NULL, NULL, '1977-01-28', 'Roman d’horreur psychologique dans un hôtel isolé enneigé.'),
+('La Servante écarlate', '9780385490818', 'McClelland & Stewart', NULL, NULL, '1985-09-01', 'Roman dystopique sur une société totalitaire et patriarcale.'),
+('Les Cerfs-volants de Kaboul', '9781594631931', 'Riverhead Books', NULL, NULL, '2003-05-29', 'Roman poignant sur l’amitié et la rédemption en Afghanistan.');
 
 -- =====================================================================
 -- SEED : BOOK_AUTHORS

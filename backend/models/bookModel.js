@@ -113,6 +113,7 @@ const mapBook = (row) =>
     isbn: row.isbn,
     edition: row.edition,
     volume: row.volume,
+    volumeTitle: row.volume_title || null,
     releaseDate: normalizeDate(row.publication_date),
     summary: row.summary,
     createdAt: row.created_at,
@@ -151,6 +152,7 @@ const listBooks = async ({ search, limit = 25, offset = 0 } = {}) => {
             b.isbn,
             b.edition,
             b.volume,
+            b.volume_title,
             b.publication_date,
             b.summary,
             b.created_at,
@@ -160,7 +162,7 @@ const listBooks = async ({ search, limit = 25, offset = 0 } = {}) => {
      FROM books b
      LEFT JOIN reviews r ON r.book_id = b.id
      ${whereClause}
-     GROUP BY b.id, b.title, b.isbn, b.edition, b.volume, b.publication_date, b.summary, b.created_at, b.updated_at
+     GROUP BY b.id, b.title, b.isbn, b.edition, b.volume, b.volume_title, b.publication_date, b.summary, b.created_at, b.updated_at
      ORDER BY b.created_at DESC
      LIMIT $${values.length - 1} OFFSET $${values.length}`,
     values,
@@ -176,6 +178,7 @@ const findById = async (id) => {
             b.isbn,
             b.edition,
             b.volume,
+            b.volume_title,
             b.publication_date,
             b.summary,
             b.created_at,
@@ -185,35 +188,47 @@ const findById = async (id) => {
      FROM books b
      LEFT JOIN reviews r ON r.book_id = b.id
      WHERE b.id = $1
-     GROUP BY b.id, b.title, b.isbn, b.edition, b.volume, b.publication_date, b.summary, b.created_at, b.updated_at`,
+     GROUP BY b.id, b.title, b.isbn, b.edition, b.volume, b.volume_title, b.publication_date, b.summary, b.created_at, b.updated_at`,
     [id],
   );
   return mapBook(result.rows[0]);
 };
 
-const createBook = async ({ title, isbn, edition, volume, releaseDate = null, summary }) => {
+const createBook = async ({
+  title,
+  isbn,
+  edition,
+  volume,
+  volumeTitle,
+  releaseDate = null,
+  summary,
+}) => {
   const result = await query(
-    `INSERT INTO books (title, isbn, edition, volume, publication_date, summary)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id, title, isbn, edition, volume, publication_date, summary, created_at, updated_at`,
-    [title, isbn, edition, volume, releaseDate, summary],
+    `INSERT INTO books (title, isbn, edition, volume, volume_title, publication_date, summary)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id, title, isbn, edition, volume, volume_title, publication_date, summary, created_at, updated_at`,
+    [title, isbn, edition, volume, volumeTitle, releaseDate, summary],
   );
   return mapBook(result.rows[0]);
 };
 
-const updateBook = async (id, { title, isbn, edition, volume, releaseDate, summary }) => {
+const updateBook = async (
+  id,
+  { title, isbn, edition, volume, volumeTitle, releaseDate, summary },
+) => {
   const result = await query(
     `UPDATE books
      SET title = $2,
          isbn = $3,
          edition = $4,
          volume = $5,
-         publication_date = $6,
-         summary = $7,
+         volume_title = $6,
+         publication_date = $7,
+         summary = $8,
          updated_at = NOW()
      WHERE id = $1
-     RETURNING id, title, isbn, edition, volume, publication_date, summary, created_at, updated_at`,
-    [id, title, isbn, edition, volume, releaseDate, summary],
+     RETURNING id, title, isbn, edition, volume, volume_title, publication_date, summary, created_at, updated_at`,
+    [id, title, isbn, edition, volume, volumeTitle, releaseDate, summary],
   );
   return mapBook(result.rows[0]);
 };
@@ -250,6 +265,23 @@ const getBookGenres = async (bookId) => {
     [bookId],
   );
   return result.rows.map((row) => ({ id: row.id, name: row.name }));
+};
+
+const getNextVolumeNumberForTitle = async (title) => {
+  if (!title) {
+    return '1';
+  }
+  const result = await query(
+    `SELECT MAX(CASE WHEN TRIM(volume) ~ '^[0-9]+$' THEN TRIM(volume)::int ELSE NULL END) AS max_numeric_volume
+     FROM books
+     WHERE LOWER(title) = LOWER($1)`,
+    [title],
+  );
+  const maxVolume = result.rows[0]?.max_numeric_volume;
+  if (maxVolume === null || maxVolume === undefined) {
+    return '1';
+  }
+  return String(Number(maxVolume) + 1);
 };
 
 const setBookAuthors = async (bookId, authorIds = []) => {
@@ -298,6 +330,7 @@ module.exports = {
   deleteBook,
   getBookAuthors,
   getBookGenres,
+  getNextVolumeNumberForTitle,
   setBookAuthors,
   setBookGenres,
 };

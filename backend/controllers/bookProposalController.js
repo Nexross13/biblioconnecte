@@ -96,6 +96,14 @@ const normalizeStatusFilter = (value) => {
   return allowed.includes(normalized) ? normalized : undefined;
 };
 
+const normalizeVolumeTitle = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const normalized = String(value).trim();
+  return normalized.length ? normalized : null;
+};
+
 const mapMockUserSummary = (user) =>
   user
     ? {
@@ -118,6 +126,7 @@ const mapMockProposal = (proposal) => {
     isbn: proposal.isbn,
     edition: proposal.edition,
     volume: proposal.volume,
+    volumeTitle: proposal.volumeTitle || null,
     summary: proposal.summary,
     status: proposal.status,
     submittedAt: proposal.submittedAt,
@@ -139,7 +148,8 @@ const mapMockProposal = (proposal) => {
 
 const createProposal = async (req, res, next) => {
   try {
-    const { title, isbn, edition, volume, summary, releaseDate: rawReleaseDate } = req.body;
+    const { title, isbn, edition, volume, volumeTitle, summary, releaseDate: rawReleaseDate } =
+      req.body;
     if (!title) {
       const err = new Error('Title is required');
       err.status = 400;
@@ -173,6 +183,8 @@ const createProposal = async (req, res, next) => {
       }
     }
 
+    const normalizedVolumeTitle = normalizeVolumeTitle(volumeTitle);
+
     const authorNames = normalizeStringArray(req.body.authorNames || req.body.authors);
     const genreNames = normalizeStringArray(req.body.genreNames || req.body.genres);
     const coverImageBase64 = typeof req.body.coverImage === 'string' ? req.body.coverImage : null;
@@ -194,6 +206,7 @@ const createProposal = async (req, res, next) => {
         isbn,
         edition,
         volume,
+        volumeTitle: normalizedVolumeTitle,
         summary,
         releaseDate,
         submittedBy,
@@ -213,6 +226,7 @@ const createProposal = async (req, res, next) => {
         isbn,
         edition,
         volume,
+        volumeTitle: normalizedVolumeTitle,
         summary,
         publicationDate: releaseDate,
         submittedBy,
