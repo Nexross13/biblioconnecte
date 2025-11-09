@@ -27,7 +27,7 @@ const normalizeApiBaseUrl = (rawValue) => {
     const url = new URL(candidate)
     url.pathname = url.pathname.replace(/\/+$/, '')
     return url.toString()
-  } catch (_error) {
+  } catch {
     return DEFAULT_API_BASE_URL
   }
 }

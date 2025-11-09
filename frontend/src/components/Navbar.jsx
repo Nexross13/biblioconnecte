@@ -15,6 +15,7 @@ const navLinks = [
   { to: '/library', label: 'Ma bibliothèque', private: true },
   { to: '/friends', label: 'Amis', private: true },
   { to: '/dashboard', label: 'Tableau de bord', private: true, adminOnly: true },
+  { to: '/moderation', label: 'Modération', private: true, moderatorOnly: true },
   { to: '/profile', label: 'Profil', private: true },
 ]
 
@@ -80,6 +81,11 @@ const Navbar = () => {
       navLinks.filter((link) => {
         if (link.adminOnly) {
           return isAuthenticated && user?.role === 'admin'
+        }
+        if (link.moderatorOnly) {
+          return (
+            isAuthenticated && (user?.role === 'moderator' || user?.role === 'admin')
+          )
         }
         if (link.private) {
           return isAuthenticated

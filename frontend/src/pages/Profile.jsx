@@ -43,6 +43,20 @@ const Profile = () => {
     setAvatarSrc(avatarCandidates[0])
   }, [avatarCandidates])
 
+  const roleBadge = useMemo(() => {
+    const role = userQuery.data?.role
+    if (!role || role === 'user') {
+      return null
+    }
+    return {
+      label: role === 'admin' ? 'Administrateur' : 'Modérateur',
+      className:
+        role === 'admin'
+          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'
+          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200',
+    }
+  }, [userQuery.data?.role])
+
   if (userQuery.isLoading) {
     return <Loader label="Chargement du profil..." />
   }
@@ -99,9 +113,18 @@ const Profile = () => {
             <p className="text-sm text-slate-500 dark:text-slate-300">
               Gérez les informations associées à votre compte My BiblioConnect.
             </p>
-            <button type="button" className="btn-secondary" onClick={() => setIsEditing(true)}>
-              Modifier mes informations
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              {roleBadge ? (
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${roleBadge.className}`}
+                >
+                  {roleBadge.label}
+                </span>
+              ) : null}
+              <button type="button" className="btn-secondary" onClick={() => setIsEditing(true)}>
+                Modifier mes informations
+              </button>
+            </div>
           </div>
         </div>
       </header>
