@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
@@ -8,6 +8,7 @@ import {
   createBookReview,
   fetchBookAuthors,
   fetchBookGenres,
+  updateBook,
 } from '../api/books'
 import { addBookToLibrary, removeBookFromLibrary, fetchLibrary } from '../api/library'
 import { addBookToWishlist, removeBookFromWishlist, fetchWishlist } from '../api/wishlist'
@@ -18,17 +19,23 @@ import formatDate from '../utils/formatDate'
 import getAverageRating from '../utils/getAverageRating'
 import formatBookTitle from '../utils/formatBookTitle'
 import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
+import { reportBook } from '../api/bookReports'
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 const BookDetails = () => {
   const { id } = useParams()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const queryClient = useQueryClient()
   const [rating, setRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(null)
   const [comment, setComment] = useState('')
+  const [isReportModalOpen, setReportModalOpen] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [isEditModalOpen, setEditModalOpen] = useState(false)
+  const [editValues, setEditValues] = useState(null)
+  const isAdmin = user?.role === 'admin'
 
   const bookQuery = useQuery({
     queryKey: ['book', id],
@@ -125,6 +132,29 @@ const BookDetails = () => {
     onError: () => toast.error("Impossible de publier l'avis"),
   })
 
+  const reportMutation = useMutation({
+    mutationFn: (payload) => reportBook(Number(id), payload),
+    onSuccess: () => {
+      toast.success('Signalement envoyé aux administrateurs')
+      setReportModalOpen(false)
+      setReportReason('')
+    },
+    onError: () => toast.error("Impossible d'envoyer votre signalement"),
+  })
+
+  const updateBookMutation = useMutation({
+    mutationFn: (payload) => updateBook(Number(id), payload),
+    onSuccess: () => {
+      toast.success('Livre mis à jour')
+      setEditModalOpen(false)
+      setEditValues(null)
+      queryClient.invalidateQueries({ queryKey: ['book', id] })
+      queryClient.invalidateQueries({ queryKey: ['bookAuthors', id] })
+      queryClient.invalidateQueries({ queryKey: ['bookGenres', id] })
+    },
+    onError: () => toast.error('Impossible de mettre à jour le livre'),
+  })
+
   const averageRating = useMemo(
     () => getAverageRating(reviewsQuery.data || []),
     [reviewsQuery.data],
@@ -177,8 +207,74 @@ const BookDetails = () => {
     return true
   }
 
+  const openReportModal = () => {
+    if (!ensureAuthenticated()) {
+      return
+    }
+    setReportReason('')
+    setReportModalOpen(true)
+  }
+
+  const closeReportModal = () => {
+    setReportModalOpen(false)
+    setReportReason('')
+  }
+
+  const openEditModal = () => {
+    if (!isAdmin) {
+      return
+    }
+    setEditValues({
+      title: book.title || '',
+      isbn: book.isbn || '',
+      edition: book.edition || '',
+      volume: book.volume || '',
+      volumeTitle: book.volumeTitle || '',
+      releaseDate: book.releaseDate ? book.releaseDate.slice(0, 10) : '',
+      summary: book.summary || '',
+    })
+    setEditModalOpen(true)
+  }
+
+  const closeEditModal = () => {
+    setEditModalOpen(false)
+    setEditValues(null)
+  }
+
+  const handleReportSubmit = (event) => {
+    event.preventDefault()
+    const reason = reportReason.trim()
+    if (reason.length < 5) {
+      toast.error('Merci de détailler votre motif (5 caractères minimum)')
+      return
+    }
+    reportMutation.mutate({ reason })
+  }
+
+  const handleEditSubmit = (event) => {
+    event.preventDefault()
+    if (!editValues) {
+      return
+    }
+    const title = editValues.title.trim()
+    if (!title.length) {
+      toast.error('Le titre est obligatoire')
+      return
+    }
+    updateBookMutation.mutate({
+      title,
+      isbn: editValues.isbn?.trim() || null,
+      edition: editValues.edition?.trim() || null,
+      volume: editValues.volume?.trim() || null,
+      volumeTitle: editValues.volumeTitle?.trim() || null,
+      releaseDate: editValues.releaseDate?.trim() || null,
+      summary: editValues.summary?.trim() || null,
+    })
+  }
+
   return (
-    <section className="space-y-8">
+    <>
+      <section className="space-y-8">
       <header className="card space-y-6">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-6 md:flex-row md:flex-1">
@@ -329,6 +425,23 @@ const BookDetails = () => {
                   : 'Ajouter à ma wishlist'}
               </button>
             )}
+            <button
+              type="button"
+              className="rounded-lg border border-rose-500 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:opacity-60"
+              onClick={openReportModal}
+              disabled={reportMutation.isPending}
+            >
+              {reportMutation.isPending ? 'Envoi du signalement...' : 'Signaler ce livre'}
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className="rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+                onClick={openEditModal}
+              >
+                Modifier les informations
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -419,6 +532,196 @@ const BookDetails = () => {
         </div>
       </section>
     </section>
+      {isReportModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="report-book-title"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <h3 id="report-book-title" className="text-lg font-semibold text-primary">
+                Signaler ce livre
+              </h3>
+              <button
+                type="button"
+                className="rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Fermer"
+                onClick={closeReportModal}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+              Expliquez brièvement ce qui pose problème afin que l’équipe puisse intervenir rapidement.
+            </p>
+            <form className="mt-4 space-y-4" onSubmit={handleReportSubmit}>
+              <div className="space-y-2">
+                <label htmlFor="book-report-reason" className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                  Motif du signalement
+                </label>
+                <textarea
+                  id="book-report-reason"
+                  className="min-h-[120px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  placeholder="Contenu inapproprié, informations fausses, etc."
+                  maxLength={1000}
+                  value={reportReason}
+                  onChange={(event) => setReportReason(event.target.value)}
+                  disabled={reportMutation.isPending}
+                  required
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  5 à 1000 caractères • Ce message sera partagé avec l’équipe.
+                </p>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button type="button" className="btn-secondary" onClick={closeReportModal}>
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="btn disabled:opacity-60"
+                  disabled={reportMutation.isPending || reportReason.trim().length < 5}
+                >
+                  {reportMutation.isPending ? 'Envoi...' : 'Confirmer l’envoi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+      {isEditModalOpen && editValues ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div
+            className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-book-title"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <h3 id="edit-book-title" className="text-lg font-semibold text-primary">
+                Modifier les informations du livre
+              </h3>
+              <button
+                type="button"
+                className="rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Fermer"
+                onClick={closeEditModal}
+              >
+                ✕
+              </button>
+            </div>
+            <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleEditSubmit}>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                  Titre <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editValues.title}
+                  onChange={(event) =>
+                    setEditValues((prev) => ({ ...prev, title: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                  ISBN
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editValues.isbn}
+                  onChange={(event) =>
+                    setEditValues((prev) => ({ ...prev, isbn: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                  Édition
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editValues.edition}
+                  onChange={(event) =>
+                    setEditValues((prev) => ({ ...prev, edition: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                  Numéro de tome
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editValues.volume}
+                  onChange={(event) =>
+                    setEditValues((prev) => ({ ...prev, volume: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                  Titre du tome
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editValues.volumeTitle}
+                  onChange={(event) =>
+                    setEditValues((prev) => ({ ...prev, volumeTitle: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                  Date de sortie
+                </label>
+                <input
+                  type="date"
+                  className="input"
+                  value={editValues.releaseDate}
+                  onChange={(event) =>
+                    setEditValues((prev) => ({ ...prev, releaseDate: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-200">
+                  Résumé
+                </label>
+                <textarea
+                  className="min-h-[120px] w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  value={editValues.summary}
+                  maxLength={5000}
+                  onChange={(event) =>
+                    setEditValues((prev) => ({ ...prev, summary: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="mt-2 flex w-full justify-end gap-3 md:col-span-2">
+                <button type="button" className="btn-secondary" onClick={closeEditModal}>
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="btn disabled:opacity-60"
+                  disabled={updateBookMutation.isPending}
+                >
+                  {updateBookMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }
 

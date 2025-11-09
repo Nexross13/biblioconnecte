@@ -134,6 +134,25 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 
 -- =====================================================================
+-- BOOK REPORTS
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS book_reports (
+  id           BIGSERIAL PRIMARY KEY,
+  book_id      BIGINT NOT NULL REFERENCES books(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  reported_by  BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  reason       TEXT NOT NULL,
+  status       VARCHAR(20) NOT NULL DEFAULT 'open'
+               CHECK (status IN ('open', 'closed')),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  closed_at    TIMESTAMPTZ,
+  closed_by    BIGINT REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_book_reports_status ON book_reports (status);
+CREATE INDEX IF NOT EXISTS idx_book_reports_book ON book_reports (book_id);
+
+-- =====================================================================
 -- FRIENDSHIPS
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS friendships (

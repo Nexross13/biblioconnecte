@@ -39,3 +39,8 @@ export const createBook = async (payload) => {
   const { data } = await apiClient.post('/books', payload)
   return data
 }
+
+export const updateBook = async (id, payload) => {
+  const { data } = await apiClient.put(`/books/${id}`, payload)
+  return data.book
+}

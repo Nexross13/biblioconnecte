@@ -91,13 +91,14 @@ const ReviewCard = ({ review }) => {
         <p className="text-xs text-slate-400 dark:text-slate-500">
           Publié le {formatDate(review.createdAt)}
         </p>
-        {isApproved ? (
-          <p className="text-xs font-semibold text-emerald-600">
-            Validé {moderatorName ? `par ${moderatorName}` : ''}
-          </p>
-        ) : (
-          <p className="text-xs font-semibold text-amber-600">En attente de validation</p>
-        )}
+        {canModerate &&
+          (isApproved ? (
+            <p className="text-xs font-semibold text-emerald-600">
+              Validé {moderatorName ? `par ${moderatorName}` : ''}
+            </p>
+          ) : (
+            <p className="text-xs font-semibold text-amber-600">En attente de validation</p>
+          ))}
       </div>
       {showModerationActions && (
         <div className="flex flex-wrap gap-2 text-xs">

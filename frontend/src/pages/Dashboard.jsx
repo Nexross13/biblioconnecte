@@ -1,8 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { toast } from 'react-hot-toast'
 import { fetchBookProposals } from '../api/bookProposals'
 import { fetchAdminOverview } from '../api/stats'
 import { fetchAuthorProposals } from '../api/authorProposals'
+import { fetchBookReports, closeBookReport } from '../api/bookReports'
 import Loader from '../components/Loader.jsx'
 import TimelineChart from '../components/TimelineChart.jsx'
 
@@ -19,16 +21,35 @@ const Dashboard = () => {
     queryKey: ['author-proposals', 'pending'],
     queryFn: () => fetchAuthorProposals({ status: 'pending' }),
   })
+  const bookReportsQuery = useQuery({
+    queryKey: ['book-reports', 'open'],
+    queryFn: () => fetchBookReports({ status: 'open' }),
+  })
+
+  const closeReportMutation = useMutation({
+    mutationFn: (reportId) => closeBookReport(reportId),
+    onSuccess: () => {
+      toast.success('Signalement clôturé')
+      bookReportsQuery.refetch()
+    },
+    onError: () => toast.error('Impossible de clôturer le signalement'),
+  })
 
   if (
     adminOverviewQuery.isLoading ||
     pendingProposalsQuery.isLoading ||
-    pendingAuthorProposalsQuery.isLoading
+    pendingAuthorProposalsQuery.isLoading ||
+    bookReportsQuery.isLoading
   ) {
     return <Loader label="Chargement du tableau de bord..." />
   }
 
-  if (adminOverviewQuery.isError || pendingProposalsQuery.isError || pendingAuthorProposalsQuery.isError) {
+  if (
+    adminOverviewQuery.isError ||
+    pendingProposalsQuery.isError ||
+    pendingAuthorProposalsQuery.isError ||
+    bookReportsQuery.isError
+  ) {
     return (
       <p className="text-center text-sm text-rose-600">
         Impossible de charger les métriques administrateur. Veuillez réessayer plus tard.
@@ -41,6 +62,7 @@ const Dashboard = () => {
     members: 0,
     pendingProposals: 0,
     pendingAuthorProposals: 0,
+    pendingReports: 0,
   }
   const timeline = (adminOverviewQuery.data?.timeline ?? []).slice(-30)
   const pendingProposals = pendingProposalsQuery.data?.proposals ?? []
@@ -52,6 +74,10 @@ const Dashboard = () => {
     pendingAuthorProposals.length ??
     totals.pendingAuthorProposals ??
     0
+  const bookReports = bookReportsQuery.data ?? []
+  const pendingReportsCount =
+    totals.pendingReports ?? bookReportsQuery.data?.length ?? bookReports.length ?? 0
+  const closingReportId = closeReportMutation.variables
 
   return (
     <section className="space-y-8">
@@ -93,6 +119,14 @@ const Dashboard = () => {
           </p>
           <p className="mt-2 text-3xl font-bold text-primary">
             {new Intl.NumberFormat('fr-FR').format(pendingAuthorCount)}
+          </p>
+        </div>
+        <div className="card">
+          <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Signalements ouverts
+          </p>
+          <p className="mt-2 text-3xl font-bold text-primary">
+            {new Intl.NumberFormat('fr-FR').format(pendingReportsCount)}
           </p>
         </div>
       </div>
@@ -213,6 +247,72 @@ const Dashboard = () => {
           </div>
         </section>
       </div>
+
+      <section className="space-y-4">
+        <header>
+          <h2 className="text-xl font-semibold text-primary">Signalements de livres</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-300">
+            Examinez les signalements envoyés par les lecteurs et clôturez-les une fois résolus.
+          </p>
+        </header>
+        <div className="card divide-y divide-slate-200/60 dark:divide-slate-700/60">
+          {bookReports.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-300">
+              Aucun signalement en attente. Tout est sous contrôle !
+            </p>
+          ) : (
+            bookReports.map((report) => {
+              const isClosing =
+                closeReportMutation.isPending && closingReportId === report.id
+              return (
+                <article
+                  key={report.id}
+                  className="py-4 first:pt-0 last:pb-0 lg:flex lg:items-start lg:justify-between lg:gap-6"
+                >
+                  <div className="space-y-2">
+                    <p className="text-base font-semibold text-primary">
+                      {report.book?.title ?? 'Livre inconnu'}
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-300">
+                      Signalé par{' '}
+                      {report.reporter
+                        ? `${report.reporter.firstName ?? ''} ${report.reporter.lastName ?? ''}`.trim() ||
+                          report.reporter.email
+                        : 'Utilisateur'}
+                      {' • '}
+                      {report.createdAt
+                        ? new Date(report.createdAt).toLocaleDateString('fr-FR')
+                        : 'Date inconnue'}
+                    </p>
+                    <p className="text-sm text-slate-600 dark:text-slate-200">{report.reason}</p>
+                    {report.book?.id ? (
+                      <Link
+                        to={`/books/${report.book.id}`}
+                        className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
+                      >
+                        Voir la fiche du livre
+                      </Link>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 flex items-center gap-3 lg:mt-0">
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+                      En attente
+                    </span>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-emerald-500 px-3 py-1 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60"
+                      onClick={() => closeReportMutation.mutate(report.id)}
+                      disabled={isClosing}
+                    >
+                      {isClosing ? 'Clôture...' : 'Clôturer'}
+                    </button>
+                  </div>
+                </article>
+              )
+            })
+          )}
+        </div>
+      </section>
 
       <section className="space-y-4">
         <header>
