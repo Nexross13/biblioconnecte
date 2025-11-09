@@ -117,6 +117,21 @@ const listUsers = async () => {
   return result.rows.map(mapUser);
 };
 
+const listAdmins = async () => {
+  const result = await query(
+    `SELECT id, first_name, last_name, email, role
+     FROM users
+     WHERE role = 'admin'`,
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    role: row.role,
+  }));
+};
+
 const updateUserPassword = async (id, passwordHash) => {
   await query(
     `UPDATE users
@@ -161,5 +176,6 @@ module.exports = {
   updateUserPassword,
   setGoogleId,
   listUsers,
+  listAdmins,
   updateUserRole,
 };

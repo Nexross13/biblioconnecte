@@ -446,6 +446,78 @@ const sendReviewDeletionNotification = async ({ reviewer, moderator, reason, boo
   await sendEmail({ to: reviewer.email, ...message });
 };
 
+const buildBookReportEmail = ({ admin, reporter, book, reason, dashboardUrl }) => {
+  const subject = `[Signalement] ${book?.title || 'Livre'} nécessite votre attention`;
+  const reporterName = reporter
+    ? [reporter.firstName, reporter.lastName].filter(Boolean).join(' ').trim() || reporter.email
+    : 'Un membre de la communauté';
+  const bookLabel = book?.title ? `${book.title}${book.volumeTitle ? ` — ${book.volumeTitle}` : ''}` : 'Ce livre';
+  const actionUrl = dashboardUrl || `${FRONTEND_BASE}/dashboard`;
+
+  const text = `Bonjour ${admin.firstName || admin.email},\n\n${reporterName} a signalé "${bookLabel}".\nMotif : ${reason}\nConsultez le tableau de bord pour examiner et clôturer ce signalement : ${actionUrl}\n\nMerci de votre vigilance.`;
+
+  const html = `
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background-color:#f8fafc;padding:24px 0;font-family:Segoe UI,Helvetica,Arial,sans-serif;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" style="max-width:640px;width:92%;background-color:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,0.12);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#dc2626,#f97316);padding:28px;text-align:center;color:#fff;">
+              <p style="margin:0;font-size:13px;text-transform:uppercase;letter-spacing:0.2em;">Signalement de livre</p>
+              <h1 style="margin:8px 0 0;font-size:24px;">${bookLabel}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;color:#0f172a;">
+              <p style="margin:0 0 16px;">Bonjour <strong>${admin.firstName || admin.email}</strong>,</p>
+              <p style="margin:0 0 12px;line-height:1.6;">
+                <strong>${reporterName}</strong> a signalé ce livre avec le motif suivant&nbsp;:
+              </p>
+              <blockquote style="margin:0 0 16px;padding:16px;border-left:4px solid #f97316;background:#fff7ed;border-radius:12px;">
+                ${reason}
+              </blockquote>
+              <p style="margin:0 0 16px;line-height:1.6;">Merci de vérifier et de clôturer ce signalement si nécessaire.</p>
+              <a href="${actionUrl}" style="display:inline-block;padding:14px 28px;margin:8px 0;font-weight:600;font-size:15px;color:#ffffff;background:linear-gradient(135deg,#2563eb,#7c3aed);text-decoration:none;border-radius:999px;box-shadow:0 15px 30px rgba(37,99,235,0.35);">
+                Ouvrir le tableau de bord
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#0f172a;padding:18px;text-align:center;color:#e2e8f0;font-size:12px;">
+              <p style="margin:0;">My BiblioConnect • Merci de veiller sur la communauté.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  `;
+
+  return { subject, text, html };
+};
+
+const sendBookReportNotification = async ({ admins = [], reporter, book, reason, reportId }) => {
+  const recipients = admins.filter((admin) => admin?.email);
+  if (!recipients.length) {
+    console.warn('📨  Email skipped: no admin recipients for book report');
+    return;
+  }
+  const dashboardUrl = `${FRONTEND_BASE}/dashboard?report=${reportId || ''}`;
+
+  await Promise.all(
+    recipients.map((admin) => {
+      const message = buildBookReportEmail({
+        admin,
+        reporter,
+        book,
+        reason,
+        dashboardUrl,
+      });
+      return sendEmail({ to: admin.email, ...message });
+    }),
+  );
+};
+
 module.exports = {
   sendEmail,
   sendFriendRequestNotification,
@@ -453,4 +525,5 @@ module.exports = {
   sendBookProposalDecisionNotification,
   sendAuthorProposalDecisionNotification,
   sendReviewDeletionNotification,
+  sendBookReportNotification,
 };

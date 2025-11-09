@@ -21,6 +21,7 @@ const libraryRoutes = require('./routes/library');
 const wishlistRoutes = require('./routes/wishlist');
 const reviewRoutes = require('./routes/reviews');
 const bookProposalRoutes = require('./routes/bookProposals');
+const bookReportRoutes = require('./routes/bookReports');
 const statsRoutes = require('./routes/stats');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -112,6 +113,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/books', bookRoutes);
 app.use('/api/v1/book-proposals', bookProposalRoutes);
+app.use('/api/v1/book-reports', bookReportRoutes);
 app.use('/api/v1/author-proposals', authorProposalRoutes);
 app.use('/api/v1/authors', authorRoutes);
 app.use('/api/v1/genres', genreRoutes);

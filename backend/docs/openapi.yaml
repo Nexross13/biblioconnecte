@@ -2024,6 +2024,99 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalError'
+  /books/{bookId}/reports:
+    post:
+      tags:
+        - Livres
+      summary: Signaler un livre
+      description: Permet à un membre connecté de signaler un livre problématique. Un e-mail est envoyé aux administrateurs et le signalement apparaît dans le tableau de bord.
+      parameters:
+        - $ref: '#/components/parameters/BookId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookReportCreateRequest'
+      responses:
+        '201':
+          description: Signalement enregistré
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report:
+                    $ref: '#/components/schemas/BookReport'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /book-reports:
+    get:
+      tags:
+        - Administration
+      summary: Lister les signalements de livres
+      description: Retourne les signalements enregistrés. Réservé aux administrateurs.
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [open, closed]
+          description: Filtrer les signalements par statut.
+      responses:
+        '200':
+          description: Liste des signalements
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reports:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /book-reports/{id}/close:
+    patch:
+      tags:
+        - Administration
+      summary: Clôturer un signalement
+      description: Marque un signalement comme traité. Réservé aux administrateurs.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Signalement clôturé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report:
+                    $ref: '#/components/schemas/BookReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
     delete:
       tags:
         - Avis
@@ -2973,6 +3066,90 @@ components:
           type: string
           description: Motif requis lorsque la suppression est réalisée par un modérateur ou un administrateur.
       additionalProperties: false
+    BookReport:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        bookId:
+          type: integer
+          example: 4
+        reportedBy:
+          type: integer
+          example: 7
+        reason:
+          type: string
+          example: Couverture inappropriée ou informations erronées.
+        status:
+          type: string
+          enum:
+            - open
+            - closed
+          example: open
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        closedBy:
+          type: integer
+          nullable: true
+        book:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+            isbn:
+              type: string
+        reporter:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            firstName:
+              type: string
+            lastName:
+              type: string
+            email:
+              type: string
+              format: email
+        moderator:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            firstName:
+              type: string
+            lastName:
+              type: string
+      required:
+        - id
+        - bookId
+        - reportedBy
+        - reason
+        - status
+        - createdAt
+        - updatedAt
+    BookReportCreateRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 5
+          maxLength: 1000
+      required:
+        - reason
     LibraryEntry:
       type: object
       properties:
