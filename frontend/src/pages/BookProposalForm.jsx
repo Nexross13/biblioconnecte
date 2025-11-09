@@ -566,14 +566,14 @@ const BookProposalForm = () => {
               <span className="text-rose-500" aria-hidden="true">
                 *
               </span>{' '}
-              ISBN
+              ISBN/EAN
             </label>
             <input
               id="isbn"
               name="isbn"
               type="text"
               className="input"
-              placeholder="ISBN (10 ou 13 chiffres)"
+              placeholder="ISBN ou EAN"
               value={formValues.isbn}
               onChange={handleChange}
             />
