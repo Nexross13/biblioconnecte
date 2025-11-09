@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 import formatDate from '../utils/formatDate'
+import formatBookTitle from '../utils/formatBookTitle'
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
@@ -32,13 +33,14 @@ const BookSummaryCard = ({ book, status }) => {
     status === 'wishlist'
       ? 'bg-secondary/10 text-secondary'
       : 'bg-primary/10 text-primary'
+  const displayTitle = formatBookTitle(book)
 
   return (
     <article className="card flex h-full flex-col gap-4">
       <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
         <img
           src={coverSrc}
-          alt={`Couverture de ${book.title}`}
+          alt={`Couverture de ${displayTitle || 'livre'}`}
           onError={(event) => {
             if (candidateIndex < coverCandidates.length - 1) {
               const nextIndex = candidateIndex + 1
@@ -55,7 +57,7 @@ const BookSummaryCard = ({ book, status }) => {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-lg font-semibold text-primary">{book.title}</h3>
+          <h3 className="text-lg font-semibold text-primary">{displayTitle}</h3>
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>
             {statusLabel}
           </span>

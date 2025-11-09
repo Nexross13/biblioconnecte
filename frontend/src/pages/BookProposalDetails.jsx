@@ -166,6 +166,14 @@ const BookProposalDetails = () => {
                   <dd>{proposal.volume}</dd>
                 </div>
               )}
+              {proposal.volumeTitle && (
+                <div>
+                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                    Titre du tome
+                  </dt>
+                  <dd>{proposal.volumeTitle}</dd>
+                </div>
+              )}
               {releaseDateLabel && (
                 <div>
                   <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
