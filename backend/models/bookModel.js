@@ -135,11 +135,26 @@ const listBooks = async ({ search, limit = 25, offset = 0 } = {}) => {
     if (normalizedSearch) {
       const likePattern = `%${normalizedSearch.replace(/ /g, '%')}%`;
       values.push(likePattern);
-      const normalizedTitleExpr = normalizeColumnExpression("COALESCE(b.title, '')");
-      const normalizedSummaryExpr = normalizeColumnExpression("COALESCE(b.summary, '')");
-      conditions.push(
-        `(${normalizedTitleExpr} LIKE $${values.length} OR ${normalizedSummaryExpr} LIKE $${values.length})`,
-      );
+      const searchPlaceholder = values.length;
+
+      const searchColumns = [
+        normalizeColumnExpression("COALESCE(b.title, '')"),
+        normalizeColumnExpression("COALESCE(b.volume_title, '')"),
+        normalizeColumnExpression("COALESCE(b.summary, '')"),
+        normalizeColumnExpression("COALESCE(b.edition, '')"),
+        normalizeColumnExpression("COALESCE(b.volume, '')"),
+      ].map((expr) => `${expr} LIKE $${searchPlaceholder}`);
+
+      const compactSearch = normalizedSearch.replace(/ /g, '');
+      if (compactSearch) {
+        values.push(`%${compactSearch}%`);
+        const isbnPlaceholder = values.length;
+        const normalizedIsbnExpr =
+          "REGEXP_REPLACE(LOWER(COALESCE(b.isbn, '')), '[^a-z0-9]+', '', 'g')";
+        searchColumns.push(`${normalizedIsbnExpr} LIKE $${isbnPlaceholder}`);
+      }
+
+      conditions.push(`(${searchColumns.join(' OR ')})`);
     }
   }
 
