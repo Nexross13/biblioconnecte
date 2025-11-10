@@ -101,6 +101,19 @@ const books = [
     createdAt: '2024-01-10T00:00:00.000Z',
     updatedAt: '2024-01-10T00:00:00.000Z',
   },
+  {
+    id: 5,
+    title: 'Astérix',
+    isbn: '9782012101386',
+    edition: 'Dargaud',
+    volume: '2',
+    volumeTitle: 'La Serpe d’or',
+    releaseDate: '1960-01-01',
+    summary:
+      'Astérix et Obélix partent à Lutèce pour trouver une nouvelle serpe indispensable au druide Panoramix.',
+    createdAt: '2024-01-11T00:00:00.000Z',
+    updatedAt: '2024-01-11T00:00:00.000Z',
+  },
 ];
 
 const authorBooks = [
@@ -108,6 +121,7 @@ const authorBooks = [
   { bookId: 2, authorId: 2 },
   { bookId: 3, authorId: 2 },
   { bookId: 4, authorId: 1 },
+  { bookId: 5, authorId: 1 },
 ];
 
 const genres = [
@@ -123,11 +137,14 @@ const bookGenres = [
   { bookId: 2, genreId: 2 },
   { bookId: 3, genreId: 1 },
   { bookId: 4, genreId: 1 },
+  { bookId: 5, genreId: 1 },
 ];
 
 const libraryItems = [
   { userId: 1, bookId: 1, addedAt: '2024-03-01T12:00:00.000Z' },
   { userId: 1, bookId: 2, addedAt: '2024-03-05T17:20:00.000Z' },
+  { userId: 1, bookId: 4, addedAt: '2024-03-06T09:15:00.000Z' },
+  { userId: 1, bookId: 5, addedAt: '2024-03-07T08:45:00.000Z' },
   { userId: 2, bookId: 3, addedAt: '2024-03-02T14:40:00.000Z' },
 ];
 
