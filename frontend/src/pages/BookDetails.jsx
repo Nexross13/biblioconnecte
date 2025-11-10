@@ -277,7 +277,7 @@ const BookDetails = () => {
       <section className="space-y-8">
       <header className="card space-y-6">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div className="flex flex-col gap-6 md:flex-row md:flex-1">
+          <div className="flex flex-col gap-6 md:flex-row md:flex-1 md:items-start">
             <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 shadow-inner dark:border-slate-700 dark:bg-slate-800 md:w-64">
               <img
                 src={coverSrc}
