@@ -14,15 +14,38 @@ const normalizeDate = (value) => {
   return parsed.toISOString().slice(0, 10);
 };
 
+const mapUserRow = (row) =>
+  row
+    ? {
+        id: row.id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.email,
+      }
+    : null;
+
 const mapTopReaderRow = (row) =>
   row && {
-    user: {
-      id: row.id,
-      firstName: row.first_name,
-      lastName: row.last_name,
-      email: row.email,
-    },
+    user: mapUserRow(row),
     totalBooks: Number(row.total_books) || 0,
+  };
+
+const mapTopContributorRow = (row) =>
+  row && {
+    user: mapUserRow(row),
+    totalProposals: Number(row.total_proposals) || 0,
+  };
+
+const mapTopCriticRow = (row) =>
+  row && {
+    user: mapUserRow(row),
+    totalReviews: Number(row.total_reviews) || 0,
+  };
+
+const mapTopConnectorRow = (row) =>
+  row && {
+    user: mapUserRow(row),
+    totalConnections: Number(row.total_connections) || 0,
   };
 
 const mapBookRow = (row) =>
@@ -49,7 +72,14 @@ const getHighlights = async (req, res, next) => {
     const useMocks = process.env.USE_MOCKS === 'true';
 
     if (useMocks) {
-      const { users, libraryItems, books, reviews, authorProposals } = mockData;
+      const {
+        users = [],
+        libraryItems = [],
+        books = [],
+        reviews = [],
+        bookProposals = [],
+        friendships = [],
+      } = mockData;
 
       let topReader = null;
       if (libraryItems?.length) {
@@ -70,6 +100,79 @@ const getHighlights = async (req, res, next) => {
               email: bestUser.email,
             },
             totalBooks: counts[bestUserId],
+          };
+        }
+      }
+
+      let topContributor = null;
+      if (bookProposals?.length) {
+        const counts = bookProposals.reduce((acc, proposal) => {
+          if (!proposal.submittedBy) {
+            return acc;
+          }
+          acc[proposal.submittedBy] = (acc[proposal.submittedBy] || 0) + 1;
+          return acc;
+        }, {});
+        const bestUserId = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+        const bestUser = users.find((user) => user.id === Number(bestUserId));
+        if (bestUser) {
+          topContributor = {
+            user: {
+              id: bestUser.id,
+              firstName: bestUser.firstName,
+              lastName: bestUser.lastName,
+              email: bestUser.email,
+            },
+            totalProposals: counts[bestUserId],
+          };
+        }
+      }
+
+      let topCritic = null;
+      if (reviews?.length) {
+        const counts = reviews.reduce((acc, review) => {
+          if (!review.userId) {
+            return acc;
+          }
+          acc[review.userId] = (acc[review.userId] || 0) + 1;
+          return acc;
+        }, {});
+        const bestUserId = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+        const bestUser = users.find((user) => user.id === Number(bestUserId));
+        if (bestUser) {
+          topCritic = {
+            user: {
+              id: bestUser.id,
+              firstName: bestUser.firstName,
+              lastName: bestUser.lastName,
+              email: bestUser.email,
+            },
+            totalReviews: counts[bestUserId],
+          };
+        }
+      }
+
+      let topConnector = null;
+      if (friendships?.length) {
+        const counts = friendships.reduce((acc, friendship) => {
+          if (friendship.status !== 'accepted') {
+            return acc;
+          }
+          acc[friendship.requesterId] = (acc[friendship.requesterId] || 0) + 1;
+          acc[friendship.addresseeId] = (acc[friendship.addresseeId] || 0) + 1;
+          return acc;
+        }, {});
+        const bestUserId = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+        const bestUser = users.find((user) => user.id === Number(bestUserId));
+        if (bestUser) {
+          topConnector = {
+            user: {
+              id: bestUser.id,
+              firstName: bestUser.firstName,
+              lastName: bestUser.lastName,
+              email: bestUser.email,
+            },
+            totalConnections: counts[bestUserId],
           };
         }
       }
@@ -135,12 +238,22 @@ const getHighlights = async (req, res, next) => {
 
       return res.json({
         topReader,
+        topContributor,
+        topCritic,
+        topConnector,
         topRatedBook,
         latestBooks,
       });
     }
 
-    const [topReaderResult, topRatedResult, latestBooksResult] = await Promise.all([
+    const [
+      topReaderResult,
+      topContributorResult,
+      topCriticResult,
+      topConnectorResult,
+      topRatedResult,
+      latestBooksResult,
+    ] = await Promise.all([
       query(
         `SELECT u.id,
                 u.first_name,
@@ -151,6 +264,51 @@ const getHighlights = async (req, res, next) => {
          JOIN users u ON u.id = li.user_id
          GROUP BY u.id, u.first_name, u.last_name, u.email
          ORDER BY total_books DESC, u.last_name ASC
+         LIMIT 1`,
+      ),
+      query(
+        `SELECT u.id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                COUNT(bp.id) AS total_proposals
+         FROM book_proposals bp
+         JOIN users u ON u.id = bp.submitted_by
+         GROUP BY u.id, u.first_name, u.last_name, u.email
+         ORDER BY total_proposals DESC, u.last_name ASC
+         LIMIT 1`,
+      ),
+      query(
+        `SELECT u.id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                COUNT(r.id) AS total_reviews
+         FROM reviews r
+         JOIN users u ON u.id = r.user_id
+         GROUP BY u.id, u.first_name, u.last_name, u.email
+         ORDER BY total_reviews DESC, u.last_name ASC
+         LIMIT 1`,
+      ),
+      query(
+        `WITH accepted AS (
+           SELECT requester_id AS user_id
+           FROM friendships
+           WHERE status = 'accepted'
+           UNION ALL
+           SELECT addressee_id AS user_id
+           FROM friendships
+           WHERE status = 'accepted'
+         )
+         SELECT u.id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                COUNT(a.user_id) AS total_connections
+         FROM accepted a
+         JOIN users u ON u.id = a.user_id
+         GROUP BY u.id, u.first_name, u.last_name, u.email
+         ORDER BY total_connections DESC, u.last_name ASC
          LIMIT 1`,
       ),
       query(
@@ -197,6 +355,9 @@ const getHighlights = async (req, res, next) => {
     ]);
 
     const topReader = mapTopReaderRow(topReaderResult.rows[0]);
+    const topContributor = mapTopContributorRow(topContributorResult.rows[0]);
+    const topCritic = mapTopCriticRow(topCriticResult.rows[0]);
+    const topConnector = mapTopConnectorRow(topConnectorResult.rows[0]);
 
     const topRatedBookRow = topRatedResult.rows[0];
     const topRatedBook =
@@ -215,6 +376,9 @@ const getHighlights = async (req, res, next) => {
 
     return res.json({
       topReader,
+      topContributor,
+      topCritic,
+      topConnector,
       topRatedBook,
       latestBooks,
     });
@@ -237,6 +401,7 @@ const getPublicOverview = async (req, res, next) => {
         friendships = [],
         libraryItems = [],
         bookProposals = [],
+        authorProposals = [],
         bookGenres = [],
       } = mockData;
 
