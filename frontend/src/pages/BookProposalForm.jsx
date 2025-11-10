@@ -7,6 +7,7 @@ import { fetchGenres } from '../api/genres'
 import { fetchAuthors } from '../api/authors'
 import { fetchBooks, fetchBookSeriesPrefill } from '../api/books'
 import Loader from '../components/Loader.jsx'
+import isbnHelpImage from '../assets/components/help/isbn_help.jpg'
 
 const getAuthorDisplayName = (author) => {
   const firstName = author.firstName ?? ''
@@ -80,9 +81,12 @@ const BookProposalForm = () => {
   const [debouncedTitleSearch, setDebouncedTitleSearch] = useState('')
   const [isTitleDropdownOpen, setIsTitleDropdownOpen] = useState(false)
   const [hasPrefillFromSuggestion, setHasPrefillFromSuggestion] = useState(false)
+  const [isIsbnHelpOpen, setIsIsbnHelpOpen] = useState(false)
   const titleFieldRef = useRef(null)
   const authorFieldRef = useRef(null)
   const genreFieldRef = useRef(null)
+  const isbnHelpButtonRef = useRef(null)
+  const isbnHelpPopoverRef = useRef(null)
 
   const genresQuery = useQuery({
     queryKey: ['genres'],
@@ -116,6 +120,32 @@ const BookProposalForm = () => {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (!isIsbnHelpOpen) {
+      return undefined
+    }
+    const handleClickOutside = (event) => {
+      if (
+        isbnHelpButtonRef.current?.contains(event.target) ||
+        isbnHelpPopoverRef.current?.contains(event.target)
+      ) {
+        return
+      }
+      setIsIsbnHelpOpen(false)
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsIsbnHelpOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isIsbnHelpOpen])
 
   const titleSuggestionsQuery = useQuery({
     queryKey: ['book-title-suggestions', debouncedTitleSearch],
@@ -562,25 +592,71 @@ const BookProposalForm = () => {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label htmlFor="isbn" className="text-sm font-semibold text-primary">
-              <span className="text-rose-500" aria-hidden="true">
-                *
-              </span>{' '}
-              ISBN/EAN
-            </label>
+            <div className="flex min-h-8 items-center gap-2">
+              <label htmlFor="isbn" className="inline-flex items-center text-sm font-semibold text-primary">
+                <span className="text-rose-500" aria-hidden="true">
+                  *
+                </span>{' '}
+                ISBN
+              </label>
+              <div className="relative">
+                <button
+                  type="button"
+                  ref={isbnHelpButtonRef}
+                  aria-label="Afficher l'aide sur l'ISBN"
+                  aria-controls="isbn-help-popover"
+                  aria-expanded={isIsbnHelpOpen}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-slate-700 dark:text-white"
+                  onClick={() => setIsIsbnHelpOpen((prev) => !prev)}
+                >
+                  ?
+                </button>
+                {isIsbnHelpOpen && (
+                  <div
+                    id="isbn-help-popover"
+                    role="dialog"
+                    aria-modal="false"
+                    ref={isbnHelpPopoverRef}
+                    className="absolute left-1/2 top-full z-30 mt-3 w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <div className="space-y-3 text-sm text-slate-600 dark:text-slate-200">
+                      <img
+                        src={isbnHelpImage}
+                        alt="Exemple de zone ISBN sur une couverture"
+                        className="w-full max-h-60 rounded-xl border border-slate-200 object-contain dark:border-slate-700"
+                      />
+                      <p>
+                        Merci d&apos;indiquer un ISBN-13 qui commence par <span className="font-semibold">97XXX</span>{' '}
+                        pour que je puisse valider la proposition plus rapidement.
+                      </p>
+                      <button
+                        type="button"
+                        className="w-full rounded-full border border-primary px-3 py-1 text-xs font-semibold text-primary transition hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/40 dark:border-primary/40 dark:text-white"
+                        onClick={() => setIsIsbnHelpOpen(false)}
+                      >
+                        Compris !
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
             <input
               id="isbn"
               name="isbn"
               type="text"
-              className="input"
-              placeholder="ISBN ou EAN"
+              className="input w-full"
+              placeholder="ISBN"
               value={formValues.isbn}
               onChange={handleChange}
             />
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="edition" className="text-sm font-semibold text-primary">
+            <label
+              htmlFor="edition"
+              className="inline-flex min-h-8 items-center text-sm font-semibold text-primary"
+            >
               <span className="text-rose-500" aria-hidden="true">
                 *
               </span>{' '}
