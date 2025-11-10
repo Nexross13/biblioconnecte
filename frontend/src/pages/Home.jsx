@@ -24,14 +24,12 @@ import { fetchHighlights, fetchPublicOverview } from '../api/stats'
 import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
 import formatBookTitle from '../utils/formatBookTitle'
-import { ASSETS_BOOKS_BASE_URL, ASSETS_PROFILE_BASE_URL } from '../api/axios'
+import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 
 const statNumberFormatter = new Intl.NumberFormat('fr-FR')
 const formatStatValue = (value) =>
   Number.isFinite(value) ? statNumberFormatter.format(value) : '—'
-const PLACEHOLDER_AVATAR = '/placeholder-user.svg'
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
-const AVATAR_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 const Home = () => {
@@ -79,28 +77,10 @@ const Home = () => {
   )
 
   const topReader = highlightsQuery.data?.topReader ?? null
+  const topContributor = highlightsQuery.data?.topContributor ?? null
+  const topCritic = highlightsQuery.data?.topCritic ?? null
+  const topConnector = highlightsQuery.data?.topConnector ?? null
   const topRatedBook = highlightsQuery.data?.topRatedBook ?? null
-
-  const topReaderAvatarCandidates = useMemo(() => {
-    const userId = topReader?.user?.id
-    if (!userId) {
-      return []
-    }
-    return AVATAR_EXTENSIONS.map((extension) => `${ASSETS_PROFILE_BASE_URL}/${userId}.${extension}`)
-  }, [topReader?.user?.id])
-
-  const [topReaderAvatarSrc, setTopReaderAvatarSrc] = useState(PLACEHOLDER_AVATAR)
-  const [topReaderAvatarIndex, setTopReaderAvatarIndex] = useState(0)
-
-  useEffect(() => {
-    if (!topReaderAvatarCandidates.length) {
-      setTopReaderAvatarSrc(PLACEHOLDER_AVATAR)
-      setTopReaderAvatarIndex(0)
-      return
-    }
-    setTopReaderAvatarSrc(topReaderAvatarCandidates[0])
-    setTopReaderAvatarIndex(0)
-  }, [topReaderAvatarCandidates])
 
   const topRatedCoverCandidates = useMemo(() => {
     const isbn = topRatedBook?.book?.isbn
@@ -122,6 +102,48 @@ const Home = () => {
     setTopRatedCoverSrc(topRatedCoverCandidates[0])
     setTopRatedCoverIndex(0)
   }, [topRatedCoverCandidates])
+
+  const highlightCards = useMemo(
+    () => [
+      {
+        key: 'topReader',
+        title: 'Meilleur lecteur',
+        description: 'Bibliothèque la plus fournie',
+        data: topReader,
+        icon: BookOpenIcon,
+        formatValue: (entry) => `${formatStatValue(entry.totalBooks)} livres`,
+        emptyLabel: 'Aucun lecteur mis en avant pour le moment.',
+      },
+      {
+        key: 'topContributor',
+        title: 'Meilleur contributeur',
+        description: 'Propositions de nouveaux livres',
+        data: topContributor,
+        icon: SparklesIcon,
+        formatValue: (entry) => `${formatStatValue(entry.totalProposals)} propositions`,
+        emptyLabel: 'Aucun contributeur à afficher pour le moment.',
+      },
+      {
+        key: 'topCritic',
+        title: 'Meilleur critique',
+        description: 'Avis et notes partagés',
+        data: topCritic,
+        icon: ChatBubbleLeftRightIcon,
+        formatValue: (entry) => `${formatStatValue(entry.totalReviews)} avis`,
+        emptyLabel: 'Aucun critique mis en avant.',
+      },
+      {
+        key: 'topConnector',
+        title: 'Ambassadeur social',
+        description: 'Liens d’amitié créés',
+        data: topConnector,
+        icon: UserGroupIcon,
+        formatValue: (entry) => `${formatStatValue(entry.totalConnections)} connexions`,
+        emptyLabel: 'Aucune connexion mise en avant.',
+      },
+    ],
+    [topReader, topContributor, topCritic, topConnector],
+  )
 
   const counts = !isAuthenticated ? publicOverviewQuery.data?.counts ?? {} : {}
   const activity = !isAuthenticated ? publicOverviewQuery.data?.activity ?? {} : {}
@@ -599,43 +621,44 @@ const Home = () => {
               <div className="card space-y-4">
                 <h2 className="text-xl font-semibold text-primary">
                   <span className="inline-flex items-center gap-2">
-                    <UserGroupIcon className="h-5 w-5 text-primary" aria-hidden="true" />
-                    Lecteur le plus actif
+                    <SparklesIcon className="h-5 w-5 text-primary" aria-hidden="true" />
+                    Talents de la communauté
                   </span>
                 </h2>
-                {topReader ? (
-                  <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-slate-700 dark:bg-slate-900/60 md:flex-row md:items-center">
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-primary/10 dark:border-primary/40 dark:bg-primary/20 md:mx-0">
-                      <img
-                        src={topReaderAvatarSrc}
-                        alt={`Avatar de ${topReader.user.firstName} ${topReader.user.lastName}`}
-                        className="h-full w-full object-cover"
-                        onError={(event) => {
-                          if (topReaderAvatarIndex < topReaderAvatarCandidates.length - 1) {
-                            const nextIndex = topReaderAvatarIndex + 1
-                            setTopReaderAvatarIndex(nextIndex)
-                            setTopReaderAvatarSrc(topReaderAvatarCandidates[nextIndex])
-                            return
-                          }
-                          event.currentTarget.src = PLACEHOLDER_AVATAR
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-2 text-left">
-                      <p className="text-lg font-semibold text-slate-700 dark:text-slate-100">
-                        {topReader.user.firstName} {topReader.user.lastName}
-                      </p>
-                      <p className="text-sm text-slate-500 dark:text-slate-300">
-                        {formatStatValue(topReader.totalBooks)} livres enregistrés dans sa
-                        bibliothèque.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500 dark:text-slate-300">
-                    Aucun lecteur mis en avant pour le moment.
-                  </p>
-                )}
+                <p className="text-sm text-slate-500 dark:text-slate-300">
+                  Un coup d’œil sur les lectrices et lecteurs qui font vivre My BiblioConnect.
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {highlightCards.map((card) => {
+                    const Icon = card.icon
+                    return (
+                      <article
+                        key={card.key}
+                        className="rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-900/60"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                              {card.title}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{card.description}</p>
+                          </div>
+                          <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                        </div>
+                        {card.data ? (
+                          <div className="mt-3 space-y-1">
+                            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">
+                              {card.data.user?.firstName} {card.data.user?.lastName}
+                            </p>
+                            <p className="text-base font-bold text-primary">{card.formatValue(card.data)}</p>
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">{card.emptyLabel}</p>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
               </div>
 
               <div className="card space-y-4">
