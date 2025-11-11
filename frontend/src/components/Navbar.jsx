@@ -28,11 +28,13 @@ const THIRTEEN_MONTHS_SECONDS = 60 * 60 * 24 * 30 * 13
 
 
 const CONSENT_COOKIE_NAME = 'cookie_consent'
+const PANEL_ANIMATION_DURATION = 400
 
 const Navbar = () => {
   const { isAuthenticated, logout, user } = useAuth()
   const navigate = useNavigate()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [menuAnimation, setMenuAnimation] = useState('closed')
   const [isParticipationOpen, setIsParticipationOpen] = useState(false)
   const [isMobileParticipationOpen, setIsMobileParticipationOpen] = useState(false)
   const [theme, setTheme] = useState(() => readCookie(THEME_COOKIE_NAME) || 'light')
@@ -76,6 +78,25 @@ const Navbar = () => {
     }
   }, [isMenuOpen])
 
+  useEffect(() => {
+    let timerId
+    if (menuAnimation === 'opening') {
+      timerId = setTimeout(() => {
+        setMenuAnimation('open')
+      }, PANEL_ANIMATION_DURATION)
+    } else if (menuAnimation === 'closing') {
+      timerId = setTimeout(() => {
+        setMenuAnimation('closed')
+        setIsMenuOpen(false)
+      }, PANEL_ANIMATION_DURATION)
+    }
+    return () => {
+      if (timerId) {
+        clearTimeout(timerId)
+      }
+    }
+  }, [menuAnimation])
+
   const filteredLinks = useMemo(
     () =>
       navLinks.filter((link) => {
@@ -105,6 +126,43 @@ const Navbar = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))
   }
 
+  const openMenu = () => {
+    setIsMenuOpen(true)
+    setMenuAnimation('opening')
+  }
+
+  const requestCloseMenu = () => {
+    setMenuAnimation((current) => {
+      if (current === 'closed' || current === 'closing') {
+        return current
+      }
+      return 'closing'
+    })
+  }
+
+  const handleMenuToggle = () => {
+    if (!isMenuOpen || menuAnimation === 'closed') {
+      openMenu()
+      return
+    }
+    if (menuAnimation === 'closing') {
+      setMenuAnimation('opening')
+      return
+    }
+    requestCloseMenu()
+  }
+
+  const handleMenuLinkClick = () => {
+    requestCloseMenu()
+  }
+
+  const drawerAnimationClass =
+    menuAnimation === 'opening'
+      ? 'drawer-panel drawer-panel--opening'
+      : menuAnimation === 'closing'
+        ? 'drawer-panel drawer-panel--closing'
+        : 'drawer-panel'
+
   const linkClassName = ({ isActive }) =>
     `rounded-lg px-3 py-2 text-sm font-medium transition ${
       isActive
@@ -113,13 +171,13 @@ const Navbar = () => {
     }`
 
   return (
-    <header className="relative z-30 bg-white/80 shadow-sm backdrop-blur dark:bg-slate-900/80">
+    <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-lg p-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary md:hidden dark:text-slate-100"
-            onClick={() => setIsMenuOpen((prev) => !prev)}
+            className="inline-flex items-center justify-center rounded-lg p-2 text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary xl:hidden dark:text-slate-100"
+            onClick={handleMenuToggle}
             aria-label="Menu"
           >
             {isMenuOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
@@ -129,7 +187,7 @@ const Navbar = () => {
           </Link>
         </div>
 
-        <nav className="hidden items-center gap-2 md:flex">
+        <nav className="hidden items-center gap-2 xl:flex">
           {filteredLinks.map((link) => (
             <NavLink key={link.to} to={link.to} className={linkClassName}>
               {link.label}
@@ -199,79 +257,105 @@ const Navbar = () => {
       </div>
 
       {isMenuOpen && (
-        <nav className="space-y-2 px-4 pb-4 md:hidden">
-          {filteredLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className="block rounded-lg px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              {link.label}
-            </NavLink>
-          ))}
-          {isAuthenticated ? (
-            <div className="rounded-xl border border-slate-200 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+        <div
+          className="fixed inset-0 z-40 flex xl:hidden bg-black/30 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+        >
+          <nav
+            className={`${drawerAnimationClass} relative flex h-fit max-h-full w-72 max-w-sm flex-col space-y-2 self-start overflow-y-auto rounded-br-3xl border-r border-slate-200 bg-white !bg-opacity-100 px-5 pb-6 pt-6 shadow-2xl transition-transform duration-200 ease-out dark:border-slate-800 dark:bg-slate-900 !dark:bg-opacity-100`}
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <span className="text-base font-semibold text-slate-900 dark:text-white">
+                Navigation
+              </span>
               <button
                 type="button"
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary dark:text-slate-100 dark:hover:bg-slate-700"
-                onClick={() => setIsMobileParticipationOpen((prev) => !prev)}
-                aria-expanded={isMobileParticipationOpen}
+                className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
+                onClick={requestCloseMenu}
+                aria-label="Fermer le menu"
               >
-                Je participe
-                <ChevronDownIcon
-                  className={`h-4 w-4 transition ${isMobileParticipationOpen ? 'rotate-180' : ''}`}
-                />
+                <XMarkIcon className="h-5 w-5" />
               </button>
-              {isMobileParticipationOpen ? (
-                <div className="mt-3 space-y-2">
-                  {participationLinks.map(({ to, label }) => (
-                    <Link
-                      key={to}
-                      to={to}
-                      className="block rounded-lg border border-primary/30 px-3 py-2 text-center text-sm font-medium text-primary hover:bg-primary/10 dark:border-primary/50 dark:text-white dark:hover:bg-primary/20"
-                      onClick={() => {
-                        setIsMenuOpen(false)
-                        setIsMobileParticipationOpen(false)
-                      }}
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
             </div>
-          ) : null}
-          {isAuthenticated ? (
-            <button
-              type="button"
-              className="btn-secondary w-full text-xs"
-              onClick={() => {
-                handleLogout()
-                setIsMenuOpen(false)
-              }}
-            >
-              Déconnexion
-            </button>
-          ) : (
-            <div className="flex flex-col gap-2">
+
+            {filteredLinks.map((link) => (
               <NavLink
-                to="/login"
-                className="block rounded-lg px-3 py-2 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700"
-                onClick={() => setIsMenuOpen(false)}
+                key={link.to}
+                to={link.to}
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={handleMenuLinkClick}
               >
-                Connexion
+                {link.label}
               </NavLink>
-              <NavLink
-                to="/register"
-                className="btn text-xs"
-                onClick={() => setIsMenuOpen(false)}
+            ))}
+
+            {isAuthenticated && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-primary dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setIsMobileParticipationOpen((prev) => !prev)}
+                  aria-expanded={isMobileParticipationOpen}
+                >
+                  Je participe
+                  <ChevronDownIcon
+                    className={`h-4 w-4 transition ${isMobileParticipationOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {isMobileParticipationOpen && (
+                  <div className="space-y-2">
+                    {participationLinks.map(({ to, label }) => (
+                      <Link
+                        key={to}
+                        to={to}
+                        className="block rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700"
+                        onClick={() => {
+                          handleMenuLinkClick()
+                          setIsMobileParticipationOpen(false)
+                        }}
+                      >
+                        {label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isAuthenticated ? (
+              <button
+                type="button"
+                className="btn-secondary w-full text-xs"
+                onClick={() => {
+                  handleLogout()
+                  requestCloseMenu()
+                }}
               >
-                Inscription
-              </NavLink>
-            </div>
-          )}
-        </nav>
+                Déconnexion
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <NavLink
+                  to="/login"
+                  className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={handleMenuLinkClick}
+                >
+                  Connexion
+                </NavLink>
+                <NavLink
+                  to="/register"
+                  className="btn text-xs"
+                  onClick={handleMenuLinkClick}
+                >
+                  Inscription
+                </NavLink>
+              </div>
+            )}
+          </nav>
+
+          <div className="flex-1 h-full cursor-pointer" onClick={requestCloseMenu} />
+        </div>
       )}
     </header>
   )
