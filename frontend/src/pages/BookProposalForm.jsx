@@ -770,7 +770,7 @@ const BookMetadataForm = ({
                 </span>{' '}
                 ISBN
               </label>
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <button
                   type="button"
                   ref={isbnHelpButtonRef}
@@ -788,7 +788,7 @@ const BookMetadataForm = ({
                     role="dialog"
                     aria-modal="false"
                     ref={isbnHelpPopoverRef}
-                    className="absolute left-1/2 top-full z-30 mt-3 w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                    className="absolute left-1/2 top-full z-30 mt-3 w-[min(18rem,calc(100vw-3rem))] -translate-x-[60%] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
                   >
                     <div className="space-y-3 text-sm text-slate-600 dark:text-slate-200">
                       <img
