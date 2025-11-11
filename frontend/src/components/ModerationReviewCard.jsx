@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
+import { BackspaceIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { approveReview, deleteReview } from '../api/reviews'
 import formatDate from '../utils/formatDate'
 
@@ -56,6 +57,8 @@ const ModerationReviewCard = ({ review }) => {
 
   const reasonIsMissing = reason.trim().length === 0
   const reasonFieldId = `moderation-reason-${review.id}`
+  const approveButtonLabel = approveMutation.isPending ? 'Validation...' : 'Valider'
+  const deleteButtonLabel = deleteMutation.isPending ? 'Suppression...' : 'Supprimer'
 
   const handleDelete = () => {
     if (reasonIsMissing) {
@@ -129,28 +132,34 @@ const ModerationReviewCard = ({ review }) => {
         {!isApproved && (
           <button
             type="button"
-            className="rounded-lg border border-emerald-500 bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow transition hover:border-emerald-600 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-lg border border-emerald-500 bg-emerald-500 px-2.5 py-2 text-sm font-semibold text-white shadow transition hover:border-emerald-600 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-60 sm:px-4"
             onClick={() => approveMutation.mutate()}
             disabled={approveMutation.isPending}
+            aria-label={approveButtonLabel}
           >
-            {approveMutation.isPending ? 'Validation...' : 'Valider'}
+            <CheckIcon className="h-5 w-5 sm:mr-2" aria-hidden="true" />
+            <span className="hidden sm:inline">{approveButtonLabel}</span>
           </button>
         )}
         <button
           type="button"
-          className="btn-secondary text-sm"
+          className="btn-secondary inline-flex items-center justify-center gap-1 px-2.5 py-2 text-sm sm:gap-2 sm:px-4"
           onClick={() => setReason('')}
           disabled={deleteMutation.isPending || reasonIsMissing}
+          aria-label="Effacer le motif"
         >
-          Effacer le motif
+          <BackspaceIcon className="h-5 w-5" aria-hidden="true" />
+          <span className="hidden sm:inline">Effacer le motif</span>
         </button>
         <button
           type="button"
-          className="rounded-lg border border-rose-500 bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow transition hover:border-rose-600 hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:opacity-60 dark:border-rose-400 dark:bg-rose-500"
+          className="inline-flex items-center justify-center rounded-lg border border-rose-500 bg-rose-500 px-2.5 py-2 text-sm font-semibold text-white shadow transition hover:border-rose-600 hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:opacity-60 dark:border-rose-400 dark:bg-rose-500 sm:px-4"
           onClick={handleDelete}
           disabled={deleteMutation.isPending || reasonIsMissing}
+          aria-label={deleteButtonLabel}
         >
-          {deleteMutation.isPending ? 'Suppression...' : 'Supprimer'}
+          <TrashIcon className="h-5 w-5 sm:mr-2" aria-hidden="true" />
+          <span className="hidden sm:inline">{deleteButtonLabel}</span>
         </button>
       </div>
     </article>

@@ -12,16 +12,6 @@ const ModerationDashboard = () => {
     staleTime: 30_000,
   })
 
-  const lastUpdatedLabel = useMemo(() => {
-    if (!reviewsQuery.dataUpdatedAt) {
-      return null
-    }
-    return new Intl.DateTimeFormat('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(reviewsQuery.dataUpdatedAt)
-  }, [reviewsQuery.dataUpdatedAt])
-
   const reviews = reviewsQuery.data ?? []
   const pendingCount = reviews.filter((review) => review.moderationStatus !== 'approved').length
 
@@ -84,20 +74,7 @@ const ModerationDashboard = () => {
             ) : (
               'Aucun nouvel avis à contrôler'
             )}
-            {lastUpdatedLabel ? (
-              <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">
-                (Mis à jour à {lastUpdatedLabel})
-              </span>
-            ) : null}
           </div>
-          <button
-            type="button"
-            className="btn-secondary text-xs"
-            onClick={() => reviewsQuery.refetch()}
-            disabled={reviewsQuery.isFetching}
-          >
-            {reviewsQuery.isFetching ? 'Actualisation...' : 'Actualiser'}
-          </button>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button

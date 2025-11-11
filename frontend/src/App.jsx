@@ -10,8 +10,9 @@ import ForgotPasswordRequest from './pages/ForgotPasswordRequest.jsx'
 import ForgotPasswordReset from './pages/ForgotPasswordReset.jsx'
 import Library from './pages/Library.jsx'
 import BookDetails from './pages/BookDetails.jsx'
+import BookEdit from './pages/BookEdit.jsx'
 import BookProposalDetails from './pages/BookProposalDetails.jsx'
-import BookProposalForm from './pages/BookProposalForm.jsx'
+import BookMetadataForm from './pages/BookProposalForm.jsx'
 import AuthorForm from './pages/AuthorForm.jsx'
 import AuthorProposalDetails from './pages/AuthorProposalDetails.jsx'
 import AuthorDetails from './pages/AuthorDetails.jsx'
@@ -33,7 +34,17 @@ const App = () => (
         path="/books/new"
         element={
           <ProtectedRoute>
-            <BookProposalForm />
+            <BookMetadataForm />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/books/:id/edit"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <BookEdit />
+            </AdminRoute>
           </ProtectedRoute>
         }
       />

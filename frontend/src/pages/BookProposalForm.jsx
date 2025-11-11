@@ -28,56 +28,100 @@ const initialState = {
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const SUMMARY_MAX_LENGTH = 2000
-const STORAGE_KEY = 'book-proposal-draft'
 
-const loadDraft = () => {
-  if (typeof window === 'undefined') {
+const loadDraft = (storageKey) => {
+  if (typeof window === 'undefined' || !storageKey) {
     return null
   }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(storageKey)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
   }
 }
 
-const saveDraft = (draft) => {
-  if (typeof window === 'undefined') {
+const saveDraft = (storageKey, draft) => {
+  if (typeof window === 'undefined' || !storageKey) {
     return
   }
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
+    window.localStorage.setItem(storageKey, JSON.stringify(draft))
   } catch {
     /* no-op */
   }
 }
 
-const clearDraft = () => {
-  if (typeof window === 'undefined') {
+const clearDraft = (storageKey) => {
+  if (typeof window === 'undefined' || !storageKey) {
     return
   }
   try {
-    window.localStorage.removeItem(STORAGE_KEY)
+    window.localStorage.removeItem(storageKey)
   } catch {
     /* no-op */
   }
 }
 
-const BookProposalForm = () => {
+const BookMetadataForm = ({
+  mode = 'proposal',
+  embedded = false,
+  formClassName = 'card space-y-4',
+  initialFormValues = null,
+  initialAuthors = [],
+  initialGenres = [],
+  initialCoverUrl = null,
+  enableDraft: enableDraftOverride = null,
+  storageKey = 'book-proposal-draft',
+  mutationOverride = null,
+  submitLabel: submitLabelOverride = null,
+  showResetButton = mode === 'proposal',
+  onCancel = null,
+  cancelLabel = 'Annuler',
+  prefilledTitle: prefilledTitleOverride = null,
+}) => {
   const [searchParams] = useSearchParams()
-  const [formValues, setFormValues] = useState(initialState)
+  const prefilledTitleFromParams = useMemo(
+    () => searchParams.get('title')?.trim() || '',
+    [searchParams],
+  )
+  const prefilledTitle = (prefilledTitleOverride ?? prefilledTitleFromParams) || ''
+  const enableDraft = enableDraftOverride ?? mode === 'proposal'
+  const submitLabel =
+    submitLabelOverride ?? (mode === 'proposal' ? 'Envoyer la proposition' : 'Enregistrer')
+
+  const computeInitialFormValues = useCallback(() => {
+    const base = initialFormValues ? { ...initialState, ...initialFormValues } : initialState
+    return {
+      ...base,
+      title: prefilledTitle || base.title || '',
+    }
+  }, [initialFormValues, prefilledTitle])
+
+  const computeInitialAuthors = useCallback(
+    () => (Array.isArray(initialAuthors) ? [...initialAuthors] : []),
+    [initialAuthors],
+  )
+
+  const computeInitialGenres = useCallback(
+    () => (Array.isArray(initialGenres) ? [...initialGenres] : []),
+    [initialGenres],
+  )
+
+  const [formValues, setFormValues] = useState(() => computeInitialFormValues())
   const [errors, setErrors] = useState({})
-  const [authors, setAuthors] = useState([])
+  const [authors, setAuthors] = useState(() => computeInitialAuthors())
   const [authorSearchTerm, setAuthorSearchTerm] = useState('')
   const [isAuthorDropdownOpen, setIsAuthorDropdownOpen] = useState(false)
-  const [genres, setGenres] = useState([])
+  const [genres, setGenres] = useState(() => computeInitialGenres())
   const [genreSearchTerm, setGenreSearchTerm] = useState('')
   const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false)
   const [coverImageData, setCoverImageData] = useState(null)
-  const [coverPreviewUrl, setCoverPreviewUrl] = useState(null)
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState(initialCoverUrl || null)
   const [coverError, setCoverError] = useState('')
-  const [titleSearchTerm, setTitleSearchTerm] = useState('')
+  const [titleSearchTerm, setTitleSearchTerm] = useState(
+    prefilledTitle || formValues.title || '',
+  )
   const [debouncedTitleSearch, setDebouncedTitleSearch] = useState('')
   const [isTitleDropdownOpen, setIsTitleDropdownOpen] = useState(false)
   const [hasPrefillFromSuggestion, setHasPrefillFromSuggestion] = useState(false)
@@ -104,6 +148,13 @@ const BookProposalForm = () => {
     }, 250)
     return () => clearTimeout(handler)
   }, [titleSearchTerm])
+
+  useEffect(() => {
+    if (coverImageData) {
+      return
+    }
+    setCoverPreviewUrl(initialCoverUrl || null)
+  }, [initialCoverUrl, coverImageData])
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -207,13 +258,36 @@ const BookProposalForm = () => {
     })
   }, [titleSuggestionsQuery.data])
 
-  const prefilledTitle = useMemo(
-    () => searchParams.get('title')?.trim() || '',
-    [searchParams],
-  )
+  const resetFormState = useCallback(() => {
+    setFormValues(computeInitialFormValues())
+    setErrors({})
+    setAuthors(computeInitialAuthors())
+    setGenres(computeInitialGenres())
+    setAuthorSearchTerm('')
+    setGenreSearchTerm('')
+    setCoverImageData(null)
+    setCoverPreviewUrl(initialCoverUrl || null)
+    setCoverError('')
+    setTitleSearchTerm(prefilledTitle || '')
+    setHasPrefillFromSuggestion(false)
+    if (enableDraft) {
+      clearDraft(storageKey)
+    }
+  }, [
+    computeInitialFormValues,
+    computeInitialAuthors,
+    computeInitialGenres,
+    enableDraft,
+    storageKey,
+    initialCoverUrl,
+    prefilledTitle,
+  ])
 
   useEffect(() => {
-    const draft = loadDraft()
+    if (!enableDraft) {
+      return
+    }
+    const draft = loadDraft(storageKey)
     if (!draft) {
       return
     }
@@ -229,16 +303,20 @@ const BookProposalForm = () => {
     if (Array.isArray(draft.genres)) {
       setGenres(draft.genres)
     }
-  }, [])
+  }, [enableDraft, storageKey])
 
   useEffect(() => {
-    if (prefilledTitle) {
-      setFormValues((prev) => ({ ...prev, title: prefilledTitle }))
-      setTitleSearchTerm(prefilledTitle)
+    if (!prefilledTitle) {
+      return
     }
+    setFormValues((prev) => ({ ...prev, title: prefilledTitle }))
+    setTitleSearchTerm(prefilledTitle)
   }, [prefilledTitle])
 
   useEffect(() => {
+    if (!enableDraft) {
+      return
+    }
     const hasDraftContent =
       Object.values(formValues).some((value) =>
         typeof value === 'string' ? value.trim().length > 0 : Boolean(value),
@@ -247,35 +325,23 @@ const BookProposalForm = () => {
       genres.length
 
     if (!hasDraftContent) {
-      clearDraft()
+      clearDraft(storageKey)
       return
     }
 
-    saveDraft({
+    saveDraft(storageKey, {
       formValues,
       authors,
       genres,
     })
-  }, [formValues, authors, genres])
+  }, [enableDraft, storageKey, formValues, authors, genres])
 
-  const mutation = useMutation({
+  const defaultMutation = useMutation({
     mutationFn: createBookProposal,
     onSuccess: (data) => {
       const title = data?.proposal?.title || formValues.title || 'Votre proposition'
       toast.success(`Votre proposition « ${title} » a été envoyée.`)
-
-      setFormValues(initialState)
-      setErrors({})
-      setAuthors([])
-      setGenres([])
-      setCoverImageData(null)
-      setCoverPreviewUrl(null)
-      setCoverError('')
-      setTitleSearchTerm('')
-      setAuthorSearchTerm('')
-      setGenreSearchTerm('')
-      setHasPrefillFromSuggestion(false)
-      clearDraft()
+      resetFormState()
     },
     onError: (error) => {
       const message =
@@ -283,6 +349,7 @@ const BookProposalForm = () => {
       toast.error(message)
     },
   })
+  const mutation = mutationOverride ?? defaultMutation
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -518,21 +585,22 @@ const BookProposalForm = () => {
     resetFormForNewSeries,
   ])
 
-  if (mutation.isPending) {
+  const isSubmitting = mutation.isPending
+  const pendingLabel = mode === 'proposal' ? 'Envoi...' : 'Enregistrement...'
+  const heading =
+    mode === 'proposal' ? 'Proposer un nouveau livre' : 'Modifier les informations du livre'
+  const description =
+    mode === 'proposal'
+      ? 'Renseignez les informations principales du livre que vous souhaitez ajouter au catalogue. Les administrateurs vérifieront la proposition avant publication.'
+      : 'Mettez à jour les informations de référence du livre pour garder le catalogue cohérent.'
+  const shouldShowFullLoader = !embedded && isSubmitting
+
+  if (shouldShowFullLoader) {
     return <Loader label="Enregistrement en cours..." />
   }
 
-  return (
-    <section className="mx-auto max-w-3xl space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-bold text-primary">Proposer un nouveau livre</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-300">
-          Renseignez les informations principales du livre que vous souhaitez ajouter au catalogue.
-          Les administrateurs vérifieront la proposition avant publication.
-        </p>
-      </header>
-
-      <form className="card space-y-4" onSubmit={handleSubmit}>
+  const form = (
+    <form className={formClassName} onSubmit={handleSubmit}>
         <div className="space-y-2" ref={titleFieldRef}>
           <label htmlFor="title" className="text-sm font-semibold text-primary">
             <span className="text-rose-500" aria-hidden="true">
@@ -927,33 +995,53 @@ const BookProposalForm = () => {
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <button type="submit" className="btn">
-            Envoyer la proposition
+          <button type="submit" className="btn disabled:opacity-60" disabled={isSubmitting}>
+            {isSubmitting ? pendingLabel : submitLabel}
           </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setFormValues({ ...initialState, title: prefilledTitle })
-              setErrors({})
-              setAuthors([])
-              setGenres([])
-              setAuthorSearchTerm('')
-              setGenreSearchTerm('')
-              setCoverImageData(null)
-              setCoverPreviewUrl(null)
-              setCoverError('')
-              setTitleSearchTerm(prefilledTitle || '')
-              clearDraft()
-            }}
-          >
-            Réinitialiser le formulaire
-          </button>
-          <p className="text-right text-xs text-rose-500 dark:text-rose-400 md:ml-auto">* Champs obligatoires</p>
+          {showResetButton ? (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={resetFormState}
+              disabled={isSubmitting}
+            >
+              Réinitialiser le formulaire
+            </button>
+          ) : null}
+          {onCancel ? (
+            <button type="button" className="btn-secondary" onClick={onCancel}>
+              {cancelLabel}
+            </button>
+          ) : null}
+          {!embedded && (
+            <p className="text-right text-xs text-rose-500 dark:text-rose-400 md:ml-auto">
+              * Champs obligatoires
+            </p>
+          )}
         </div>
-      </form>
+      {embedded ? (
+        <p className="text-right text-xs text-rose-500 dark:text-rose-400 md:ml-auto">
+          * Champs obligatoires
+        </p>
+      ) : null}
+    </form>
+  )
+
+  if (embedded) {
+    return form
+  }
+
+  return (
+    <section className="mx-auto max-w-3xl space-y-6">
+      <header className="space-y-2">
+        <h1 className="text-3xl font-bold text-primary">{heading}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-300">{description}</p>
+      </header>
+
+      {form}
     </section>
   )
 }
 
-export default BookProposalForm
+export default BookMetadataForm
+export { BookMetadataForm }
