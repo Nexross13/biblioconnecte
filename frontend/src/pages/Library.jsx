@@ -14,6 +14,7 @@ import { LIBRARY_VIEW_COOKIE, LIBRARY_VIEW_MODES } from '../constants/libraryVie
 import { LIBRARY_SORT_OPTIONS, DEFAULT_LIBRARY_SORT } from '../constants/librarySort'
 import { compareBooksBySeriesAndVolume, getBookAddedTimestamp } from '../utils/bookSorting'
 import SortDropdown from '../components/SortDropdown.jsx'
+import { buildSearchQuery, matchesSearchQuery } from '../utils/search-utils'
 
 const FILTERS = [
   { id: 'all', label: 'Tout' },
@@ -82,6 +83,8 @@ const Library = () => {
     return Array.from(map.values())
   }, [libraryQuery.data, wishlistQuery.data])
 
+  const searchQuery = useMemo(() => buildSearchQuery(searchTerm), [searchTerm])
+
   const filteredBooks = useMemo(() => {
     let subset = combinedBooks
 
@@ -96,8 +99,7 @@ const Library = () => {
         subset = combinedBooks
     }
 
-    const query = searchTerm.trim().toLowerCase()
-    if (!query) {
+    if (!searchQuery) {
       return subset
     }
 
@@ -115,22 +117,23 @@ const Library = () => {
         ? book.genreNames
         : []
 
-      const haystack = [
-        formatBookTitle(book),
-        book.summary,
-        book.isbn,
-        authorTokens.join(' '),
-        genreTokens.join(' '),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return haystack.includes(query)
+      return matchesSearchQuery(
+        [
+          formatBookTitle(book),
+          book.summary,
+          book.isbn,
+          typeof book.volumeTitle === 'string' ? book.volumeTitle : null,
+          book.volume !== undefined && book.volume !== null ? String(book.volume) : null,
+          typeof book.edition === 'string' ? book.edition : null,
+          authorTokens.join(' '),
+          genreTokens.join(' '),
+        ],
+        searchQuery,
+      )
     }
 
     return subset.filter(({ book }) => matchesQuery(book))
-  }, [activeFilter, combinedBooks, searchTerm])
+  }, [activeFilter, combinedBooks, searchQuery])
 
   const sortedBooks = useMemo(() => {
     const copy = [...filteredBooks]

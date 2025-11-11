@@ -14,6 +14,7 @@ import formatBookAuthors from '../utils/formatBookAuthors'
 import { LIBRARY_VIEW_COOKIE, LIBRARY_VIEW_MODES } from '../constants/libraryView'
 import { LIBRARY_SORT_OPTIONS, DEFAULT_LIBRARY_SORT } from '../constants/librarySort'
 import { compareBooksBySeriesAndVolume, getBookAddedTimestamp } from '../utils/bookSorting'
+import { buildSearchQuery, matchesSearchQuery } from '../utils/search-utils'
 
 const FILTERS = [
   { id: 'all', label: 'Tout' },
@@ -82,25 +83,28 @@ const FriendCollection = () => {
     return merged
   }, [libraryQuery.data, wishlistQuery.data, filter])
 
+  const searchQuery = useMemo(() => buildSearchQuery(searchTerm), [searchTerm])
+
   const filteredItems = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase()
-    if (!query) {
+    if (!searchQuery) {
       return items
     }
     const matchesQuery = (book) => {
-      const haystack = [
-        formatBookTitle(book),
-        book.summary,
-        book.isbn,
-        formatBookAuthors(book),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(query)
+      return matchesSearchQuery(
+        [
+          formatBookTitle(book),
+          book.summary,
+          book.isbn,
+          typeof book.volumeTitle === 'string' ? book.volumeTitle : null,
+          book.volume !== undefined && book.volume !== null ? String(book.volume) : null,
+          typeof book.edition === 'string' ? book.edition : null,
+          formatBookAuthors(book),
+        ],
+        searchQuery,
+      )
     }
     return items.filter((book) => matchesQuery(book))
-  }, [items, searchTerm])
+  }, [items, searchQuery])
 
   const sortedItems = useMemo(() => {
     const copy = [...filteredItems]

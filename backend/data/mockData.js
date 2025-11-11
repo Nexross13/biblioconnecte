@@ -1,5 +1,19 @@
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
+const stripAccents = (value = '') =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘`´]/g, "'")
+    .toLowerCase();
+
+const normalizeTextForSearch = (value = '') =>
+  stripAccents(value).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+const normalizeCompactForSearch = (value = '') => stripAccents(value).replace(/[^a-z0-9]+/g, '');
+
+const stripLeadingZeros = (value = '') => value.replace(/\b0+(\d+)/g, '$1');
+
 const users = [
   {
     id: 1,
@@ -355,13 +369,49 @@ const getBooks = ({ search } = {}) => {
   if (!search) {
     return clone(books);
   }
-  const lower = search.toLowerCase();
+
+  const normalizedQuery = normalizeTextForSearch(search);
+  const normalizedQueryWithoutZeros = stripLeadingZeros(normalizedQuery);
+  const compactQuery = normalizeCompactForSearch(search);
+
+  if (!normalizedQuery && !compactQuery) {
+    return clone(books);
+  }
+
   return clone(
-    books.filter(
-      (book) =>
-        book.title.toLowerCase().includes(lower) ||
-        (book.summary && book.summary.toLowerCase().includes(lower)),
-    ),
+    books.filter((book) => {
+      const values = [
+        book.title,
+        book.volumeTitle,
+        book.summary,
+        book.edition,
+        book.volume,
+        book.isbn,
+      ].filter(Boolean);
+
+      if (!values.length) {
+        return false;
+      }
+
+      const joined = values.join(' ');
+      const normalizedHaystack = normalizeTextForSearch(joined);
+      const normalizedHaystackWithoutZeros = stripLeadingZeros(normalizedHaystack);
+      const compactHaystack = normalizeCompactForSearch(joined);
+
+      if (normalizedQuery && normalizedHaystack.includes(normalizedQuery)) {
+        return true;
+      }
+      if (
+        normalizedQueryWithoutZeros &&
+        normalizedHaystackWithoutZeros.includes(normalizedQueryWithoutZeros)
+      ) {
+        return true;
+      }
+      if (compactQuery && compactHaystack.includes(compactQuery)) {
+        return true;
+      }
+      return false;
+    }),
   );
 };
 
