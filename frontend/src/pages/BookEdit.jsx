@@ -12,19 +12,10 @@ import {
 import { BookMetadataForm } from './BookProposalForm.jsx'
 import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 
-const mapAuthorsToNames = (authors = []) =>
-  authors
-    .map((author) => {
-      const name = [author.firstName, author.lastName].filter(Boolean).join(' ').trim()
-      return name || author.email || null
-    })
-    .filter(Boolean)
-
-const mapGenresToNames = (genres = []) =>
-  genres
-    .map((genre) => genre.name || '')
-    .map((name) => name.trim())
-    .filter(Boolean)
+const formatAuthorLabel = (author) => {
+  const name = [author.firstName, author.lastName].filter(Boolean).join(' ').trim()
+  return name || author.email || `Auteur ${author.id}`
+}
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
@@ -72,6 +63,12 @@ const BookEdit = () => {
         volumeTitle: payload.volumeTitle,
         releaseDate: payload.releaseDate,
         summary: payload.summary,
+      }
+      if (Array.isArray(payload.authorIds)) {
+        sanitizedPayload.authorIds = payload.authorIds
+      }
+      if (Array.isArray(payload.genreIds)) {
+        sanitizedPayload.genreIds = payload.genreIds
       }
       return updateBook(Number(id), sanitizedPayload)
     },
@@ -186,20 +183,40 @@ const BookEdit = () => {
 
   const initialAuthors = useMemo(() => {
     if (Array.isArray(book.authors) && book.authors.length) {
-      return mapAuthorsToNames(book.authors)
+      return book.authors
+        .map((author) => ({
+          id: author.id ?? null,
+          label: formatAuthorLabel(author),
+        }))
+        .filter((entry) => entry.label.trim().length)
     }
     if (Array.isArray(book.authorNames) && book.authorNames.length) {
-      return book.authorNames.map((name) => String(name).trim()).filter(Boolean)
+      return book.authorNames
+        .map((name) => {
+          const label = String(name || '').trim()
+          return label ? { id: null, label } : null
+        })
+        .filter(Boolean)
     }
     return []
   }, [book.authors, book.authorNames])
 
   const initialGenres = useMemo(() => {
     if (Array.isArray(book.genres) && book.genres.length) {
-      return mapGenresToNames(book.genres)
+      return book.genres
+        .map((genre) => ({
+          id: genre.id ?? null,
+          label: String(genre.name || '').trim(),
+        }))
+        .filter((entry) => entry.label.length)
     }
     if (Array.isArray(book.genreNames) && book.genreNames.length) {
-      return book.genreNames.map((name) => String(name).trim()).filter(Boolean)
+      return book.genreNames
+        .map((name) => {
+          const label = String(name || '').trim()
+          return label ? { id: null, label } : null
+        })
+        .filter(Boolean)
     }
     return []
   }, [book.genres, book.genreNames])

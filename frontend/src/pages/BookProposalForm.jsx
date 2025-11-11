@@ -29,6 +29,36 @@ const initialState = {
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const SUMMARY_MAX_LENGTH = 2000
 
+const normalizeSelectionEntry = (entry) => {
+  if (!entry) {
+    return null
+  }
+  if (typeof entry === 'string') {
+    const label = entry.trim()
+    return label ? { id: null, label } : null
+  }
+  if (typeof entry === 'object') {
+    const labelCandidate =
+      entry.label ||
+      entry.name ||
+      [entry.firstName, entry.lastName].filter(Boolean).join(' ').trim() ||
+      entry.value ||
+      ''
+    const label = String(labelCandidate || '').trim()
+    if (!label) {
+      return null
+    }
+    const id =
+      entry.id ??
+      entry.value ??
+      entry.authorId ??
+      entry.genreId ??
+      (typeof entry.identifier === 'number' ? entry.identifier : null)
+    return { id: id ?? null, label }
+  }
+  return null
+}
+
 const loadDraft = (storageKey) => {
   if (typeof window === 'undefined' || !storageKey) {
     return null
@@ -98,15 +128,23 @@ const BookMetadataForm = ({
     }
   }, [initialFormValues, prefilledTitle])
 
-  const computeInitialAuthors = useCallback(
-    () => (Array.isArray(initialAuthors) ? [...initialAuthors] : []),
-    [initialAuthors],
-  )
+  const computeInitialAuthors = useCallback(() => {
+    if (!Array.isArray(initialAuthors)) {
+      return []
+    }
+    return initialAuthors
+      .map((entry) => normalizeSelectionEntry(entry))
+      .filter(Boolean)
+  }, [initialAuthors])
 
-  const computeInitialGenres = useCallback(
-    () => (Array.isArray(initialGenres) ? [...initialGenres] : []),
-    [initialGenres],
-  )
+  const computeInitialGenres = useCallback(() => {
+    if (!Array.isArray(initialGenres)) {
+      return []
+    }
+    return initialGenres
+      .map((entry) => normalizeSelectionEntry(entry))
+      .filter(Boolean)
+  }, [initialGenres])
 
   const [formValues, setFormValues] = useState(() => computeInitialFormValues())
   const [errors, setErrors] = useState({})
@@ -298,10 +336,18 @@ const BookMetadataForm = ({
       }
     }
     if (Array.isArray(draft.authors)) {
-      setAuthors(draft.authors)
+      setAuthors(
+        draft.authors
+          .map((entry) => normalizeSelectionEntry(entry))
+          .filter(Boolean),
+      )
     }
     if (Array.isArray(draft.genres)) {
-      setGenres(draft.genres)
+      setGenres(
+        draft.genres
+          .map((entry) => normalizeSelectionEntry(entry))
+          .filter(Boolean),
+      )
     }
   }, [enableDraft, storageKey])
 
@@ -367,12 +413,22 @@ const BookMetadataForm = ({
     }
   }
 
-  const addAuthor = (name) => {
-    const normalized = name.trim()
-    if (!normalized || authors.includes(normalized)) {
+  const addAuthor = (entry) => {
+    const normalized = normalizeSelectionEntry(entry)
+    if (!normalized) {
       return
     }
-    setAuthors((prev) => [...prev, normalized])
+    setAuthors((prev) => {
+      const exists = prev.some((author) =>
+        normalized.id
+          ? author.id === normalized.id
+          : author.label.toLowerCase() === normalized.label.toLowerCase(),
+      )
+      if (exists) {
+        return prev
+      }
+      return [...prev, normalized]
+    })
     setAuthorSearchTerm('')
     setIsAuthorDropdownOpen(false)
     if (errors.authorNames) {
@@ -384,12 +440,22 @@ const BookMetadataForm = ({
     }
   }
 
-  const addGenre = (name) => {
-    const normalized = name.trim()
-    if (!normalized || genres.includes(normalized)) {
+  const addGenre = (entry) => {
+    const normalized = normalizeSelectionEntry(entry)
+    if (!normalized) {
       return
     }
-    setGenres((prev) => [...prev, normalized])
+    setGenres((prev) => {
+      const exists = prev.some((genre) =>
+        normalized.id
+          ? genre.id === normalized.id
+          : genre.label.toLowerCase() === normalized.label.toLowerCase(),
+      )
+      if (exists) {
+        return prev
+      }
+      return [...prev, normalized]
+    })
     setGenreSearchTerm('')
     setIsGenreDropdownOpen(false)
     if (errors.genreNames) {
@@ -401,12 +467,20 @@ const BookMetadataForm = ({
     }
   }
 
-  const handleAuthorRemove = (name) => {
-    setAuthors((prev) => prev.filter((value) => value !== name))
+  const handleAuthorRemove = (entry) => {
+    setAuthors((prev) =>
+      prev.filter((author) =>
+        entry.id != null ? author.id !== entry.id : author.label !== entry.label,
+      ),
+    )
   }
 
-  const handleGenreRemove = (name) => {
-    setGenres((prev) => prev.filter((value) => value !== name))
+  const handleGenreRemove = (entry) => {
+    setGenres((prev) =>
+      prev.filter((genre) =>
+        entry.id != null ? genre.id !== entry.id : genre.label !== entry.label,
+      ),
+    )
   }
 
   const handleAuthorInputKeyDown = (event) => {
@@ -441,7 +515,11 @@ const BookMetadataForm = ({
         volume: prefill?.nextVolume ?? prev.volume,
       }))
       if (prefill?.genreNames?.length) {
-        setGenres(prefill.genreNames)
+        setGenres(
+          prefill.genreNames
+            .map((name) => normalizeSelectionEntry(name))
+            .filter(Boolean),
+        )
         if (errors.genreNames) {
           setErrors((prev) => {
             const next = { ...prev }
@@ -457,11 +535,17 @@ const BookMetadataForm = ({
   }
 
   const handleAuthorSuggestionSelect = (author) => {
-    addAuthor(getAuthorDisplayName(author))
+    addAuthor({
+      id: author.id,
+      label: getAuthorDisplayName(author),
+    })
   }
 
-  const handleGenreSuggestionSelect = (genreName) => {
-    addGenre(genreName)
+  const handleGenreSuggestionSelect = (genre) => {
+    addGenre({
+      id: genre.id,
+      label: genre.name,
+    })
   }
 
   const handleCoverChange = (event) => {
@@ -520,6 +604,9 @@ const BookMetadataForm = ({
       return
     }
 
+    const trimmedAuthors = authors.map((author) => author.label)
+    const trimmedGenres = genres.map((genre) => genre.label)
+
     const payload = {
       title: formValues.title.trim(),
       isbn: formValues.isbn.trim() || null,
@@ -528,9 +615,25 @@ const BookMetadataForm = ({
       volumeTitle: formValues.volumeTitle.trim() || null,
       releaseDate: formValues.releaseDate.trim() || null,
       summary: formValues.summary.trim() || null,
-      authorNames: authors,
-      genreNames: genres,
+      authorNames: trimmedAuthors,
+      genreNames: trimmedGenres,
       coverImage: coverImageData,
+    }
+
+    if (mode === 'edit') {
+      const authorIds = authors
+        .map((author) => author.id)
+        .filter((id) => id != null)
+      const genreIds = genres
+        .map((genre) => genre.id)
+        .filter((id) => id != null)
+
+      if (authorIds.length || authors.length === 0) {
+        payload.authorIds = authorIds
+      }
+      if (genreIds.length || genres.length === 0) {
+        payload.genreIds = genreIds
+      }
     }
 
     mutation.mutate(payload)
@@ -875,15 +978,15 @@ const BookMetadataForm = ({
             <div className="flex flex-wrap gap-2">
               {authors.map((author) => (
                 <span
-                  key={author}
+                  key={author.id ?? author.label}
                   className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
                 >
-                  {author}
+                  {author.label}
                   <button
                     type="button"
                     className="text-xs text-primary hover:text-primary-dark"
                     onClick={() => handleAuthorRemove(author)}
-                    aria-label={`Retirer ${author}`}
+                    aria-label={`Retirer ${author.label}`}
                   >
                     ×
                   </button>
@@ -926,7 +1029,7 @@ const BookMetadataForm = ({
                       key={genre.id}
                       type="button"
                       className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                      onClick={() => handleGenreSuggestionSelect(genre.name)}
+                      onClick={() => handleGenreSuggestionSelect(genre)}
                     >
                       <span className="font-medium text-slate-700 dark:text-slate-100">{genre.name}</span>
                     </button>
@@ -952,15 +1055,15 @@ const BookMetadataForm = ({
             <div className="flex flex-wrap gap-2">
               {genres.map((genre) => (
                 <span
-                  key={genre}
+                  key={genre.id ?? genre.label}
                   className="inline-flex items-center gap-2 rounded-full bg-secondary/10 px-3 py-1 text-sm font-medium text-secondary"
                 >
-                  {genre}
+                  {genre.label}
                   <button
                     type="button"
                     className="text-xs text-secondary hover:text-teal-500"
                     onClick={() => handleGenreRemove(genre)}
-                    aria-label={`Retirer ${genre}`}
+                    aria-label={`Retirer ${genre.label}`}
                   >
                     ×
                   </button>
