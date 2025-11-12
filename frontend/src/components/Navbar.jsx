@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   SunIcon,
@@ -9,6 +10,9 @@ import {
 } from '@heroicons/react/24/outline'
 import useAuth from '../hooks/useAuth'
 import { deleteCookie, readCookie, writeCookie } from '../utils/cookies'
+import { fetchFriendRequests } from '../api/users'
+import { fetchAdminOverview } from '../api/stats'
+import { fetchReviewModerationFeed } from '../api/reviews'
 
 const navLinks = [
   { to: '/', label: 'Accueil', private: false },
@@ -30,6 +34,20 @@ const THIRTEEN_MONTHS_SECONDS = 60 * 60 * 24 * 30 * 13
 const CONSENT_COOKIE_NAME = 'cookie_consent'
 const PANEL_ANIMATION_DURATION = 400
 
+const CounterBadge = ({ count, srLabel }) => {
+  const numericValue = Number(count)
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return null
+  }
+  const displayValue = numericValue > 9 ? '+9' : numericValue
+  return (
+    <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white">
+      {displayValue}
+      {srLabel ? <span className="sr-only">{srLabel}</span> : null}
+    </span>
+  )
+}
+
 const Navbar = () => {
   const { isAuthenticated, logout, user } = useAuth()
   const navigate = useNavigate()
@@ -40,6 +58,40 @@ const Navbar = () => {
   const [theme, setTheme] = useState(() => readCookie(THEME_COOKIE_NAME) || 'light')
   const [canPersistTheme, setCanPersistTheme] = useState(() => readCookie(CONSENT_COOKIE_NAME) === 'accepted')
   const participationRef = useRef(null)
+  const isAdmin = user?.role === 'admin'
+  const isModerator = user?.role === 'moderator' || isAdmin
+
+  const friendRequestsQuery = useQuery({
+    queryKey: ['friendRequests', user?.id],
+    queryFn: () => fetchFriendRequests(user.id),
+    enabled: Boolean(isAuthenticated && user?.id),
+    staleTime: 60_000,
+  })
+
+  const adminOverviewQuery = useQuery({
+    queryKey: ['admin-overview'],
+    queryFn: fetchAdminOverview,
+    enabled: Boolean(isAuthenticated && isAdmin),
+    staleTime: 60_000,
+  })
+
+  const moderationFeedQuery = useQuery({
+    queryKey: ['moderation-feed'],
+    queryFn: () => fetchReviewModerationFeed({ limit: 30 }),
+    enabled: Boolean(isAuthenticated && isModerator),
+    staleTime: 30_000,
+  })
+
+  const friendRequestsCount = friendRequestsQuery.data?.length ?? 0
+  const adminTotals = adminOverviewQuery.data?.totals ?? {}
+  const pendingReportsCount = adminTotals.pendingReports ?? 0
+  const pendingProposalsCount =
+    (adminTotals.pendingProposals ?? 0) + (adminTotals.pendingAuthorProposals ?? 0)
+  const dashboardPendingCount = pendingReportsCount + pendingProposalsCount
+  const pendingReviewsCount = useMemo(() => {
+    if (!moderationFeedQuery.data) return 0
+    return moderationFeedQuery.data.filter((review) => review.moderationStatus !== 'approved').length
+  }, [moderationFeedQuery.data])
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -170,6 +222,47 @@ const Navbar = () => {
         : 'text-slate-700 hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700'
     }`
 
+  const renderLinkLabel = (link) => {
+    const badges = []
+    if (link.to === '/friends') {
+      badges.push(
+        <CounterBadge
+          key="friends"
+          count={friendRequestsCount}
+          srLabel="Demandes d'ami en attente"
+        />,
+      )
+    }
+    if (link.to === '/dashboard') {
+      badges.push(
+        <CounterBadge
+          key="dashboard"
+          count={dashboardPendingCount}
+          srLabel="Signalements et propositions en attente"
+        />,
+      )
+    }
+    if (link.to === '/moderation') {
+      badges.push(
+        <CounterBadge
+          key="reviews"
+          count={pendingReviewsCount}
+          srLabel="Commentaires à valider"
+        />,
+      )
+    }
+    const visibleBadges = badges.filter(Boolean)
+    if (!visibleBadges.length) {
+      return link.label
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span>{link.label}</span>
+        {visibleBadges}
+      </span>
+    )
+  }
+
   return (
     <header className="sticky top-0 z-30 w-full border-b border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
@@ -190,7 +283,7 @@ const Navbar = () => {
         <nav className="hidden items-center gap-2 xl:flex">
           {filteredLinks.map((link) => (
             <NavLink key={link.to} to={link.to} className={linkClassName}>
-              {link.label}
+              {renderLinkLabel(link)}
             </NavLink>
           ))}
           {isAuthenticated ? (
@@ -286,7 +379,7 @@ const Navbar = () => {
                 className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-700"
                 onClick={handleMenuLinkClick}
               >
-                {link.label}
+                {renderLinkLabel(link)}
               </NavLink>
             ))}
 
