@@ -28,6 +28,14 @@ const initialState = {
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const SUMMARY_MAX_LENGTH = 2000
+const REQUIRED_FIELD_MESSAGE = 'Veuillez saisir ce champ'
+
+const normalizeIsbn = (value) => {
+  if (!value) {
+    return ''
+  }
+  return String(value).replace(/[^0-9xX]/g, '').toLowerCase()
+}
 
 const normalizeSelectionEntry = (entry) => {
   if (!entry) {
@@ -164,11 +172,16 @@ const BookMetadataForm = ({
   const [isTitleDropdownOpen, setIsTitleDropdownOpen] = useState(false)
   const [hasPrefillFromSuggestion, setHasPrefillFromSuggestion] = useState(false)
   const [isIsbnHelpOpen, setIsIsbnHelpOpen] = useState(false)
+  const [debouncedIsbn, setDebouncedIsbn] = useState('')
+  const [isbnCheckStatus, setIsbnCheckStatus] = useState('idle')
+  const [isbnDuplicateBook, setIsbnDuplicateBook] = useState(null)
+  const [isbnCheckMessage, setIsbnCheckMessage] = useState('')
   const titleFieldRef = useRef(null)
   const authorFieldRef = useRef(null)
   const genreFieldRef = useRef(null)
   const isbnHelpButtonRef = useRef(null)
   const isbnHelpPopoverRef = useRef(null)
+  const normalizedIsbn = useMemo(() => normalizeIsbn(formValues.isbn), [formValues.isbn])
 
   const genresQuery = useQuery({
     queryKey: ['genres'],
@@ -235,6 +248,74 @@ const BookMetadataForm = ({
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isIsbnHelpOpen])
+
+  useEffect(() => {
+    if (mode !== 'proposal') {
+      setDebouncedIsbn('')
+      return undefined
+    }
+    const handler = setTimeout(() => {
+      setDebouncedIsbn(normalizedIsbn)
+    }, 300)
+    return () => clearTimeout(handler)
+  }, [normalizedIsbn, mode])
+
+  useEffect(() => {
+    if (mode !== 'proposal') {
+      setIsbnCheckStatus('idle')
+      setIsbnDuplicateBook(null)
+      setIsbnCheckMessage('')
+      return
+    }
+    if (!debouncedIsbn) {
+      setIsbnCheckStatus('idle')
+      setIsbnDuplicateBook(null)
+      setIsbnCheckMessage('')
+      return
+    }
+    if (debouncedIsbn.length < 10) {
+      setIsbnCheckStatus('too-short')
+      setIsbnDuplicateBook(null)
+      setIsbnCheckMessage('')
+      return
+    }
+    let cancelled = false
+    const verifyIsbn = async () => {
+      setIsbnCheckStatus('checking')
+      setIsbnDuplicateBook(null)
+      setIsbnCheckMessage('')
+      try {
+        const data = await fetchBooks({ search: debouncedIsbn, limit: 5 })
+        if (cancelled) {
+          return
+        }
+        const books = Array.isArray(data?.books) ? data.books : []
+        const match =
+          books.find((book) => normalizeIsbn(book.isbn) === debouncedIsbn) || null
+        if (match) {
+          setIsbnCheckStatus('duplicate')
+          setIsbnDuplicateBook(match)
+        } else {
+          setIsbnCheckStatus('clear')
+          setIsbnDuplicateBook(null)
+        }
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+        setIsbnCheckStatus('error')
+        setIsbnDuplicateBook(null)
+        setIsbnCheckMessage(
+          error.response?.data?.message ||
+            "Impossible de vérifier cet ISBN pour le moment.",
+        )
+      }
+    }
+    verifyIsbn()
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedIsbn, mode])
 
   const titleSuggestionsQuery = useQuery({
     queryKey: ['book-title-suggestions', debouncedTitleSearch],
@@ -582,13 +663,22 @@ const BookMetadataForm = ({
   const validate = () => {
     const nextErrors = {}
     if (!formValues.title.trim()) {
-      nextErrors.title = 'Le titre est obligatoire.'
+      nextErrors.title = REQUIRED_FIELD_MESSAGE
+    }
+    if (!formValues.isbn.trim()) {
+      nextErrors.isbn = REQUIRED_FIELD_MESSAGE
+    }
+    if (!formValues.edition.trim()) {
+      nextErrors.edition = REQUIRED_FIELD_MESSAGE
+    }
+    if (!formValues.releaseDate.trim()) {
+      nextErrors.releaseDate = REQUIRED_FIELD_MESSAGE
     }
     if (!authors.length) {
-      nextErrors.authorNames = 'Veuillez ajouter au moins un auteur.'
+      nextErrors.authorNames = REQUIRED_FIELD_MESSAGE
     }
     if (!genres.length) {
-      nextErrors.genreNames = 'Veuillez ajouter au moins un genre.'
+      nextErrors.genreNames = REQUIRED_FIELD_MESSAGE
     }
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
@@ -602,6 +692,20 @@ const BookMetadataForm = ({
     if (coverError) {
       toast.error(coverError)
       return
+    }
+    if (mode === 'proposal' && normalizedIsbn) {
+      if (isbnCheckStatus === 'checking') {
+        toast.error('Patientez pendant la vérification de l’ISBN.')
+        return
+      }
+      if (isbnCheckStatus === 'duplicate') {
+        const duplicateMessage = isbnDuplicateBook?.title
+          ? `Cet ISBN est déjà associé au livre « ${isbnDuplicateBook.title} ».`
+          : 'Cet ISBN est déjà enregistré dans le catalogue.'
+        setErrors((prev) => ({ ...prev, isbn: duplicateMessage }))
+        toast.error(duplicateMessage)
+        return
+      }
     }
 
     const trimmedAuthors = authors.map((author) => author.label)
@@ -689,6 +793,11 @@ const BookMetadataForm = ({
   ])
 
   const isSubmitting = mutation.isPending
+  const isIsbnDuplicate =
+    mode === 'proposal' && normalizedIsbn.length > 0 && isbnCheckStatus === 'duplicate'
+  const isIsbnCheckPending =
+    mode === 'proposal' && normalizedIsbn.length > 0 && isbnCheckStatus === 'checking'
+  const isSubmitDisabled = isSubmitting || isIsbnDuplicate || isIsbnCheckPending
   const pendingLabel = mode === 'proposal' ? 'Envoi...' : 'Enregistrement...'
   const heading =
     mode === 'proposal' ? 'Proposer un nouveau livre' : 'Modifier les informations du livre'
@@ -821,6 +930,20 @@ const BookMetadataForm = ({
               value={formValues.isbn}
               onChange={handleChange}
             />
+            {mode === 'proposal' && normalizedIsbn && isbnCheckStatus === 'checking' && (
+              <p className="text-xs text-slate-500">Vérification de l’ISBN en cours…</p>
+            )}
+            {mode === 'proposal' && normalizedIsbn && isbnCheckStatus === 'duplicate' && (
+              <p className="text-xs text-rose-600">
+                {isbnDuplicateBook?.title
+                  ? `Cet ISBN correspond déjà au livre « ${isbnDuplicateBook.title} ».`
+                  : 'Cet ISBN est déjà enregistré dans le catalogue.'}
+              </p>
+            )}
+            {mode === 'proposal' && isbnCheckStatus === 'error' && (
+              <p className="text-xs text-amber-600">{isbnCheckMessage}</p>
+            )}
+            {errors.isbn && <p className="text-xs text-rose-600">{errors.isbn}</p>}
           </div>
 
           <div className="space-y-2">
@@ -842,6 +965,7 @@ const BookMetadataForm = ({
               value={formValues.edition}
               onChange={handleChange}
             />
+            {errors.edition && <p className="text-xs text-rose-600">{errors.edition}</p>}
           </div>
         </div>
 
@@ -890,6 +1014,7 @@ const BookMetadataForm = ({
               value={formValues.releaseDate}
               onChange={handleChange}
             />
+            {errors.releaseDate && <p className="text-xs text-rose-600">{errors.releaseDate}</p>}
           </div>
         </div>
 
@@ -1098,7 +1223,7 @@ const BookMetadataForm = ({
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <button type="submit" className="btn disabled:opacity-60" disabled={isSubmitting}>
+          <button type="submit" className="btn disabled:opacity-60" disabled={isSubmitDisabled}>
             {isSubmitting ? pendingLabel : submitLabel}
           </button>
           {showResetButton ? (
