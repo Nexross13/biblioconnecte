@@ -1581,6 +1581,66 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - Livres
+      summary: Mettre à jour une proposition de livre
+      description: Permet à un administrateur de corriger un champ spécifique d'une proposition en attente
+      parameters:
+        - $ref: '#/components/parameters/BookProposalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                title:
+                  type: string
+                isbn:
+                  type: string
+                edition:
+                  type: string
+                volume:
+                  type: string
+                volumeTitle:
+                  type: string
+                summary:
+                  type: string
+                releaseDate:
+                  type: string
+                  format: date
+                authorNames:
+                  type: array
+                  items:
+                    type: string
+                genreNames:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Proposition mise à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposal:
+                    $ref: '#/components/schemas/BookProposal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /book-proposals/{id}/approve:
     post:
       tags:

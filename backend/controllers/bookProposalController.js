@@ -9,6 +9,7 @@ const {
   createBookProposal: createMockBookProposal,
   approveBookProposal: approveMockBookProposal,
   rejectBookProposal: rejectMockBookProposal,
+  updateBookProposal: updateMockBookProposal,
   getUserById: getMockUserById,
 } = require('../data/mockData');
 const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
@@ -104,6 +105,91 @@ const normalizeVolumeTitle = (value) => {
   return normalized.length ? normalized : null;
 };
 
+const normalizeOptionalString = (value) => {
+  if (value === undefined) {
+    return null;
+  }
+  if (value === null) {
+    return null;
+  }
+  const normalized = String(value).trim();
+  return normalized.length ? normalized : null;
+};
+
+const normalizeReleaseDateInput = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  const normalized = String(value).trim();
+  if (!normalized.length) {
+    return null;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return normalized;
+  }
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) {
+    const err = new Error('Invalid release date');
+    err.status = 400;
+    throw err;
+  }
+  return parsed.toISOString().slice(0, 10);
+};
+
+const extractProposalUpdates = (payload = {}) => {
+  if (!payload || typeof payload !== 'object') {
+    return {};
+  }
+
+  const hasOwn = (key) => Object.prototype.hasOwnProperty.call(payload, key);
+  const updates = {};
+
+  if (hasOwn('title')) {
+    const title = typeof payload.title === 'string' ? payload.title.trim() : '';
+    if (!title.length) {
+      const err = new Error('Le titre ne peut pas être vide');
+      err.status = 400;
+      throw err;
+    }
+    updates.title = title;
+  }
+
+  if (hasOwn('isbn')) {
+    updates.isbn = normalizeOptionalString(payload.isbn);
+  }
+
+  if (hasOwn('edition')) {
+    updates.edition = normalizeOptionalString(payload.edition);
+  }
+
+  if (hasOwn('volume')) {
+    updates.volume = normalizeOptionalString(payload.volume);
+  }
+
+  if (hasOwn('volumeTitle')) {
+    updates.volumeTitle = normalizeVolumeTitle(payload.volumeTitle);
+  }
+
+  if (hasOwn('summary')) {
+    const summaryValue = normalizeOptionalString(payload.summary);
+    updates.summary = summaryValue;
+  }
+
+  if (hasOwn('releaseDate')) {
+    updates.releaseDate = normalizeReleaseDateInput(payload.releaseDate);
+  }
+
+  if (hasOwn('authorNames') || hasOwn('authors')) {
+    updates.authorNames = normalizeStringArray(payload.authorNames ?? payload.authors);
+  }
+
+  if (hasOwn('genreNames') || hasOwn('genres')) {
+    updates.genreNames = normalizeStringArray(payload.genreNames ?? payload.genres);
+  }
+
+  return updates;
+};
+
 const mapMockUserSummary = (user) =>
   user
     ? {
@@ -167,21 +253,7 @@ const createProposal = async (req, res, next) => {
       throw err;
     }
 
-    let releaseDate = null;
-    if (rawReleaseDate !== undefined && rawReleaseDate !== null && String(rawReleaseDate).trim()) {
-      const normalized = String(rawReleaseDate).trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-        releaseDate = normalized;
-      } else {
-        const parsed = new Date(normalized);
-        if (Number.isNaN(parsed.getTime())) {
-          const err = new Error('Invalid release date');
-          err.status = 400;
-          throw err;
-        }
-        releaseDate = parsed.toISOString().slice(0, 10);
-      }
-    }
+    const releaseDate = normalizeReleaseDateInput(rawReleaseDate);
 
     const normalizedVolumeTitle = normalizeVolumeTitle(volumeTitle);
 
@@ -361,6 +433,44 @@ const getProposalById = async (req, res, next) => {
   }
 };
 
+const updateProposal = async (req, res, next) => {
+  try {
+    if (!req.user?.isAdmin) {
+      const err = new Error('Administrator privileges required');
+      err.status = 403;
+      throw err;
+    }
+
+    const updates = extractProposalUpdates(req.body);
+    if (!Object.keys(updates).length) {
+      const err = new Error('Aucun champ valide à mettre à jour');
+      err.status = 400;
+      throw err;
+    }
+
+    if (process.env.USE_MOCKS === 'true') {
+      const proposal = updateMockBookProposal({ id: req.params.id, updates });
+      if (!proposal) {
+        const err = new Error('Book proposal not found');
+        err.status = 404;
+        throw err;
+      }
+      return res.json({ proposal: mapMockProposal(proposal) });
+    }
+
+    const proposal = await bookProposalModel.updateProposal(req.params.id, updates);
+    if (!proposal) {
+      const err = new Error('Book proposal not found');
+      err.status = 404;
+      throw err;
+    }
+
+    res.json({ proposal });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const approveProposal = async (req, res, next) => {
   try {
     if (!req.user?.isAdmin) {
@@ -482,6 +592,7 @@ module.exports = {
   listProposals,
   listMyProposals,
   getProposalById,
+  updateProposal,
   approveProposal,
   rejectProposal,
 };
