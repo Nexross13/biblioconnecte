@@ -15,6 +15,11 @@ export const createBookProposal = async (payload) => {
   return data
 }
 
+export const updateBookProposal = async (id, payload) => {
+  const { data } = await apiClient.patch(`/book-proposals/${id}`, payload)
+  return data.proposal
+}
+
 export const approveBookProposal = async (id) => {
   const { data } = await apiClient.post(`/book-proposals/${id}/approve`)
   return data

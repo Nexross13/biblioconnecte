@@ -2,17 +2,70 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
-import { approveBookProposal, fetchBookProposalById, rejectBookProposal } from '../api/bookProposals'
+import {
+  approveBookProposal,
+  fetchBookProposalById,
+  rejectBookProposal,
+  updateBookProposal,
+} from '../api/bookProposals'
 import Loader from '../components/Loader.jsx'
+import EditableProposalField from '../components/EditableProposalField.jsx'
+import useAuth from '../hooks/useAuth'
 import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
+const parseOptionalText = (value) => {
+  if (value === null || value === undefined) {
+    return null
+  }
+  const normalized = String(value).trim()
+  return normalized.length ? normalized : null
+}
+
+const parseRequiredText = (label) => (value) => {
+  const normalized = String(value ?? '').trim()
+  if (!normalized.length) {
+    throw new Error(`${label} ne peut pas être vide`)
+  }
+  return normalized
+}
+
+const serializeListValue = (values) => (Array.isArray(values) && values.length ? values.join(', ') : '')
+
+const parseListInput = (value) => {
+  if (typeof value !== 'string') {
+    return []
+  }
+  const normalized = value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+  return Array.from(new Set(normalized))
+}
+
+const serializeDateValue = (value) => (typeof value === 'string' && value.length ? value.slice(0, 10) : '')
+
+const parseDateInput = (value) => {
+  if (value === null || value === undefined) {
+    return null
+  }
+  const normalized = String(value).trim()
+  if (!normalized.length) {
+    return null
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    throw new Error('Format attendu : AAAA-MM-JJ')
+  }
+  return normalized
+}
+
 const BookProposalDetails = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const proposalQuery = useQuery({
     queryKey: ['book-proposal', id],
@@ -21,8 +74,11 @@ const BookProposalDetails = () => {
 
   const [coverSrc, setCoverSrc] = useState(PLACEHOLDER_COVER)
   const [candidateIndex, setCandidateIndex] = useState(0)
+  const [savingField, setSavingField] = useState(null)
   const proposal = proposalQuery.data ?? null
   const isPending = proposal?.status === 'pending'
+  const isAdmin = user?.role === 'admin'
+  const canEditProposal = Boolean(isAdmin && isPending)
 
   const invalidateLists = async () => {
     await Promise.all([
@@ -57,6 +113,34 @@ const BookProposalDetails = () => {
       toast.error(message)
     },
   })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ payload }) => updateBookProposal(id, payload),
+    onMutate: ({ fieldKey }) => {
+      setSavingField(fieldKey)
+    },
+    onSuccess: async (_, variables) => {
+      await invalidateLists()
+      toast.success(variables?.successMessage || 'Champ mis à jour')
+    },
+    onError: (error) => {
+      const message =
+        error.response?.data?.message || 'Impossible de mettre à jour cette proposition'
+      toast.error(message)
+    },
+    onSettled: () => {
+      setSavingField(null)
+    },
+  })
+
+  const handleFieldSave = (fieldKey, value, options = {}) =>
+    updateMutation.mutateAsync({
+      fieldKey,
+      payload: { [fieldKey]: value },
+      successMessage: options.successMessage,
+    })
+
+  const isFieldSaving = (fieldKey) => updateMutation.isPending && savingField === fieldKey
 
   const coverCandidates = useMemo(() => {
     const candidates = []
@@ -138,66 +222,184 @@ const BookProposalDetails = () => {
             <dl className="space-y-3 text-sm text-slate-600 dark:text-slate-200">
               <div>
                 <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                  Titre
+                </dt>
+                <dd>
+                  <EditableProposalField
+                    value={proposal.title}
+                    placeholder="Titre non renseigné"
+                    isEditable={canEditProposal}
+                    isSaving={isFieldSaving('title')}
+                    onSave={(nextValue) =>
+                      handleFieldSave('title', nextValue, { successMessage: 'Titre mis à jour' })
+                    }
+                    parseValue={parseRequiredText('Le titre')}
+                    displayClassName="text-base font-semibold text-slate-700 dark:text-slate-100"
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
                   Proposé par
                 </dt>
                 <dd>{submittedFullName || 'Utilisateur inconnu'}</dd>
               </div>
-              {proposal.isbn && (
-                <div>
-                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                    ISBN
-                  </dt>
-                  <dd>{proposal.isbn}</dd>
-                </div>
-              )}
-              {proposal.edition && (
-                <div>
-                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                    Édition
-                  </dt>
-                  <dd>{proposal.edition}</dd>
-                </div>
-              )}
-              {proposal.volume && (
-                <div>
-                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                    Tome / Volume
-                  </dt>
-                  <dd>{proposal.volume}</dd>
-                </div>
-              )}
-              {proposal.volumeTitle && (
-                <div>
-                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                    Titre du tome
-                  </dt>
-                  <dd>{proposal.volumeTitle}</dd>
-                </div>
-              )}
-              {releaseDateLabel && (
-                <div>
-                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                    Date de sortie
-                  </dt>
-                  <dd>{releaseDateLabel}</dd>
-                </div>
-              )}
-              {proposal.authorNames?.length ? (
-                <div>
-                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                    Auteur(s)
-                  </dt>
-                  <dd>{proposal.authorNames.join(', ')}</dd>
-                </div>
-              ) : null}
-              {proposal.genreNames?.length ? (
-                <div>
-                  <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
-                    Genre(s)
-                  </dt>
-                  <dd>{proposal.genreNames.join(', ')}</dd>
-                </div>
-              ) : null}
+              <div>
+                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                  ISBN
+                </dt>
+                <dd>
+                  <EditableProposalField
+                    value={proposal.isbn}
+                    placeholder="Non renseigné"
+                    isEditable={canEditProposal}
+                    isSaving={isFieldSaving('isbn')}
+                    onSave={(nextValue) =>
+                      handleFieldSave('isbn', nextValue, { successMessage: 'ISBN mis à jour' })
+                    }
+                    parseValue={parseOptionalText}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                  Édition
+                </dt>
+                <dd>
+                  <EditableProposalField
+                    value={proposal.edition}
+                    placeholder="Non renseignée"
+                    isEditable={canEditProposal}
+                    isSaving={isFieldSaving('edition')}
+                    onSave={(nextValue) =>
+                      handleFieldSave('edition', nextValue, {
+                        successMessage: 'Édition mise à jour',
+                      })
+                    }
+                    parseValue={parseOptionalText}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                  Tome / Volume
+                </dt>
+                <dd>
+                  <EditableProposalField
+                    value={proposal.volume}
+                    placeholder="Non renseigné"
+                    isEditable={canEditProposal}
+                    isSaving={isFieldSaving('volume')}
+                    onSave={(nextValue) =>
+                      handleFieldSave('volume', nextValue, { successMessage: 'Volume mis à jour' })
+                    }
+                    parseValue={parseOptionalText}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                  Titre du tome
+                </dt>
+                <dd>
+                  <EditableProposalField
+                    value={proposal.volumeTitle}
+                    placeholder="Non renseigné"
+                    isEditable={canEditProposal}
+                    isSaving={isFieldSaving('volumeTitle')}
+                    onSave={(nextValue) =>
+                      handleFieldSave('volumeTitle', nextValue, {
+                        successMessage: 'Titre du tome mis à jour',
+                      })
+                    }
+                    parseValue={parseOptionalText}
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                  Date de sortie
+                </dt>
+                <dd>
+                  <EditableProposalField
+                    value={proposal.releaseDate}
+                    placeholder="Aucune date renseignée"
+                    isEditable={canEditProposal}
+                    isSaving={isFieldSaving('releaseDate')}
+                    onSave={(nextValue) =>
+                      handleFieldSave('releaseDate', nextValue, {
+                        successMessage: 'Date de sortie mise à jour',
+                      })
+                    }
+                    inputType="date"
+                    serializeValue={serializeDateValue}
+                    parseValue={parseDateInput}
+                    displayValue={(_, fallback) =>
+                      releaseDateLabel ? (
+                        releaseDateLabel
+                      ) : (
+                        <span className="italic text-slate-400 dark:text-slate-500">{fallback}</span>
+                      )
+                    }
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                  Auteur(s)
+                </dt>
+                <dd>
+                  <EditableProposalField
+                    value={proposal.authorNames ?? []}
+                    placeholder="Aucun auteur indiqué"
+                    isEditable={canEditProposal}
+                    isSaving={isFieldSaving('authorNames')}
+                    onSave={(nextValue) =>
+                      handleFieldSave('authorNames', nextValue, {
+                        successMessage: 'Auteur(s) mis à jour',
+                      })
+                    }
+                    serializeValue={serializeListValue}
+                    parseValue={parseListInput}
+                    helperText="Séparez les noms par une virgule"
+                    displayValue={(names, fallback) =>
+                      Array.isArray(names) && names.length ? (
+                        names.join(', ')
+                      ) : (
+                        <span className="italic text-slate-400 dark:text-slate-500">{fallback}</span>
+                      )
+                    }
+                  />
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
+                  Genre(s)
+                </dt>
+                <dd>
+                  <EditableProposalField
+                    value={proposal.genreNames ?? []}
+                    placeholder="Aucun genre indiqué"
+                    isEditable={canEditProposal}
+                    isSaving={isFieldSaving('genreNames')}
+                    onSave={(nextValue) =>
+                      handleFieldSave('genreNames', nextValue, {
+                        successMessage: 'Genre(s) mis à jour',
+                      })
+                    }
+                    serializeValue={serializeListValue}
+                    parseValue={parseListInput}
+                    helperText="Séparez les genres par une virgule"
+                    displayValue={(names, fallback) =>
+                      Array.isArray(names) && names.length ? (
+                        names.join(', ')
+                      ) : (
+                        <span className="italic text-slate-400 dark:text-slate-500">{fallback}</span>
+                      )
+                    }
+                  />
+                </dd>
+              </div>
               <div>
                 <dt className="font-medium uppercase tracking-wide text-xs text-slate-400 dark:text-slate-500">
                   Statut actuel
@@ -234,9 +436,27 @@ const BookProposalDetails = () => {
 
           <div className="card space-y-2">
             <h2 className="text-lg font-semibold text-primary">Résumé</h2>
-            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-200">
-              {proposal.summary || 'Aucun résumé fourni pour cette proposition.'}
-            </p>
+            <EditableProposalField
+              value={proposal.summary}
+              placeholder="Aucun résumé fourni pour cette proposition."
+              isEditable={canEditProposal}
+              isSaving={isFieldSaving('summary')}
+              onSave={(nextValue) =>
+                handleFieldSave('summary', nextValue, { successMessage: 'Résumé mis à jour' })
+              }
+              multiline
+              parseValue={parseOptionalText}
+              displayValue={(value, fallback) =>
+                value ? (
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-200">
+                    {value}
+                  </p>
+                ) : (
+                  <span className="italic text-slate-400 dark:text-slate-500">{fallback}</span>
+                )
+              }
+              displayClassName="w-full"
+            />
           </div>
         </div>
 

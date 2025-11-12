@@ -404,6 +404,58 @@ const rejectProposal = async (id, { decidedBy, reason }) => {
   return fullProposal;
 };
 
+const UPDATABLE_COLUMNS = {
+  title: 'title',
+  isbn: 'isbn',
+  edition: 'edition',
+  volume: 'volume',
+  volumeTitle: 'volume_title',
+  summary: 'summary',
+  releaseDate: 'publication_date',
+  authorNames: 'author_names',
+  genreNames: 'genre_names',
+};
+
+const updateProposal = async (id, updates = {}) => {
+  const pendingResult = await query('SELECT status FROM book_proposals WHERE id = $1', [id]);
+  if (!pendingResult.rowCount) {
+    return null;
+  }
+  if (pendingResult.rows[0].status !== 'pending') {
+    const error = new Error('Proposal is not pending');
+    error.status = 409;
+    throw error;
+  }
+
+  const setClauses = [];
+  const values = [];
+
+  Object.entries(UPDATABLE_COLUMNS).forEach(([key, column]) => {
+    if (Object.prototype.hasOwnProperty.call(updates, key)) {
+      const value = key === 'releaseDate' ? normalizeDate(updates[key]) : updates[key];
+      setClauses.push(`${column} = $${values.length + 1}`);
+      values.push(value);
+    }
+  });
+
+  if (!setClauses.length) {
+    const refreshedResult = await query(`${baseSelect} WHERE bp.id = $1`, [id]);
+    return mapProposal(refreshedResult.rows[0]) || null;
+  }
+
+  values.push(id);
+
+  await query(
+    `UPDATE book_proposals
+     SET ${setClauses.concat('updated_at = NOW()').join(', ')}
+     WHERE id = $${values.length}`,
+    values,
+  );
+
+  const refreshedResult = await query(`${baseSelect} WHERE bp.id = $1`, [id]);
+  return mapProposal(refreshedResult.rows[0]) || null;
+};
+
 module.exports = {
   createProposal,
   listProposals,
@@ -411,6 +463,7 @@ module.exports = {
   findById,
   approveProposal,
   rejectProposal,
+  updateProposal,
   PROPOSAL_COVER_DIR,
   PROPOSAL_COVER_RELATIVE_DIR,
 };

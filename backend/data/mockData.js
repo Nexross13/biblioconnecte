@@ -802,6 +802,49 @@ const rejectBookProposal = ({ id, decidedBy, reason }) => {
   return clone(updatedProposal);
 };
 
+const updateBookProposal = ({ id, updates = {} }) => {
+  const index = bookProposals.findIndex((proposal) => proposal.id === Number(id));
+  if (index === -1) {
+    return null;
+  }
+
+  if (bookProposals[index].status !== 'pending') {
+    const error = new Error('Proposal is not pending');
+    error.status = 409;
+    throw error;
+  }
+
+  const fieldMap = {
+    title: 'title',
+    isbn: 'isbn',
+    edition: 'edition',
+    volume: 'volume',
+    volumeTitle: 'volumeTitle',
+    summary: 'summary',
+    releaseDate: 'releaseDate',
+    authorNames: 'authorNames',
+    genreNames: 'genreNames',
+  };
+
+  let hasChanges = false;
+  const timestamp = new Date().toISOString();
+  const nextProposal = { ...bookProposals[index], updatedAt: timestamp };
+
+  Object.entries(fieldMap).forEach(([payloadKey, storageKey]) => {
+    if (Object.prototype.hasOwnProperty.call(updates, payloadKey)) {
+      nextProposal[storageKey] = updates[payloadKey];
+      hasChanges = true;
+    }
+  });
+
+  if (!hasChanges) {
+    return clone(bookProposals[index]);
+  }
+
+  bookProposals[index] = nextProposal;
+  return clone(nextProposal);
+};
+
 const getAuthorProposals = ({ status } = {}) => {
   let proposals = authorProposals;
   if (status) {
@@ -951,6 +994,7 @@ module.exports = {
   getBookProposalsForUser,
   getBookProposalById,
   createBookProposal,
+  updateBookProposal,
   approveBookProposal,
   rejectBookProposal,
   getAuthorProposals,
