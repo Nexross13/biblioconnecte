@@ -1,4 +1,5 @@
 const bookModel = require('../models/bookModel');
+const userModel = require('../models/userModel');
 const bookProposalModel = require('../models/bookProposalModel');
 const {
   getBooks: getMockBooks,
@@ -200,8 +201,11 @@ const createBook = async (req, res, next) => {
       throw err;
     }
 
-    const canCreateDirectly =
-      Boolean(req.user.isAdmin) || Boolean(req.user.canBypassBookProposals);
+    const loadedUser = await userModel.findById(submittedBy);
+    const runtimeCanBypass = Boolean(loadedUser?.canBypassBookProposals);
+
+    const canCreateDirectly = Boolean(req.user.isAdmin) || runtimeCanBypass;
+    req.user.canBypassBookProposals = runtimeCanBypass;
 
     if (!canCreateDirectly) {
       const proposal = await bookProposalModel.createProposal({
@@ -231,8 +235,7 @@ const createBook = async (req, res, next) => {
       summary,
     });
 
-    const shouldLogApprovedProposal =
-      Boolean(req.user.canBypassBookProposals) && !req.user.isAdmin;
+    const shouldLogApprovedProposal = runtimeCanBypass && !req.user.isAdmin;
 
     const [authors, genres] = await Promise.all([
       bookModel.setBookAuthors(book.id, normalizeIds(authorIds)),
