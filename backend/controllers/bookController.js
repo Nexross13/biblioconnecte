@@ -189,7 +189,10 @@ const createBook = async (req, res, next) => {
       throw err;
     }
 
-    if (!req.user.isAdmin) {
+    const canCreateDirectly =
+      Boolean(req.user.isAdmin) || Boolean(req.user.canBypassBookProposals);
+
+    if (!canCreateDirectly) {
       const proposal = await bookProposalModel.createProposal({
         title,
         isbn,

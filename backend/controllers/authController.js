@@ -95,6 +95,7 @@ const createToken = (user) => {
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
+    canBypassBookProposals: Boolean(user.canBypassBookProposals),
     role,
   };
 
@@ -279,6 +280,7 @@ const login = async (req, res, next) => {
         id: user.id,
         login: user.login,
         firstName: user.firstName,
+        canBypassBookProposals: Boolean(user.canBypassBookProposals),
         lastName: user.lastName,
         email: user.email,
         role,
@@ -391,31 +393,32 @@ const loginWithGoogle = async (req, res, next) => {
     const credential = req.body?.credential;
 
     if (process.env.USE_MOCKS === 'true') {
-      const payload = await verifyGoogleCredential(credential);
-      const mockUsers = getUsers();
-      const existing = mockUsers.find((user) => user.email === payload.email);
-      const role = resolveUserRole(payload);
-      const fallBackLogin = normalizeLoginInput(payload.email?.split('@')[0]) || 'google-user';
-      const user =
-        existing ||
-        {
-          id: 1000,
-          login: fallBackLogin,
-          firstName: payload.firstName || 'Utilisateur',
-          lastName: payload.lastName || '',
-          email: payload.email,
-          createdAt: new Date().toISOString(),
-          role,
-        };
+    const payload = await verifyGoogleCredential(credential);
+    const mockUsers = getUsers();
+    const existing = mockUsers.find((user) => user.email === payload.email);
+    const fallBackLogin = normalizeLoginInput(payload.email?.split('@')[0]) || 'google-user';
+    const fallbackUser = {
+      id: 1000,
+      login: fallBackLogin,
+      firstName: payload.firstName || 'Utilisateur',
+      lastName: payload.lastName || '',
+      email: payload.email,
+      createdAt: new Date().toISOString(),
+      role: 'user',
+      canBypassBookProposals: false,
+    };
+    const baseUser = existing || fallbackUser;
+    const role = resolveUserRole(baseUser);
 
-      setSessionCookie(res, 'mock-jwt-token');
-      return res.json({
-        token: 'mock-jwt-token',
-        user: {
-          ...user,
-          role,
-        },
-      });
+    setSessionCookie(res, 'mock-jwt-token');
+    return res.json({
+      token: 'mock-jwt-token',
+      user: {
+        ...baseUser,
+        role,
+        canBypassBookProposals: Boolean(baseUser.canBypassBookProposals),
+      },
+    });
     }
 
     const payload = await verifyGoogleCredential(credential);

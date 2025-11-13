@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   date_of_birth  DATE,
   role           VARCHAR(20) NOT NULL DEFAULT 'user'
                  CHECK (role IN ('user', 'moderator', 'admin')),
+  can_bypass_book_proposals BOOLEAN NOT NULL DEFAULT FALSE,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT users_email_format CHECK (position('@' IN email) > 1)
