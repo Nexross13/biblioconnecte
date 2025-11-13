@@ -376,6 +376,24 @@ test('bookProposalController.createProposal soumet une proposition', async () =>
   assert.equal(res.body.message, 'Livre envoyé pour validation par un administrateur');
 });
 
+test('bookProposalController.createProposal valide directement avec la dérogation', async () => {
+  const res = await callController(bookProposalController.createProposal, {
+    user: { id: 8, canBypassBookProposals: true },
+    body: {
+      title: 'Livre direct',
+      releaseDate: '2024-03-01',
+      authorNames: ['Auteur Test'],
+      genreNames: ['Science-fiction'],
+    },
+  });
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(res.body.proposal.status, 'approved');
+  assert.equal(res.body.proposal.submittedBy.id, 8);
+  assert.ok(res.body.book);
+  assert.equal(res.body.book.title, 'Livre direct');
+});
+
 test('bookProposalController.listProposals refuse un non-admin', async () => {
   await expectReject(
     () =>

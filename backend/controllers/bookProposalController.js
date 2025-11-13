@@ -12,6 +12,7 @@ const {
   updateBookProposal: updateMockBookProposal,
   getUserById: getMockUserById,
 } = require('../data/mockData');
+const userModel = require('../models/userModel');
 const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
 
 const FRONTEND_BASE = PRIMARY_FRONTEND_ORIGIN.replace(/\/$/, '');
@@ -254,8 +255,14 @@ const createProposal = async (req, res, next) => {
     }
 
     const releaseDate = normalizeReleaseDateInput(rawReleaseDate);
-
     const normalizedVolumeTitle = normalizeVolumeTitle(volumeTitle);
+
+    let runtimeCanBypass = Boolean(req.user?.canBypassBookProposals);
+    if (process.env.USE_MOCKS !== 'true') {
+      const loadedUser = await userModel.findById(submittedBy);
+      runtimeCanBypass = Boolean(loadedUser?.canBypassBookProposals);
+      req.user.canBypassBookProposals = runtimeCanBypass;
+    }
 
     const authorNames = normalizeStringArray(req.body.authorNames || req.body.authors);
     const genreNames = normalizeStringArray(req.body.genreNames || req.body.genres);
@@ -286,6 +293,16 @@ const createProposal = async (req, res, next) => {
         genreNames,
         coverImagePath: savedCoverPath,
       });
+
+      if (runtimeCanBypass) {
+        const approved = approveMockBookProposal({ id: proposal.id, decidedBy: submittedBy });
+        return res.status(201).json({
+          message: 'Livre validé automatiquement et ajouté au catalogue',
+          proposal: mapMockProposal(approved.proposal),
+          book: approved.book,
+        });
+      }
+
       return res.status(202).json({
         message: 'Livre envoyé pour validation par un administrateur',
         proposal: mapMockProposal(proposal),
@@ -306,6 +323,17 @@ const createProposal = async (req, res, next) => {
         genreNames,
         coverImagePath: savedCoverPath,
       });
+
+      if (runtimeCanBypass) {
+        const approved = await bookProposalModel.approveProposal(proposal.id, {
+          decidedBy: submittedBy,
+        });
+        return res.status(201).json({
+          message: 'Livre validé automatiquement et ajouté au catalogue',
+          proposal: approved.proposal,
+          book: approved.book,
+        });
+      }
 
       res.status(202).json({
         message: 'Livre envoyé pour validation par un administrateur',
