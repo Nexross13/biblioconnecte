@@ -376,10 +376,9 @@ const BookDetails = () => {
               )}
 
               {averageRating && (
-                <div className="rounded-2xl bg-amber-400/80 px-4 py-3 text-center text-amber-900 shadow">
-                  <p className="text-xs uppercase tracking-wide">Note moyenne</p>
-                  <p className="text-2xl font-bold">⭐ {averageRating.toFixed(1)}</p>
-                </div>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Note moyenne : {averageRating.toFixed(1)} ⭐
+                </p>
               )}
             </div>
           </div>
