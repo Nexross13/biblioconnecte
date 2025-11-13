@@ -43,6 +43,17 @@ const normalizeVolumeTitle = (value) => {
   return normalized.length ? normalized : null;
 };
 
+const formatAuthorName = (author = {}) => {
+  const parts = [];
+  if (author.firstName) {
+    parts.push(author.firstName.trim());
+  }
+  if (author.lastName) {
+    parts.push(author.lastName.trim());
+  }
+  return parts.join(' ').trim();
+};
+
 const listBooks = async (req, res, next) => {
   try {
     const { limit, offset } = parsePagination(req);
@@ -220,10 +231,37 @@ const createBook = async (req, res, next) => {
       summary,
     });
 
+    const shouldLogApprovedProposal =
+      Boolean(req.user.canBypassBookProposals) && !req.user.isAdmin;
+
     const [authors, genres] = await Promise.all([
       bookModel.setBookAuthors(book.id, normalizeIds(authorIds)),
       bookModel.setBookGenres(book.id, normalizeIds(genreIds)),
     ]);
+
+    if (shouldLogApprovedProposal) {
+      const authorNames = authors.map(formatAuthorName).filter(Boolean);
+      const genreNames = genres.map((genre) => genre.name).filter(Boolean);
+      try {
+        await bookProposalModel.createProposal({
+          title,
+          isbn,
+          edition,
+          volume,
+          volumeTitle: normalizedVolumeTitle,
+          summary,
+          publicationDate: releaseDate,
+          status: 'approved',
+          submittedBy,
+          decidedBy: submittedBy,
+          decidedAt: new Date().toISOString(),
+          authorNames,
+          genreNames,
+        });
+      } catch (proposalError) {
+        console.warn('Unable to log approved book proposal', proposalError);
+      }
+    }
 
     res.status(201).json({ book: { ...book, authors, genres } });
   } catch (error) {

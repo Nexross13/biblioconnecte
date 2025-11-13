@@ -120,14 +120,33 @@ const createProposal = async ({
   volumeTitle,
   summary,
   publicationDate = null,
+  status = 'pending',
   submittedBy,
+  decidedBy = null,
+  decidedAt = null,
   authorNames = [],
   genreNames = [],
   coverImagePath = null,
 }) => {
+  const resolvedDecidedAt = decidedBy && !decidedAt ? new Date().toISOString() : decidedAt;
   const result = await query(
-    `INSERT INTO book_proposals (title, isbn, edition, volume, volume_title, summary, publication_date, status, submitted_by, author_names, genre_names, cover_image_path)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11)
+    `INSERT INTO book_proposals (
+       title,
+       isbn,
+       edition,
+       volume,
+       volume_title,
+       summary,
+       publication_date,
+       status,
+       submitted_by,
+       decided_by,
+       decided_at,
+       author_names,
+       genre_names,
+       cover_image_path
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      RETURNING id, title, isbn, edition, volume, volume_title, summary, publication_date, status, submitted_by, submitted_at, updated_at, decided_by, decided_at, rejection_reason, author_names, genre_names, cover_image_path`,
     [
       title,
@@ -137,7 +156,10 @@ const createProposal = async ({
       volumeTitle,
       summary,
       publicationDate,
+      status,
       submittedBy,
+      decidedBy,
+      resolvedDecidedAt,
       authorNames,
       genreNames,
       coverImagePath,
