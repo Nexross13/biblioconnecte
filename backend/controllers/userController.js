@@ -11,12 +11,39 @@ const {
   getUserById: getMockUserById,
   getFriendsOfUser,
   setUserRole: setMockUserRole,
+  setUserBypassPermission: setMockUserBypassPermission,
 } = require('../data/mockData');
 const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
 const { normalizeLoginInput, isLoginFormatValid } = require('../utils/login');
 const { normalizeRole } = require('../utils/roles');
 
 const FRONTEND_BASE = PRIMARY_FRONTEND_ORIGIN.replace(/\/$/, '');
+
+const normalizeBooleanInput = (value) => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
+      return false;
+    }
+    return null;
+  }
+  if (typeof value === 'number') {
+    if (value === 1) {
+      return true;
+    }
+    if (value === 0) {
+      return false;
+    }
+    return null;
+  }
+  return null;
+};
 
 const normalizeDate = (value) => {
   if (!value) {
@@ -107,6 +134,51 @@ const updateUserRole = async (req, res, next) => {
     }
 
     const updated = await userModel.updateUserRole(targetId, desiredRole);
+    if (!updated) {
+      const err = new Error('User not found');
+      err.status = 404;
+      throw err;
+    }
+
+    res.json({ user: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateBookProposalDerogation = async (req, res, next) => {
+  try {
+    if (!req.user?.isAdmin) {
+      const err = new Error('Administrator privileges required');
+      err.status = 403;
+      throw err;
+    }
+
+    const targetId = Number(req.params.id);
+    if (!Number.isInteger(targetId)) {
+      const err = new Error('Invalid user identifier');
+      err.status = 400;
+      throw err;
+    }
+
+    const normalizedValue = normalizeBooleanInput(req.body?.canBypassBookProposals ?? req.body?.enabled);
+    if (normalizedValue === null) {
+      const err = new Error('Invalid boolean value for canBypassBookProposals');
+      err.status = 400;
+      throw err;
+    }
+
+    if (process.env.USE_MOCKS === 'true') {
+      const updated = setMockUserBypassPermission(targetId, normalizedValue);
+      if (!updated) {
+        const err = new Error('User not found');
+        err.status = 404;
+        throw err;
+      }
+      return res.json({ user: updated });
+    }
+
+    const updated = await userModel.setBookProposalDerogation(targetId, normalizedValue);
     if (!updated) {
       const err = new Error('User not found');
       err.status = 404;
@@ -517,6 +589,7 @@ module.exports = {
   listFriends,
   listFriendRequests,
   updateUserRole,
+  setBookProposalDerogation: updateBookProposalDerogation,
   requestFriend,
   acceptFriend,
   removeFriend,

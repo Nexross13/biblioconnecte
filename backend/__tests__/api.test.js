@@ -24,7 +24,7 @@ const createMockReq = (overrides = {}) => ({
   query: {},
   params: {},
   body: {},
-  user: { id: 1 },
+  user: { id: 1, canBypassBookProposals: false },
   ...overrides,
 });
 
@@ -374,6 +374,24 @@ test('bookProposalController.createProposal soumet une proposition', async () =>
   assert.equal(res.body.proposal.decidedBy, null);
   assert.equal(res.body.proposal.releaseDate, '2024-02-29');
   assert.equal(res.body.message, 'Livre envoyé pour validation par un administrateur');
+});
+
+test('bookProposalController.createProposal valide directement avec la dérogation', async () => {
+  const res = await callController(bookProposalController.createProposal, {
+    user: { id: 8, canBypassBookProposals: true },
+    body: {
+      title: 'Livre direct',
+      releaseDate: '2024-03-01',
+      authorNames: ['Auteur Test'],
+      genreNames: ['Science-fiction'],
+    },
+  });
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(res.body.proposal.status, 'approved');
+  assert.equal(res.body.proposal.submittedBy.id, 8);
+  assert.ok(res.body.book);
+  assert.equal(res.body.book.title, 'Livre direct');
 });
 
 test('bookProposalController.listProposals refuse un non-admin', async () => {
@@ -795,6 +813,37 @@ test('userController.removeFriend supprime une relation mock', async () => {
   assert.equal(res.statusCode, 204);
 });
 
+test('userController.setBookProposalDerogation refuse un non-admin', async () => {
+  await expectReject(
+    () =>
+      callController(userController.setBookProposalDerogation, {
+        params: { id: 3 },
+        user: { id: 2 },
+        body: { canBypassBookProposals: true },
+      }),
+    (err) => {
+      assert.equal(err.status, 403);
+      assert.equal(err.message, 'Administrator privileges required');
+      return true;
+    },
+  );
+});
+
+test('userController.setBookProposalDerogation met à jour la dérogation', async () => {
+  const res = await callController(userController.setBookProposalDerogation, {
+    params: { id: 3 },
+    user: { id: 1, isAdmin: true },
+    body: { canBypassBookProposals: true },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.user.canBypassBookProposals, true);
+  await callController(userController.setBookProposalDerogation, {
+    params: { id: 3 },
+    user: { id: 1, isAdmin: true },
+    body: { canBypassBookProposals: false },
+  });
+});
+
 /* Library controller */
 
 test('libraryController.listLibraryBooks renvoie les livres de la bibliothèque', async () => {
@@ -1002,7 +1051,7 @@ test('reviewController.deleteReview refuse la suppression par un autre utilisate
       }),
     (err) => {
       assert.equal(err.status, 403);
-      assert.equal(err.message, 'You can only delete your own reviews');
+      assert.equal(err.message, 'You do not have permission to delete this review');
       return true;
     },
   );

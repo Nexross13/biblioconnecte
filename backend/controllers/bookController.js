@@ -1,4 +1,5 @@
 const bookModel = require('../models/bookModel');
+const userModel = require('../models/userModel');
 const bookProposalModel = require('../models/bookProposalModel');
 const {
   getBooks: getMockBooks,
@@ -41,6 +42,17 @@ const normalizeVolumeTitle = (value) => {
   }
   const normalized = String(value).trim();
   return normalized.length ? normalized : null;
+};
+
+const formatAuthorName = (author = {}) => {
+  const parts = [];
+  if (author.firstName) {
+    parts.push(author.firstName.trim());
+  }
+  if (author.lastName) {
+    parts.push(author.lastName.trim());
+  }
+  return parts.join(' ').trim();
 };
 
 const listBooks = async (req, res, next) => {
@@ -189,7 +201,13 @@ const createBook = async (req, res, next) => {
       throw err;
     }
 
-    if (!req.user.isAdmin) {
+    const loadedUser = await userModel.findById(submittedBy);
+    const runtimeCanBypass = Boolean(loadedUser?.canBypassBookProposals);
+
+    const canCreateDirectly = Boolean(req.user.isAdmin) || runtimeCanBypass;
+    req.user.canBypassBookProposals = runtimeCanBypass;
+
+    if (!canCreateDirectly) {
       const proposal = await bookProposalModel.createProposal({
         title,
         isbn,
@@ -217,10 +235,36 @@ const createBook = async (req, res, next) => {
       summary,
     });
 
+    const shouldLogApprovedProposal = runtimeCanBypass && !req.user.isAdmin;
+
     const [authors, genres] = await Promise.all([
       bookModel.setBookAuthors(book.id, normalizeIds(authorIds)),
       bookModel.setBookGenres(book.id, normalizeIds(genreIds)),
     ]);
+
+    if (shouldLogApprovedProposal) {
+      const authorNames = authors.map(formatAuthorName).filter(Boolean);
+      const genreNames = genres.map((genre) => genre.name).filter(Boolean);
+      try {
+        await bookProposalModel.createProposal({
+          title,
+          isbn,
+          edition,
+          volume,
+          volumeTitle: normalizedVolumeTitle,
+          summary,
+          publicationDate: releaseDate,
+          status: 'approved',
+          submittedBy,
+          decidedBy: submittedBy,
+          decidedAt: new Date().toISOString(),
+          authorNames,
+          genreNames,
+        });
+      } catch (proposalError) {
+        console.warn('Unable to log approved book proposal', proposalError);
+      }
+    }
 
     res.status(201).json({ book: { ...book, authors, genres } });
   } catch (error) {
