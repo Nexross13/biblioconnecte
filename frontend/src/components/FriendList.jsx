@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
+import { ArrowPathIcon, BookOpenIcon } from '@heroicons/react/24/outline'
+import { UserMinusIcon } from '@heroicons/react/24/solid'
 import { deleteFriend } from '../api/users'
 import useAuth from '../hooks/useAuth'
 import Loader from './Loader.jsx'
@@ -8,14 +11,19 @@ import { ASSETS_PROFILE_BASE_URL } from '../api/axios'
 const FriendList = ({ friends = [], isLoading = false, onViewLibrary }) => {
   const { user } = useAuth()
   const queryClient = useQueryClient()
+  const [removingId, setRemovingId] = useState(null)
 
   const removeMutation = useMutation({
     mutationFn: (friendId) => deleteFriend({ userId: user.id, friendId }),
+    onMutate: (friendId) => {
+      setRemovingId(friendId)
+    },
     onSuccess: () => {
       toast.success('Ami retiré')
       queryClient.invalidateQueries({ queryKey: ['friends', user.id] })
     },
     onError: () => toast.error("Impossible de supprimer l'ami"),
+    onSettled: () => setRemovingId(null),
   })
 
   if (isLoading) {
@@ -64,23 +72,35 @@ const FriendList = ({ friends = [], isLoading = false, onViewLibrary }) => {
               )}
             </div>
           </div>
-          <div className="mt-auto flex flex-col gap-2">
+          <div className="mt-auto flex flex-wrap gap-2">
             {onViewLibrary && (
               <button
                 type="button"
-                className="btn"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary text-primary transition hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary dark:text-primary dark:hover:bg-primary/20 dark:focus:ring-offset-slate-900"
                 onClick={() => onViewLibrary(friend)}
+                aria-label={`Consulter la bibliothèque de ${friend.firstName}`}
+                title="Voir la bibliothèque"
               >
-                Consulter la bibliothèque
+                <BookOpenIcon className="h-5 w-5" aria-hidden="true" />
+                <span className="sr-only">Consulter la bibliothèque</span>
               </button>
             )}
             <button
               type="button"
-              className="rounded-lg border border-rose-500 px-3 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500 text-white transition hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-60"
               onClick={() => removeMutation.mutate(friend.id)}
               disabled={removeMutation.isPending}
+              aria-label={`Retirer ${friend.firstName} de vos amis`}
+              title="Retirer des amis"
             >
-              {removeMutation.isPending ? 'Suppression...' : 'Retirer'}
+              {removeMutation.isPending && removingId === friend.id ? (
+                <ArrowPathIcon className="h-5 w-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <UserMinusIcon className="h-5 w-5" aria-hidden="true" />
+              )}
+              <span className="sr-only">
+                {removeMutation.isPending && removingId === friend.id ? 'Suppression en cours' : 'Retirer des amis'}
+              </span>
             </button>
           </div>
         </div>
