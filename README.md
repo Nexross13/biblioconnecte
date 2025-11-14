@@ -1,64 +1,69 @@
-# My BiblioConnect
+# BiblioConnect
 
-Plateforme sociale pour lectrices et lecteurs : gérez votre bibliothèque personnelle, suivez vos amis, partagez vos coups de cœur et proposez de nouveaux titres. L’application comprend une API Node.js/Express et un frontend React/Vite.
+Plateforme sociale dédiée aux lectrices et lecteurs : suivez les ouvrages que vous possédez, échangez avec vos ami·e·s, proposez des auteurs/livres à la communauté et consultez des statistiques collaboratives. Le monorepo regroupe une API Node.js/Express, un frontend React/Vite et quelques outils pour automatiser vos appels API.
 
 ---
 
 ## Sommaire
 
-1. [Fonctionnalités](#fonctionnalités)
-2. [Architecture & Stack](#architecture--stack)
-3. [Mise en route rapide](#mise-en-route-rapide)
-4. [Configuration des environnements](#configuration-des-environnements)
-5. [Scripts de développement](#scripts-de-développement)
-6. [Tests & Qualité](#tests--qualité)
-7. [Déploiement](#déploiement)
+1. [Vision & fonctionnalités](#vision--fonctionnalités)
+2. [Architecture](#architecture)
+3. [Démarrage rapide](#démarrage-rapide)
+4. [Configuration](#configuration)
+5. [Scripts npm](#scripts-npm)
+6. [Documentation API & données](#documentation-api--données)
+7. [Tests & qualité](#tests--qualité)
 8. [Contribution](#contribution)
-9. [Licence](#licence)
 
 ---
 
-## Fonctionnalités
+## Vision & fonctionnalités
 
-- **Authentification sécurisée** : inscription / connexion par login unique ou email + mot de passe, prise en charge du SSO Google OAuth 2.0.
-- **Gestion de bibliothèque personnelle** : ajout de livres, wishlist, suivi des prêts.
-- **Dimension sociale** : demandes d’amis, partage de bibliothèques, fil d’activité, avis/commentaires (arrivent bientôt).
-- **Catalogue collaboratif** : proposition de nouveaux ouvrages, validation par les administrateurs, statistiques publiques.
-- **Notifications email** : demandes d’amis, décisions sur les propositions, réinitialisation de mot de passe via code OTP.
-- **Documentation intégrée** : Swagger UI sur `/api-docs`, specification OpenAPI (`backend/docs/openapi.yaml`).
+- **Bibliothèque personnelle** : suivez vos livres, séries et genres, importez des couvertures et signalez les ouvrages manquants.
+- **Wishlist & prêts** : notez les livres à emprunter/acheter, gérez les prêts entre ami·e·s et recevez des rappels.
+- **Dimension sociale** : retrouvez vos contacts, parcourez leur bibliothèque publique, laissez un avis et signalez du contenu inapproprié.
+- **Contributions communautaires** : proposez de nouveaux auteurs ou titres, soumettez des rapports qualité et gardez la base propre.
+- **Observabilité & sécurité** : route `/api/v1/health`, CORS restreint, JWT, Google OAuth, SMTP pour les resets de mot de passe et mode mock pour développer sans base PostgreSQL.
 
 ---
 
-## Architecture & Stack
+## Architecture
 
 ```
-backend/   # API REST Node.js/Express
-frontend/  # SPA React 19 (Vite)
+.
+├── backend/    # API REST Node.js/Express (mocks + Postgres)
+├── frontend/   # SPA React 19 + Vite 7 + Tailwind
+├── utils/      # Scripts ponctuels (génération, import, etc.)
+└── other/      # Notes et documents de travail
 ```
 
 ### Backend
-- Node.js 18+, Express 5, JWT.
-- PostgreSQL, requêtes via `pg`.
-- Tests avec le test runner Node (`node --test`) et mocks intégrés pour le mode démo.
-- Nodemailer pour l’envoi d’e-mails (SMTP configurable).
+
+- Node.js 18+, Express 5, middlewares `helmet`, `cors`, `cookie-parser`, `morgan`.
+- Authentification JWT + Google Identity Services, validation avec `express-validator`.
+- Stockage PostgreSQL (`pg`) ou mode mock (`USE_MOCKS=true`) alimenté par `backend/data/`.
+- Routes regroupées par domaine (`routes/books.js`, `routes/library.js`, etc.) et contrôleurs associés.
+- OpenAPI 3.0 dans `backend/docs/openapi.yaml`, servi automatiquement via Swagger UI sur `/api-docs`.
+- Assets statiques (`backend/assets/`) servis sur `/assets/*` pour les couvertures, avatars et composants UI.
 
 ### Frontend
-- React 19, Vite 5, TailwindCSS.
-- React Router 7, TanStack Query 5.
-- AuthContext maison, Google Identity Services via `@react-oauth/google`.
-- ESLint + Prettier.
+
+- React 19, React Router 7, TanStack Query 5, Axios et TailwindCSS.
+- Architecture modulaire (`src/api`, `src/context`, `src/pages`, `src/components`).
+- Hooks partagés pour l’authentification, la gestion des requêtes API et les interactions temps réel (toast, loaders, etc.).
+- Build Vite (ESM) + ESLint + Prettier pour garder un style cohérent (2 espaces, single quotes, trailing commas).
 
 ---
 
-## Mise en route rapide
+## Démarrage rapide
 
 ### Prérequis
-- Node.js 18+
-- npm 9+ (ou pnpm/yarn équivalent)
-- PostgreSQL (local ou distant)
-- Un compte Google Cloud (pour OAuth) et un service SMTP
 
-### Cloner & installer
+- Node.js 18 ou supérieur et npm 9+
+- PostgreSQL (local, Docker ou service managé) si `USE_MOCKS=false`
+- Compte Google Cloud (OAuth) et accès SMTP (reset de mot de passe)
+
+### Installation
 
 ```bash
 git clone https://github.com/votre-compte/biblioconnecte.git
@@ -66,120 +71,103 @@ cd biblioconnecte
 
 # Backend
 cd backend
+cp .env.example .env.local   # personnaliser les variables
 npm install
-cp .env.example .env.local   # renseigner les variables, voir section suivante
 
 # Frontend
 cd ../frontend
+cp .env.example .env.local   # configurez VITE_API_URL & VITE_GOOGLE_CLIENT_ID
 npm install
-cp .env.example .env.local   # renseigner VITE_API_URL & VITE_GOOGLE_CLIENT_ID
 ```
+
+### Lancer le projet
+
+```bash
+# Terminal 1
+cd backend
+npm run dev        # API sur http://localhost:3000
+
+# Terminal 2
+cd frontend
+npm run dev        # Vite sur http://localhost:5173
+```
+
+> Besoin de tester sans base ? Passez `USE_MOCKS=true` dans `.env.local` (certaines routes sont alors alimentées par `backend/data/mockData.js`).
 
 ---
 
-## Configuration des environnements
+## Configuration
 
 ### Backend (`backend/.env.local`)
 
 | Variable | Description | Exemple |
 | --- | --- | --- |
 | `PORT` | Port HTTP de l’API | `3000` |
-| `NODE_ENV` | Environnement (`development` | `production`) | `development` |
-| `DATABASE_URL` | URL de connexion PostgreSQL complète | `postgres://user:pass@host:5432/biblioconnecte` |
-| `JWT_SECRET` | Secret pour signer les JWT | `super-secret` |
-| `FRONTEND_URL` | Origines autorisées pour CORS (séparées par virgules, la première sert de base pour les liens/cookies) | `https://my-biblioconnect.fr,http://localhost:5173` |
-| `SESSION_COOKIE_SECURE` | Force/relâche le flag `Secure` (`true/false/1/0`, laisser vide pour auto) | `true` |
-| `USE_MOCKS` | `true` pour bypasser PostgreSQL (démo) | `false` |
-| `SMTP_*` / `SMTP_URL` / `EMAIL_FROM` | Paramètres SMTP | voir `.env.example` |
-| `PASSWORD_RESET_CODE_TTL_MINUTES` | Durée de validité du code OTP | `15` |
+| `NODE_ENV` | `development`, `production` ou `test` | `development` |
+| `USE_MOCKS` | `true` pour éviter PostgreSQL et servir les mocks | `false` |
+| `DATABASE_URL` | Chaîne de connexion PostgreSQL complète (prioritaire) | `postgres://user:pass@host:5432/biblioconnecte` |
+| `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSLMODE` | Paramètres utilisés si `DATABASE_URL` est vide | `localhost`, `5432`, … |
+| `JWT_SECRET` | Secret signé pour les tokens | `change-me` |
 | `GOOGLE_CLIENT_ID` | Client ID OAuth Google (Web) | `123.apps.googleusercontent.com` |
-
+| `FRONTEND_URL` | Origine utilisée pour CORS et les liens d’e-mails | `http://localhost:5173` |
+| `SESSION_COOKIE_SECURE` | Force le flag `Secure` sur les cookies (`true/false/1/0`) | `false` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE` | Paramètres SMTP pour Nodemailer (alternativement `SMTP_URL`) | `smtp.mailtrap.io`, `587`, … |
+| `SMTP_URL` | URL complète SMTP (optionnelle, prioritaire sur les champs ci-dessus) | `smtp://user:pass@host:587` |
+| `EMAIL_FROM` | Expéditeur des e-mails transactionnels | `no-reply@biblioconnecte.test` |
+| `PASSWORD_RESET_CODE_TTL_MINUTES` | Durée de validité des OTP | `15` |
 
 ### Frontend (`frontend/.env.local`)
 
 | Variable | Description | Exemple |
 | --- | --- | --- |
 | `VITE_API_URL` | URL de base de l’API | `http://localhost:3000/api/v1` |
-| `VITE_GOOGLE_CLIENT_ID` | Client ID Google (même que backend) | `123.apps.googleusercontent.com` |
+| `VITE_GOOGLE_CLIENT_ID` | Client ID Google identical au backend | `123.apps.googleusercontent.com` |
 
 ---
 
-## Scripts de développement
+## Scripts npm
 
 ### Backend
 
-| Commande | Description |
+| Script | Description |
 | --- | --- |
-| `npm run dev` | Démarre l’API avec `nodemon` (hot reload) |
-| `npm start` | Lance l’API en mode production |
-| `npm test` | Exécute la suite de tests |
+| `npm run dev` | Lance Express avec `nodemon` (hot reload) |
+| `npm start` | Lance Express en mode production (`node index.js`) |
+| `npm test` | Exécute la suite Node Test Runner (`NODE_ENV=test node --test`) |
 
 ### Frontend
 
-| Commande | Description |
+| Script | Description |
 | --- | --- |
-| `npm run dev` | Lancement Vite avec HMR |
-| `npm run build` | Build de production dans `dist/` |
-| `npm run preview` | Prévisualisation du build localement |
-| `npm run lint` | Vérification ESLint |
+| `npm run dev` | Serveur Vite avec HMR |
+| `npm run build` | Build de production dans `frontend/dist` |
+| `npm run preview` | Prévisualise le build localement |
+| `npm run lint` | Vérifie le code avec ESLint + Prettier |
 
 ---
 
-## Tests & Qualité
+## Documentation API & données
 
-- **Backend** : `npm test` (mode mocks activé) → couvre contrôleurs et flux OTP / Google.
-- **Frontend** : lint (`npm run lint`). Ajoute Jest/Testing Library au besoin.
-- **CI suggérée** :
-  1. `npm ci` (backend & frontend)
-  2. `npm test` (backend), `npm run lint` (frontend)
-  3. `npm run build` (frontend)
+- **OpenAPI / Swagger** : fichier source dans `backend/docs/openapi.yaml`, accessible via `http://localhost:3000/api-docs`.
+- **Collections Bruno** : le dossier `bruno/` contient des requêtes prêtes à l’emploi pour explorer les routes (`*.bru`).
+- **Assets & mocks** : fichiers d’exemple dans `backend/assets/` et données simulées dans `backend/data/`.
+- **Fichiers utilitaires** : scripts ponctuels, requêtes SQL ou analyses sont rangés dans `utils/` et `other/` quand nécessaire.
 
 ---
 
-## Déploiement
+## Tests & qualité
 
-### Backend
-1. Provisionner une base PostgreSQL et exécuter les migrations (dont `backend/resources/migrations/20240614_add_user_login.sql` pour le login unique).
-2. Déployer le code (docker, PM2, systemd…) puis `npm ci --production`.
-3. Fournir un fichier `.env` complet (cf. plus haut) et vérifier :
-   - accès base, SMTP, JWT, Google OAuth.
-   - `GOOGLE_CLIENT_ID` identique sur front/back.
-4. Servir l’API derrière un reverse proxy HTTPS (Nginx/Traefik).  
-   L’endpoint de santé `/api/v1/health` peut être utilisé pour les probes.
-
-### Frontend
-1. `npm ci && npm run build`.
-2. Déployer le dossier `frontend/dist/` sur un serveur statique (Nginx, Netlify, Vercel…).
-3. Configurer les rewrites SPA : `/* -> /index.html`.
-4. Définir `VITE_API_URL` et `VITE_GOOGLE_CLIENT_ID` dans l’environnement de build.
-5. Vérifier les pages essentielles : login/email, login Google, mot de passe oublié, consultation catalogue.
-
-### Checklist post-déploiement
-- [ ] Admin seedé et accès confirmé.
-- [ ] Reset mot de passe → email reçu.
-- [ ] Connexion Google validée (compte email vérifié).
-- [ ] Accès `/api-docs` opérationnel.
-- [ ] Assets (couvertures, avatars) servis correctement.
-- [ ] Sauvegardes PostgreSQL planifiées & rotation des secrets.
+- Les tests backend résident dans `backend/__tests__/` et s’exécutent via `npm test` (Node Test Runner). Adaptez-les pour couvrir les contrôleurs/services avant chaque PR.
+- Côté frontend, respectez le linting (`npm run lint`) et ajoutez des tests UI (Jest/Testing Library) dans `src/__tests__` si besoin.
+- Avant de pousser, assurez-vous que `npm test`, `npm run lint` (front) et `npm run build` (front) passent afin de garantir l’intégrité CI/CD.
+- Respectez les conventions de style définies par ESLint + Prettier (2 espaces, single quotes, trailing commas) sur tout nouveau code.
 
 ---
 
 ## Contribution
 
-1. Créer une branche à partir de `main`.
-2. Implémenter la fonctionnalité + tests + documentation.
-3. Vérifier `npm test`, `npm run lint`, `npm run build`.
-4. Ouvrir une PR avec :
-   - résumé des changements
-   - décisions importantes
-   - captures ou exemples pour nouvelles API
-
-Commits recommandés : `scope: message` (ex. `auth: ajouter google oauth`).  
-Les PR doivent obtenir une relecture et un pipeline vert avant fusion.
-
----
-
-## Licence
-
-Projet sous licence ISC (voir `backend/package.json`).  
-© My BiblioConnect — communauté de lecteurs passionnés.
+1. Créez une branche à partir de `main` (`feature/nom-fonctionnalite`).
+2. Implémentez la fonctionnalité en respectant l’organisation du code (`src/common/` pour les utilitaires partagés, dossiers par domaine).
+3. Ajoutez les tests nécessaires et mettez à jour la documentation (README, collections Bruno, OpenAPI).
+4. Vérifiez localement : `npm test` (backend), `npm run lint` (frontend), `npm run build` (frontend).
+5. Commitez en utilisant le format `scope: message` en français ou anglais (ex. `auth: ajouter reset otp`), puis ouvrez une PR décrivant l’intention, les décisions notables et les vérifications réalisées. Soyez précis !
