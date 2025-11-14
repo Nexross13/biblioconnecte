@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import { ArrowPathIcon } from '@heroicons/react/24/outline'
+import { UserGroupIcon, UserPlusIcon } from '@heroicons/react/24/solid'
 import FriendList from '../components/FriendList.jsx'
 import Loader from '../components/Loader.jsx'
 import {
@@ -138,6 +140,23 @@ const Friends = () => {
                 const alreadyFriend = friendsIds.has(candidate.id)
                 const pending = pendingTargets.has(candidate.id)
                 const isActive = activeTarget === candidate.id && sendRequestMutation.isPending
+                const candidateLabel = alreadyFriend
+                  ? `${candidate.firstName} est déjà votre ami`
+                  : pending
+                  ? isActive
+                    ? 'Envoi de la demande en cours'
+                    : 'Demande en attente'
+                  : `Envoyer une demande à ${candidate.firstName}`
+                const buttonClasses = alreadyFriend
+                  ? 'bg-slate-200 text-slate-500 hover:bg-slate-200 focus:ring-slate-300'
+                  : 'bg-primary text-white hover:bg-primary-dark focus:ring-primary'
+                const icon = pending ? (
+                  <ArrowPathIcon className={`h-5 w-5 ${isActive ? 'animate-spin' : ''}`} aria-hidden="true" />
+                ) : alreadyFriend ? (
+                  <UserGroupIcon className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <UserPlusIcon className="h-5 w-5" aria-hidden="true" />
+                )
 
                 return (
                   <div key={candidate.id} className="card flex items-center gap-3">
@@ -169,17 +188,14 @@ const Friends = () => {
                     </div>
                     <button
                       type="button"
-                      className="btn"
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-60 ${buttonClasses}`}
                       onClick={() => sendRequestMutation.mutate(candidate.id)}
                       disabled={alreadyFriend || pending}
+                      aria-label={candidateLabel}
+                      title={candidateLabel}
                     >
-                      {alreadyFriend
-                        ? 'Déjà ami'
-                        : pending
-                        ? isActive
-                          ? 'Envoi...'
-                          : 'Demande en attente'
-                        : 'Envoyer une demande'}
+                      {icon}
+                      <span className="sr-only">{candidateLabel}</span>
                     </button>
                   </div>
                 )
@@ -270,11 +286,6 @@ const Friends = () => {
           onViewLibrary={(friend) =>
             navigate(`/friends/${friend.id}/collection`, {
               state: { friend, initialFilter: 'library' },
-            })
-          }
-          onViewWishlist={(friend) =>
-            navigate(`/friends/${friend.id}/collection`, {
-              state: { friend, initialFilter: 'wishlist' },
             })
           }
         />

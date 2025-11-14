@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import clsx from 'clsx'
+import { BookmarkIcon, BookmarkSlashIcon, HeartIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { BookOpenIcon } from '@heroicons/react/24/solid'
 import { addBookToLibrary, removeBookFromLibrary } from '../api/library'
 import { addBookToWishlist, removeBookFromWishlist } from '../api/wishlist'
 import useAuth from '../hooks/useAuth'
 import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
 import formatBookTitle from '../utils/formatBookTitle'
+import BrokenHeartIcon from './icons/BrokenHeartIcon.jsx'
 
 const PLACEHOLDER_COVER = '/placeholder-book.svg'
 const COVER_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
@@ -127,6 +130,16 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
       : 0
 
   const displayTitle = formatBookTitle(book)
+  const libraryButtonLabel = libraryMutation.isPending
+    ? 'Mise à jour de ma bibliothèque'
+    : inLibrary
+    ? 'Retirer de ma bibliothèque'
+    : 'Ajouter à ma bibliothèque'
+  const wishlistButtonLabel = wishlistMutation.isPending
+    ? 'Mise à jour de ma wishlist'
+    : inWishlist
+    ? 'Retirer de mes souhaits'
+    : 'Ajouter à mes souhaits'
 
   return (
     <article className="card flex h-full flex-col gap-4">
@@ -176,48 +189,62 @@ const BookCard = ({ book, inLibrary = false, inWishlist = false }) => {
         </div>
       ) : null}
 
-      <div className="mt-auto flex flex-col gap-3">
-        <Link to={`/books/${book.id}`} className="btn w-full text-center">
-          Voir les détails
+      <div className="mt-auto flex gap-2">
+        <Link
+          to={`/books/${book.id}`}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary text-primary transition hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary dark:text-primary dark:hover:bg-primary/20 dark:focus:ring-offset-slate-900"
+          aria-label={`Voir les détails de ${displayTitle || 'ce livre'}`}
+          title="Voir les détails"
+        >
+          <BookOpenIcon className="h-5 w-5" aria-hidden="true" />
+          <span className="sr-only">Voir les détails</span>
         </Link>
-        <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={handleLibrary}
+          className={clsx(
+            'flex h-10 w-10 items-center justify-center rounded-lg text-white transition focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900',
+            inLibrary
+              ? 'bg-rose-500 hover:bg-rose-600 focus:ring-rose-500'
+              : 'bg-primary hover:bg-primary-dark focus:ring-primary',
+          )}
+          disabled={libraryMutation.isPending}
+          aria-label={libraryButtonLabel}
+          title={libraryButtonLabel}
+        >
+          {libraryMutation.isPending ? (
+            <ArrowPathIcon className="h-5 w-5 animate-spin" aria-hidden="true" />
+          ) : inLibrary ? (
+            <BookmarkSlashIcon className="h-5 w-5" aria-hidden="true" />
+          ) : (
+            <BookmarkIcon className="h-5 w-5" aria-hidden="true" />
+          )}
+          <span className="sr-only">{libraryButtonLabel}</span>
+        </button>
+        {!inLibrary && (
           <button
             type="button"
-            onClick={handleLibrary}
+            onClick={handleWishlist}
             className={clsx(
-              'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition',
-              inLibrary
-                ? 'bg-rose-500 text-white hover:bg-rose-600'
-                : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600',
+              'flex h-10 w-10 items-center justify-center rounded-lg text-white transition focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900',
+              inWishlist
+                ? 'bg-rose-500 hover:bg-rose-600 focus:ring-rose-500'
+                : 'bg-secondary hover:bg-teal-500 focus:ring-secondary',
             )}
-            disabled={libraryMutation.isPending}
+            disabled={wishlistMutation.isPending}
+            aria-label={wishlistButtonLabel}
+            title={wishlistButtonLabel}
           >
-            {libraryMutation.isPending
-              ? 'En cours...'
-              : inLibrary
-              ? 'Retirer de ma bibliothèque'
-              : 'Ajouter à ma bibliothèque'}
+            {wishlistMutation.isPending ? (
+              <ArrowPathIcon className="h-5 w-5 animate-spin" aria-hidden="true" />
+            ) : inWishlist ? (
+              <BrokenHeartIcon className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <HeartIcon className="h-5 w-5" aria-hidden="true" />
+            )}
+            <span className="sr-only">{wishlistButtonLabel}</span>
           </button>
-          {!inLibrary && (
-            <button
-              type="button"
-              onClick={handleWishlist}
-              className={clsx(
-                'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition',
-                inWishlist
-                  ? 'bg-rose-500 text-white hover:bg-rose-600'
-                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600',
-              )}
-              disabled={wishlistMutation.isPending}
-            >
-              {wishlistMutation.isPending
-                ? 'En cours...'
-                : inWishlist
-                ? 'Retirer de mes souhaits'
-                : 'Ajouter à mes souhaits'}
-            </button>
-          )}
-        </div>
+        )}
       </div>
     </article>
   )
