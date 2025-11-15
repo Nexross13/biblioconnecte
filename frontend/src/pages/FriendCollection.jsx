@@ -64,6 +64,104 @@ const FriendCollection = () => {
     enabled: friendId > 0,
   })
 
+  const combinedEntries = useMemo(() => {
+    const libraryBooks = Array.isArray(libraryQuery.data) ? libraryQuery.data : []
+    const wishlistBooks = Array.isArray(wishlistQuery.data) ? wishlistQuery.data : []
+    const map = new Map()
+
+    libraryBooks.forEach((book) => {
+      map.set(book.id, { book, inLibrary: true, inWishlist: false })
+    })
+
+    wishlistBooks.forEach((book) => {
+      const existing = map.get(book.id)
+      if (existing) {
+        map.set(book.id, { book: existing.book, inLibrary: true, inWishlist: true })
+      } else {
+        map.set(book.id, { book, inLibrary: false, inWishlist: true })
+      }
+    })
+
+    return Array.from(map.values())
+  }, [libraryQuery.data, wishlistQuery.data])
+
+  const friendStats = useMemo(() => {
+    const ownedBooks = Array.isArray(libraryQuery.data) ? libraryQuery.data : []
+    const genreCounts = new Map()
+    const authorCounts = new Map()
+    const seriesCounts = new Map()
+
+    const incrementCount = (map, key) => {
+      if (!key) {
+        return
+      }
+      const trimmed = key.trim()
+      if (!trimmed) {
+        return
+      }
+      map.set(trimmed, (map.get(trimmed) || 0) + 1)
+    }
+
+    ownedBooks.forEach((book) => {
+      const genres = Array.isArray(book.genres)
+        ? book.genres.map((genre) => genre.name).filter(Boolean)
+        : Array.isArray(book.genreNames)
+        ? book.genreNames.filter(Boolean)
+        : []
+      genres.forEach((genreName) => incrementCount(genreCounts, genreName))
+
+      const authors = Array.isArray(book.authors)
+        ? book.authors
+            .map((author) => [author.firstName, author.lastName].filter(Boolean).join(' ').trim())
+            .filter(Boolean)
+        : Array.isArray(book.authorNames)
+        ? book.authorNames.filter(Boolean)
+        : []
+      authors.forEach((authorName) => incrementCount(authorCounts, authorName))
+    })
+
+    const getSeriesKey = (book) => {
+      if (!book || !book.title) {
+        return ''
+      }
+      return book.title.toString().trim().toLowerCase()
+    }
+
+    combinedEntries.forEach(({ book, inLibrary }) => {
+      const key = getSeriesKey(book)
+      if (!key) {
+        return
+      }
+      const entry = seriesCounts.get(key) || { total: 0, owned: 0 }
+      entry.total += 1
+      if (inLibrary) {
+        entry.owned += 1
+      }
+      seriesCounts.set(key, entry)
+    })
+
+    const seriesInProgress = Array.from(seriesCounts.values()).filter(
+      ({ owned, total }) => owned > 0 && total > owned,
+    ).length
+
+    const getTopEntry = (map) => {
+      let best = null
+      map.forEach((count, name) => {
+        if (!best || count > best.count) {
+          best = { name, count }
+        }
+      })
+      return best?.name ?? null
+    }
+
+    return {
+      ownedCount: ownedBooks.length,
+      favoriteGenre: getTopEntry(genreCounts),
+      favoriteAuthor: getTopEntry(authorCounts),
+      seriesInProgress,
+    }
+  }, [combinedEntries, libraryQuery.data])
+
   const items = useMemo(() => {
     const owned = (libraryQuery.data || []).map((book) => ({ ...book, status: 'library' }))
     const wished = (wishlistQuery.data || []).map((book) => ({ ...book, status: 'wishlist' }))
@@ -174,6 +272,33 @@ const FriendCollection = () => {
           </p>
         </div>
       </header>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Livres possédés</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
+            {friendStats.ownedCount}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Genre préféré</p>
+          <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">
+            {friendStats.favoriteGenre || 'Non déterminé'}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Auteur préféré</p>
+          <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">
+            {friendStats.favoriteAuthor || 'Non déterminé'}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Séries en cours</p>
+          <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
+            {friendStats.seriesInProgress}
+          </p>
+        </div>
+      </div>
 
       <div className="space-y-3 sm:hidden">
         <div className="relative w-full">
