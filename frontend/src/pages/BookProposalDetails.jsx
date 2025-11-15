@@ -75,6 +75,8 @@ const BookProposalDetails = () => {
   const [coverSrc, setCoverSrc] = useState(PLACEHOLDER_COVER)
   const [candidateIndex, setCandidateIndex] = useState(0)
   const [savingField, setSavingField] = useState(null)
+  const [rejectionReason, setRejectionReason] = useState('')
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
   const proposal = proposalQuery.data ?? null
   const isPending = proposal?.status === 'pending'
   const isAdmin = user?.role === 'admin'
@@ -102,10 +104,20 @@ const BookProposalDetails = () => {
   })
 
   const rejectMutation = useMutation({
-    mutationFn: () => rejectBookProposal(id),
+    mutationFn: () =>
+      rejectBookProposal(
+        id,
+        rejectionReason.trim()
+          ? {
+              reason: rejectionReason,
+            }
+          : {},
+      ),
     onSuccess: async ({ proposal }) => {
       await invalidateLists()
       toast.success(`La proposition « ${proposal.title} » a été rejetée.`)
+      setIsRejectModalOpen(false)
+      setRejectionReason('')
       navigate('/dashboard')
     },
     onError: (error) => {
@@ -491,13 +503,53 @@ const BookProposalDetails = () => {
           <button
             type="button"
             className="btn-danger"
-            onClick={() => rejectMutation.mutate()}
+            onClick={() => setIsRejectModalOpen(true)}
             disabled={approveMutation.isPending || rejectMutation.isPending}
           >
-            {rejectMutation.isPending ? 'Rejet en cours...' : 'Rejeter la proposition'}
+            Rejeter la proposition
           </button>
         </div>
       )}
+      {isPending && isRejectModalOpen ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-primary">Motif du refus</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-300">
+                Ce message sera envoyé à la personne qui a proposé le livre avec l’email récapitulatif.
+              </p>
+            </div>
+            <textarea
+              rows={5}
+              value={rejectionReason}
+              onChange={(event) => setRejectionReason(event.target.value)}
+              className="input min-h-[140px]"
+              placeholder="Expliquez les ajustements attendus…"
+            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="btn-danger sm:w-auto"
+                onClick={() => rejectMutation.mutate()}
+                disabled={rejectMutation.isPending}
+              >
+                {rejectMutation.isPending ? 'Rejet en cours...' : 'Confirmer le refus'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary sm:w-auto"
+                onClick={() => {
+                  setIsRejectModalOpen(false)
+                  setRejectionReason('')
+                }}
+                disabled={rejectMutation.isPending}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
