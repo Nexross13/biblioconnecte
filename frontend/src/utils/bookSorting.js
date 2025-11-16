@@ -51,3 +51,33 @@ export const compareBooksBySeriesAndVolume = (bookA, bookB) => {
   }
   return extractVolumeNumber(bookA) - extractVolumeNumber(bookB)
 }
+
+const INITIAL_FALLBACK = '#'
+const VALID_LETTER_REGEX = /^[a-z]$/i
+
+const stripDiacritics = (value) => {
+  if (!value) {
+    return ''
+  }
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+export const getSeriesInitialLetter = (book) => {
+  const normalized = normalizeSeriesTitle(book)
+  if (!normalized) {
+    return INITIAL_FALLBACK
+  }
+  const [firstChar] = Array.from(normalized)
+  if (!firstChar) {
+    return INITIAL_FALLBACK
+  }
+  const uppercaseChar = firstChar.toLocaleUpperCase('fr-FR')
+  const baseChar = stripDiacritics(uppercaseChar)
+  if (VALID_LETTER_REGEX.test(baseChar)) {
+    return baseChar
+  }
+  if (VALID_LETTER_REGEX.test(uppercaseChar)) {
+    return uppercaseChar
+  }
+  return INITIAL_FALLBACK
+}

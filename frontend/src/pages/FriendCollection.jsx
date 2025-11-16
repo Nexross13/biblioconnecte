@@ -13,7 +13,11 @@ import formatBookTitle from '../utils/formatBookTitle'
 import formatBookAuthors from '../utils/formatBookAuthors'
 import { LIBRARY_VIEW_COOKIE, LIBRARY_VIEW_MODES } from '../constants/libraryView'
 import { LIBRARY_SORT_OPTIONS, DEFAULT_LIBRARY_SORT } from '../constants/librarySort'
-import { compareBooksBySeriesAndVolume, getBookAddedTimestamp } from '../utils/bookSorting'
+import {
+  compareBooksBySeriesAndVolume,
+  getBookAddedTimestamp,
+  getSeriesInitialLetter,
+} from '../utils/bookSorting'
 import { buildSearchQuery, matchesSearchQuery } from '../utils/search-utils'
 
 const FILTERS = [
@@ -422,40 +426,68 @@ const FriendCollection = () => {
             ))}
           </section>
         ) : (
-          <section className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
-            {sortedItems.map((book, index) => {
-              const title = formatBookTitle(book) || 'Titre inconnu'
-              const authors = formatBookAuthors(book) || 'Auteur inconnu'
-              const statusLabel = book.status === 'wishlist' ? 'Souhaité' : 'Possédé'
-              const badgeClass =
-                book.status === 'wishlist'
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
-                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200'
-              const canNavigate = Boolean(book?.id)
-              return (
-                <div
-                  key={`${book.id}-${book.status}-${index}`}
-                  className="flex flex-wrap items-start justify-between gap-4 px-4 py-4 sm:flex-nowrap"
-                >
-                  <div className="min-w-0 flex-1">
-                    {canNavigate ? (
-                      <Link
-                        to={`/books/${book.id}`}
-                        className="font-medium text-primary transition hover:text-primary/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                      >
-                        {title}
-                      </Link>
-                    ) : (
-                      <p className="font-medium text-slate-900 dark:text-slate-100">{title}</p>
-                    )}
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{authors}</p>
-                  </div>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${badgeClass}`}>
-                    {statusLabel}
-                  </span>
-                </div>
-              )
-            })}
+          <section className="rounded-2xl bg-white dark:bg-slate-900">
+            {(() => {
+              const showSeriesSections = viewMode === 'list' && sortOption === 'series'
+              let previousInitial = null
+              let hasRenderedBookRow = false
+              let previousWasSeparator = false
+              const rows = []
+              sortedItems.forEach((book, index) => {
+                const title = formatBookTitle(book) || 'Titre inconnu'
+                const authors = formatBookAuthors(book) || 'Auteur inconnu'
+                const statusLabel = book.status === 'wishlist' ? 'Souhaité' : 'Possédé'
+                const badgeClass =
+                  book.status === 'wishlist'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
+                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200'
+                const canNavigate = Boolean(book?.id)
+                const sectionInitial = showSeriesSections ? getSeriesInitialLetter(book) : null
+                const shouldRenderSection =
+                  showSeriesSections && sectionInitial && sectionInitial !== previousInitial
+                if (shouldRenderSection) {
+                  previousInitial = sectionInitial
+                  rows.push(
+                    <div
+                      key={`separator-${sectionInitial}-${book.id}-${index}`}
+                      className="bg-slate-50 px-4 py-3 text-sm font-semibold uppercase tracking-[0.6em] text-slate-500 dark:bg-slate-800/70 dark:text-slate-200"
+                    >
+                      {sectionInitial}
+                    </div>,
+                  )
+                  previousWasSeparator = true
+                }
+                const shouldShowBorder = hasRenderedBookRow && !previousWasSeparator
+                rows.push(
+                  <div
+                    key={`book-${book.id}-${book.status}-${index}`}
+                    className={`flex flex-wrap items-start justify-between gap-4 px-4 py-4 sm:flex-nowrap ${
+                      shouldShowBorder ? 'border-t border-slate-200 dark:border-slate-800' : ''
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      {canNavigate ? (
+                        <Link
+                          to={`/books/${book.id}`}
+                          className="font-medium text-primary transition hover:text-primary/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                        >
+                          {title}
+                        </Link>
+                      ) : (
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{title}</p>
+                      )}
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{authors}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${badgeClass}`}>
+                      {statusLabel}
+                    </span>
+                  </div>,
+                )
+                hasRenderedBookRow = true
+                previousWasSeparator = false
+              })
+              return rows
+            })()}
           </section>
         )
       ) : (
