@@ -12,7 +12,11 @@ import formatBookAuthors from '../utils/formatBookAuthors'
 import { readCookie, writeCookie } from '../utils/cookies'
 import { LIBRARY_VIEW_COOKIE, LIBRARY_VIEW_MODES } from '../constants/libraryView'
 import { LIBRARY_SORT_OPTIONS, DEFAULT_LIBRARY_SORT } from '../constants/librarySort'
-import { compareBooksBySeriesAndVolume, getBookAddedTimestamp } from '../utils/bookSorting'
+import {
+  compareBooksBySeriesAndVolume,
+  getBookAddedTimestamp,
+  getSeriesInitialLetter,
+} from '../utils/bookSorting'
 import SortDropdown from '../components/SortDropdown.jsx'
 import { buildSearchQuery, matchesSearchQuery } from '../utils/search-utils'
 
@@ -403,44 +407,72 @@ const Library = () => {
           ))}
         </div>
       ) : (
-        <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
-          {sortedBooks.map(({ book, inLibrary, inWishlist }) => {
-            const title = formatBookTitle(book) || 'Titre inconnu'
-            const authors = formatBookAuthors(book) || 'Auteur inconnu'
-            const canNavigate = Boolean(book?.id)
-            return (
-              <div
-                key={book.id}
-                className="flex flex-wrap items-start justify-between gap-4 px-4 py-4 sm:flex-nowrap"
-              >
-                <div className="min-w-0 flex-1">
-                  {canNavigate ? (
-                    <Link
-                      to={`/books/${book.id}`}
-                      className="font-medium text-primary transition hover:text-primary/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                    >
-                      {title}
-                    </Link>
-                  ) : (
-                    <p className="font-medium text-slate-900 dark:text-slate-100">{title}</p>
-                  )}
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{authors}</p>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {inLibrary && (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-                      Possédé
-                    </span>
-                  )}
-                  {inWishlist && (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
-                      Souhaité
-                    </span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+        <div className="rounded-2xl bg-white dark:bg-slate-900">
+          {(() => {
+            const showSeriesSections = viewMode === 'list' && sortOption === 'series'
+            let previousInitial = null
+            let hasRenderedBookRow = false
+            let previousWasSeparator = false
+            const rows = []
+            sortedBooks.forEach(({ book, inLibrary, inWishlist }) => {
+              const title = formatBookTitle(book) || 'Titre inconnu'
+              const authors = formatBookAuthors(book) || 'Auteur inconnu'
+              const canNavigate = Boolean(book?.id)
+              const sectionInitial = showSeriesSections ? getSeriesInitialLetter(book) : null
+              const shouldRenderSection =
+                showSeriesSections && sectionInitial && sectionInitial !== previousInitial
+              if (shouldRenderSection) {
+                previousInitial = sectionInitial
+                rows.push(
+                  <div
+                    key={`separator-${sectionInitial}-${book.id}`}
+                    className="bg-slate-50 px-4 py-3 text-sm font-semibold uppercase tracking-[0.6em] text-slate-500 dark:bg-slate-800/70 dark:text-slate-200"
+                  >
+                    {sectionInitial}
+                  </div>,
+                )
+                previousWasSeparator = true
+              }
+              const shouldShowBorder = hasRenderedBookRow && !previousWasSeparator
+              rows.push(
+                <div
+                  key={`book-${book.id}`}
+                  className={`flex flex-wrap items-start justify-between gap-4 px-4 py-4 sm:flex-nowrap ${
+                    shouldShowBorder ? 'border-t border-slate-200 dark:border-slate-800' : ''
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    {canNavigate ? (
+                      <Link
+                        to={`/books/${book.id}`}
+                        className="font-medium text-primary transition hover:text-primary/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                      >
+                        {title}
+                      </Link>
+                    ) : (
+                      <p className="font-medium text-slate-900 dark:text-slate-100">{title}</p>
+                    )}
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{authors}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {inLibrary && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
+                        Possédé
+                      </span>
+                    )}
+                    {inWishlist && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+                        Souhaité
+                      </span>
+                    )}
+                  </div>
+                </div>,
+              )
+              hasRenderedBookRow = true
+              previousWasSeparator = false
+            })
+            return rows
+          })()}
         </div>
       )}
     </section>
