@@ -69,6 +69,8 @@ const authors = [
   },
 ];
 
+const books = []
+/**
 const books = [
   {
     id: 1,
@@ -132,7 +134,7 @@ const books = [
     updatedAt: '2024-01-11T00:00:00.000Z',
   },
 ];
-
+*/
 const authorBooks = [
   { bookId: 1, authorId: 1 },
   { bookId: 2, authorId: 2 },
@@ -162,12 +164,10 @@ const libraryItems = [
   { userId: 1, bookId: 2, addedAt: '2024-03-05T17:20:00.000Z' },
   { userId: 1, bookId: 4, addedAt: '2024-03-06T09:15:00.000Z' },
   { userId: 1, bookId: 5, addedAt: '2024-03-07T08:45:00.000Z' },
-  { userId: 2, bookId: 3, addedAt: '2024-03-02T14:40:00.000Z' },
 ];
 
 const wishlistItems = [
   { userId: 1, bookId: 3, addedAt: '2024-03-10T08:35:00.000Z' },
-  { userId: 2, bookId: 1, addedAt: '2024-03-11T09:15:00.000Z' },
 ];
 
 const reviews = [
@@ -198,13 +198,6 @@ const reviews = [
 ];
 
 const friendships = [
-  {
-    requesterId: 1,
-    addresseeId: 2,
-    status: 'accepted',
-    requestedAt: '2024-02-01T09:00:00.000Z',
-    acceptedAt: '2024-02-02T10:00:00.000Z',
-  },
   {
     requesterId: 2,
     addresseeId: 3,
