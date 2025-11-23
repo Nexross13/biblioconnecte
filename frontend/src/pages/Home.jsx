@@ -25,6 +25,7 @@ import useAuth from '../hooks/useAuth'
 import formatDate from '../utils/formatDate'
 import formatBookTitle from '../utils/formatBookTitle'
 import { ASSETS_BOOKS_BASE_URL } from '../api/axios'
+import heroCommunityImage from '../assets/components/img/accueil-1.png'
 
 const statNumberFormatter = new Intl.NumberFormat('fr-FR')
 const formatStatValue = (value) =>
@@ -195,10 +196,10 @@ const Home = () => {
       </form>
     </header>
   ) : (
-    <header className="relative overflow-hidden rounded-3xl bg-slate-900 px-6 py-12 text-white shadow-2xl">
+    <header className="relative min-h-[300px] overflow-hidden rounded-3xl bg-slate-900 px-6 py-6 text-white shadow-2xl">
       <div className="absolute -left-10 top-10 h-48 w-48 rounded-full bg-primary/40 blur-3xl" />
       <div className="absolute -right-14 bottom-0 h-64 w-64 rounded-full bg-secondary/30 blur-3xl" />
-      <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative z-10 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-4 max-w-xl">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-widest text-white/80">
             <SparklesIcon className="h-4 w-4" aria-hidden="true" />
@@ -224,38 +225,13 @@ const Home = () => {
             </Link>
           </div>
         </div>
-        <div className="grid w-full max-w-sm gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
-          <p className="text-xs uppercase tracking-wide text-white/70">Une communauté active</p>
-          <div className="space-y-3">
-            {[
-              {
-                label: 'Lecteurs connectés',
-                value: formatStatValue(counts.members),
-              },
-              {
-                label: 'Livres partagés',
-                value: formatStatValue(counts.books),
-              },
-              {
-                label: 'Livres ajoutés ce mois-ci',
-                value: formatStatValue(activity.booksAddedLast30Days),
-              },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm text-white/70">{item.label}</span>
-                <span className="text-lg font-semibold text-white">
-                  {publicOverviewQuery.isLoading ? (
-                    <span className="block h-5 w-12 animate-pulse rounded bg-white/30" />
-                  ) : (
-                    item.value
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-white/60">
-            Des chiffres qui évoluent en temps réel grâce aux contributions de la communauté.
-          </p>
+        <div className="w-full max-w-sm">
+          <img
+            src={heroCommunityImage}
+            alt="Lectrice installée dans une bibliothèque chaleureuse"
+            className="w-full rounded-3xl shadow-2xl"
+            loading="lazy"
+          />
         </div>
       </div>
     </header>

@@ -1,13 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { GoogleLogin } from '@react-oauth/google'
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import useAuth from '../hooks/useAuth'
+import connexionIllustration from '../assets/components/img/connexion.png'
 
 const Login = () => {
   const { login, googleLogin, isAuthenticated, loginStatus, googleLoginStatus } = useAuth()
   const navigate = useNavigate()
   const isGoogleAuthEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -61,72 +64,109 @@ const Login = () => {
   }
 
   return (
-    <section className="mx-auto mt-10 max-w-md space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary">Connexion</h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
-          Connectez-vous pour accéder à votre bibliothèque personnalisée.
-        </p>
-      </div>
-      <form onSubmit={handleSubmit} className="card space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600 dark:text-slate-300" htmlFor="email">
-            Email ou login
-          </label>
-          <input
-            className="input"
-            id="email"
-            name="identifier"
-            type="text"
-            autoComplete="username"
-          />
-        </div>
-        <div className="space-y-2">
-          <label
+    <section className="mx-auto mt-10 max-w-6xl px-4">
+      <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="mx-auto w-full max-w-md space-y-6">
+          <div className="text-center lg:text-left">
+            <h1 className="text-3xl font-bold text-primary">Connexion</h1>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+              Connectez-vous pour accéder à votre bibliothèque personnalisée.
+            </p>
+          </div>
+          <form onSubmit={handleSubmit} className="card space-y-4">
+            <div className="space-y-2">
+              <label
+                className="text-sm font-medium text-slate-600 dark:text-slate-300"
+                htmlFor="email"
+              >
+                Email ou login
+              </label>
+              <input
+                className="input"
+                id="email"
+                name="identifier"
+                type="text"
+                autoComplete="username"
+              />
+            </div>
+            <div className="space-y-2">
+              <label
             className="text-sm font-medium text-slate-600 dark:text-slate-300"
             htmlFor="password"
           >
             Mot de passe
           </label>
-          <input className="input" id="password" name="password" type="password" />
+          <div className="relative">
+            <input
+              className="input pr-12"
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+            />
+            <button
+              type="button"
+              className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-primary focus:outline-none"
+              onClick={() => setShowPassword((value) => !value)}
+            >
+              {showPassword ? (
+                <EyeSlashIcon className="h-5 w-5" aria-hidden />
+              ) : (
+                <EyeIcon className="h-5 w-5" aria-hidden />
+              )}
+              <span className="sr-only">
+                {showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              </span>
+            </button>
+          </div>
         </div>
         <div className="text-right">
-          <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline">
-            Mot de passe oublié ?
-          </Link>
-        </div>
-        <button type="submit" className="btn w-full" disabled={loginStatus === 'pending'}>
-          {loginStatus === 'pending' ? 'Connexion...' : 'Se connecter'}
-        </button>
-      </form>
-      {isGoogleAuthEnabled && (
-        <>
-          <div className="flex items-center gap-4">
-            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-            <span className="text-xs font-medium uppercase tracking-widest text-slate-400">ou</span>
-            <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
-          </div>
-          <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              useOneTap
-              shape="pill"
-            />
-          </div>
-          {googleLoginStatus === 'pending' && (
-            <p className="text-center text-sm text-slate-500 dark:text-slate-300">
-              Vérification de votre compte Google…
-            </p>
+              <Link to="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                Mot de passe oublié ?
+              </Link>
+            </div>
+            <button type="submit" className="btn w-full" disabled={loginStatus === 'pending'}>
+              {loginStatus === 'pending' ? 'Connexion...' : 'Se connecter'}
+            </button>
+          </form>
+          {isGoogleAuthEnabled && (
+            <>
+              <div className="flex items-center gap-4">
+                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+                <span className="text-xs font-medium uppercase tracking-widest text-slate-400">
+                  ou
+                </span>
+                <span className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap
+                  shape="pill"
+                />
+              </div>
+              {googleLoginStatus === 'pending' && (
+                <p className="text-center text-sm text-slate-500 dark:text-slate-300">
+                  Vérification de votre compte Google…
+                </p>
+              )}
+            </>
           )}
-        </>
-      )}
-      <p className="text-center text-sm text-slate-500 dark:text-slate-300">
-        Pas encore de compte ?{' '}
-        <Link to="/register" className="font-semibold text-primary hover:underline">
-          Créer un compte
-        </Link>
-      </p>
+          <p className="text-center text-sm text-slate-500 dark:text-slate-300">
+            Pas encore de compte ?{' '}
+            <Link to="/register" className="font-semibold text-primary hover:underline">
+              Créer un compte
+            </Link>
+          </p>
+        </div>
+        <div className="flex justify-center">
+          <img
+            src={connexionIllustration}
+            alt="Illustration de connexion"
+            className="w-full max-w-sm object-contain"
+          />
+        </div>
+      </div>
     </section>
   )
 }
