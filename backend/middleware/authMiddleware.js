@@ -15,12 +15,14 @@ const attachRole = (user = {}) => {
   const isAdmin = role === 'admin';
   const isModerator = role === 'moderator' || isAdmin;
   const canBypassBookProposals = Boolean(user.canBypassBookProposals);
+  const canBypassAuthorProposals = Boolean(user.canBypassAuthorProposals);
   return {
     ...user,
     role,
     isAdmin,
     isModerator,
     canBypassBookProposals,
+    canBypassAuthorProposals,
   };
 };
 

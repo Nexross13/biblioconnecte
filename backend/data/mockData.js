@@ -23,6 +23,7 @@ const users = [
     email: 'alice@biblio.test',
     role: 'admin',
     canBypassBookProposals: false,
+    canBypassAuthorProposals: false,
     dateOfBirth: '1990-03-12',
     createdAt: '2024-01-10T08:00:00.000Z',
   },
@@ -34,6 +35,7 @@ const users = [
     email: 'benoit@biblio.test',
     role: 'moderator',
     canBypassBookProposals: false,
+    canBypassAuthorProposals: false,
     dateOfBirth: '1988-07-22',
     createdAt: '2024-01-12T10:15:00.000Z',
   },
@@ -45,6 +47,7 @@ const users = [
     email: 'claire@biblio.test',
     role: 'user',
     canBypassBookProposals: false,
+    canBypassAuthorProposals: false,
     dateOfBirth: '1992-11-03',
     createdAt: '2024-02-01T09:05:00.000Z',
   },
@@ -335,12 +338,14 @@ const setUserRole = (id, role) => {
   return clone(users[index]);
 };
 
-const setUserBypassPermission = (id, canBypass) => {
+const setUserBypassPermission = (id, canBypass, key = 'canBypassBookProposals') => {
   const index = users.findIndex((user) => user.id === Number(id));
   if (index === -1) {
     return null;
   }
-  users[index].canBypassBookProposals = Boolean(canBypass);
+  const allowedKeys = ['canBypassBookProposals', 'canBypassAuthorProposals'];
+  const targetKey = allowedKeys.includes(key) ? key : 'canBypassBookProposals';
+  users[index][targetKey] = Boolean(canBypass);
   return clone(users[index]);
 };
 

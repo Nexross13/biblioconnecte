@@ -12,6 +12,7 @@ const assert = require('node:assert/strict');
 const authController = require('../controllers/authController');
 const bookController = require('../controllers/bookController');
 const bookProposalController = require('../controllers/bookProposalController');
+const authorProposalController = require('../controllers/authorProposalController');
 const authorController = require('../controllers/authorController');
 const genreController = require('../controllers/genreController');
 const userController = require('../controllers/userController');
@@ -24,7 +25,7 @@ const createMockReq = (overrides = {}) => ({
   query: {},
   params: {},
   body: {},
-  user: { id: 1, canBypassBookProposals: false },
+  user: { id: 1, canBypassBookProposals: false, canBypassAuthorProposals: false },
   ...overrides,
 });
 
@@ -502,6 +503,34 @@ test('bookController.deleteBook renvoie 204 en mode mock', async () => {
   assert.equal(res.statusCode, 204);
 });
 
+/* Author proposal controller */
+
+test('authorProposalController.createProposal soumet une proposition', async () => {
+  const res = await callController(authorProposalController.createProposal, {
+    user: { id: 3 },
+    body: { firstName: 'Isaac', lastName: 'Asimov' },
+  });
+
+  assert.equal(res.statusCode, 202);
+  assert.equal(res.body.proposal.status, 'pending');
+  assert.equal(res.body.proposal.firstName, 'Isaac');
+  assert.equal(res.body.proposal.submittedBy.id, 3);
+});
+
+test('authorProposalController.createProposal valide directement avec la dérogation', async () => {
+  const res = await callController(authorProposalController.createProposal, {
+    user: { id: 3, canBypassAuthorProposals: true },
+    body: { firstName: 'Octavia', lastName: 'Butler', biography: 'Iconic author' },
+  });
+
+  assert.equal(res.statusCode, 201);
+  assert.equal(res.body.proposal.status, 'approved');
+  assert.equal(res.body.proposal.submittedBy.id, 3);
+  assert.equal(res.body.proposal.decidedBy.id, 3);
+  assert.ok(res.body.author);
+  assert.equal(res.body.author.firstName, 'Octavia');
+});
+
 /* Author controller */
 
 test('authorController.listAuthors renvoie la liste mock', async () => {
@@ -841,6 +870,37 @@ test('userController.setBookProposalDerogation met à jour la dérogation', asyn
     params: { id: 3 },
     user: { id: 1, isAdmin: true },
     body: { canBypassBookProposals: false },
+  });
+});
+
+test('userController.setAuthorProposalDerogation refuse un non-admin', async () => {
+  await expectReject(
+    () =>
+      callController(userController.setAuthorProposalDerogation, {
+        params: { id: 2 },
+        user: { id: 2 },
+        body: { canBypassAuthorProposals: true },
+      }),
+    (err) => {
+      assert.equal(err.status, 403);
+      assert.equal(err.message, 'Administrator privileges required');
+      return true;
+    },
+  );
+});
+
+test('userController.setAuthorProposalDerogation met à jour la dérogation', async () => {
+  const res = await callController(userController.setAuthorProposalDerogation, {
+    params: { id: 2 },
+    user: { id: 1, isAdmin: true },
+    body: { canBypassAuthorProposals: true },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.user.canBypassAuthorProposals, true);
+  await callController(userController.setAuthorProposalDerogation, {
+    params: { id: 2 },
+    user: { id: 1, isAdmin: true },
+    body: { canBypassAuthorProposals: false },
   });
 });
 

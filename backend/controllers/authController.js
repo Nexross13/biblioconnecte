@@ -96,6 +96,7 @@ const createToken = (user) => {
     firstName: user.firstName,
     lastName: user.lastName,
     canBypassBookProposals: Boolean(user.canBypassBookProposals),
+    canBypassAuthorProposals: Boolean(user.canBypassAuthorProposals),
     role,
   };
 
@@ -176,6 +177,8 @@ const register = async (req, res, next) => {
           lastName,
           email: emailInput,
           role,
+          canBypassBookProposals: false,
+          canBypassAuthorProposals: false,
           dateOfBirth,
           createdAt: new Date().toISOString(),
         },
@@ -280,6 +283,7 @@ const login = async (req, res, next) => {
         id: user.id,
         login: user.login,
         firstName: user.firstName,
+        canBypassAuthorProposals: Boolean(user.canBypassAuthorProposals),
         canBypassBookProposals: Boolean(user.canBypassBookProposals),
         lastName: user.lastName,
         email: user.email,
@@ -406,6 +410,7 @@ const loginWithGoogle = async (req, res, next) => {
       createdAt: new Date().toISOString(),
       role: 'user',
       canBypassBookProposals: false,
+      canBypassAuthorProposals: false,
     };
     const baseUser = existing || fallbackUser;
     const role = resolveUserRole(baseUser);
@@ -417,6 +422,7 @@ const loginWithGoogle = async (req, res, next) => {
         ...baseUser,
         role,
         canBypassBookProposals: Boolean(baseUser.canBypassBookProposals),
+        canBypassAuthorProposals: Boolean(baseUser.canBypassAuthorProposals),
       },
     });
     }
@@ -464,6 +470,8 @@ const loginWithGoogle = async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        canBypassBookProposals: Boolean(user.canBypassBookProposals),
+        canBypassAuthorProposals: Boolean(user.canBypassAuthorProposals),
         role,
         dateOfBirth: user.dateOfBirth,
         createdAt: user.createdAt,

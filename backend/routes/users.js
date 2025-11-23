@@ -70,6 +70,12 @@ const profileImageUpload = multer({
 router.get('/', authenticate, userController.listUsers);
 router.patch('/:id/role', authenticate, requireAdmin, userController.updateUserRole);
 router.patch('/:id/derogation', authenticate, requireAdmin, userController.setBookProposalDerogation);
+router.patch(
+  '/:id/author-derogation',
+  authenticate,
+  requireAdmin,
+  userController.setAuthorProposalDerogation,
+);
 router.get('/:id/friends/requests', authenticate, userController.listFriendRequests);
 router.post('/:id/friends/:friendId/reject', authenticate, userController.rejectFriend);
 router.get('/:id/library', authenticate, userController.getUserLibrary);

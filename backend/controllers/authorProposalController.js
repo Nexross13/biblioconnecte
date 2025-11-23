@@ -1,4 +1,5 @@
 const authorProposalModel = require('../models/authorProposalModel');
+const userModel = require('../models/userModel');
 const {
   getAuthorProposals: getMockAuthorProposals,
   getAuthorProposalById: getMockAuthorProposalById,
@@ -51,7 +52,7 @@ const mapMockProposal = (proposal) => {
     submittedAt: proposal.submittedAt,
     decidedAt: proposal.decidedAt || null,
     rejectionReason: proposal.rejectionReason || null,
-    submittedBy: mapMockUser(submittedUser),
+    submittedBy: mapMockUser(submittedUser) || (proposal.submittedBy ? { id: Number(proposal.submittedBy) } : null),
     decidedBy: mapMockUser(decidedUser),
   };
 };
@@ -83,6 +84,13 @@ const createProposal = async (req, res, next) => {
     }
 
     const useMocks = process.env.USE_MOCKS === 'true';
+    let runtimeCanBypass = Boolean(req.user?.canBypassAuthorProposals);
+
+    if (!useMocks) {
+      const loadedUser = await userModel.findById(userId);
+      runtimeCanBypass = Boolean(loadedUser?.canBypassAuthorProposals);
+      req.user.canBypassAuthorProposals = runtimeCanBypass;
+    }
 
     if (useMocks) {
       const proposal = createMockAuthorProposal({
@@ -91,6 +99,14 @@ const createProposal = async (req, res, next) => {
         biography: biography ? String(biography).trim() : '',
         submittedBy: userId,
       });
+      if (runtimeCanBypass) {
+        const decision = approveMockAuthorProposal({ id: proposal.id, decidedBy: userId });
+        return res.status(201).json({
+          message: 'Auteur validé automatiquement et ajouté au catalogue',
+          proposal: mapMockProposal(decision.proposal),
+          author: mapMockAuthor(decision.author),
+        });
+      }
       return res.status(202).json({
         message: 'Auteur envoyé pour validation par un administrateur',
         proposal: mapMockProposal(proposal),
@@ -103,6 +119,17 @@ const createProposal = async (req, res, next) => {
       biography: biography ? String(biography).trim() : null,
       submittedBy: userId,
     });
+
+    if (runtimeCanBypass) {
+      const decision = await authorProposalModel.approveProposal(proposal.id, {
+        decidedBy: userId,
+      });
+      return res.status(201).json({
+        message: 'Auteur validé automatiquement et ajouté au catalogue',
+        proposal: decision.proposal,
+        author: decision.author,
+      });
+    }
 
     res.status(202).json({
       message: 'Auteur envoyé pour validation par un administrateur',

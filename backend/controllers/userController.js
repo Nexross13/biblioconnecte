@@ -191,6 +191,57 @@ const updateBookProposalDerogation = async (req, res, next) => {
   }
 };
 
+const updateAuthorProposalDerogation = async (req, res, next) => {
+  try {
+    if (!req.user?.isAdmin) {
+      const err = new Error('Administrator privileges required');
+      err.status = 403;
+      throw err;
+    }
+
+    const targetId = Number(req.params.id);
+    if (!Number.isInteger(targetId)) {
+      const err = new Error('Invalid user identifier');
+      err.status = 400;
+      throw err;
+    }
+
+    const normalizedValue = normalizeBooleanInput(
+      req.body?.canBypassAuthorProposals ?? req.body?.enabled,
+    );
+    if (normalizedValue === null) {
+      const err = new Error('Invalid boolean value for canBypassAuthorProposals');
+      err.status = 400;
+      throw err;
+    }
+
+    if (process.env.USE_MOCKS === 'true') {
+      const updated = setMockUserBypassPermission(
+        targetId,
+        normalizedValue,
+        'canBypassAuthorProposals',
+      );
+      if (!updated) {
+        const err = new Error('User not found');
+        err.status = 404;
+        throw err;
+      }
+      return res.json({ user: updated });
+    }
+
+    const updated = await userModel.setAuthorProposalDerogation(targetId, normalizedValue);
+    if (!updated) {
+      const err = new Error('User not found');
+      err.status = 404;
+      throw err;
+    }
+
+    res.json({ user: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const listFriends = async (req, res, next) => {
   try {
     const userId = Number(req.params.id);
@@ -590,6 +641,7 @@ module.exports = {
   listFriendRequests,
   updateUserRole,
   setBookProposalDerogation: updateBookProposalDerogation,
+  setAuthorProposalDerogation: updateAuthorProposalDerogation,
   requestFriend,
   acceptFriend,
   removeFriend,
