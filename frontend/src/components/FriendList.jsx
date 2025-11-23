@@ -7,6 +7,7 @@ import { deleteFriend } from '../api/users'
 import useAuth from '../hooks/useAuth'
 import Loader from './Loader.jsx'
 import { ASSETS_PROFILE_BASE_URL } from '../api/axios'
+import emptyFriendsIllustration from '../assets/components/img/ami.png'
 
 const FriendList = ({ friends = [], isLoading = false, onViewLibrary }) => {
   const { user } = useAuth()
@@ -32,8 +33,22 @@ const FriendList = ({ friends = [], isLoading = false, onViewLibrary }) => {
 
   if (!friends.length) {
     return (
-      <div className="card text-center text-sm text-slate-500 dark:text-slate-300">
-        Vous n&apos;avez pas encore d&apos;amis. Invitez vos proches pour partager vos lectures.
+      <div className="flex items-center justify-center gap-6 text-slate-600 dark:text-slate-200 sm:gap-8">
+        <div className="max-w-xl space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">
+            Pas encore d&apos;amis
+          </p>
+          <p className="text-lg font-semibold text-primary">Invitez vos proches pour partager vos lectures.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Envoyez vos premières invitations pour découvrir leurs bibliothèques, échanger vos coups de cœur et ne
+            jamais manquer une nouvelle sortie.
+          </p>
+        </div>
+        <img
+          src={emptyFriendsIllustration}
+          alt="Illustration aucun ami"
+          className="w-44 shrink-0 sm:w-56 md:w-64"
+        />
       </div>
     )
   }

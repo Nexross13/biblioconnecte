@@ -19,6 +19,7 @@ import {
 } from '../utils/bookSorting'
 import SortDropdown from '../components/SortDropdown.jsx'
 import { buildSearchQuery, matchesSearchQuery } from '../utils/search-utils'
+import emptyLibraryIllustration from '../assets/components/img/bilbio-vide.png'
 
 const FILTERS = [
   { id: 'all', label: 'Tout' },
@@ -227,6 +228,9 @@ const Library = () => {
     return copy
   }, [filteredBooks, sortOption])
 
+  const hasAnyBook = combinedBooks.length > 0
+  const isSearchActive = searchTerm.trim().length > 0
+
   if (libraryQuery.isLoading || wishlistQuery.isLoading) {
     return <Loader label="Chargement de votre bibliothèque..." />
   }
@@ -395,11 +399,29 @@ const Library = () => {
       </div>
 
       {sortedBooks.length === 0 ? (
-        <div className="card text-center text-sm text-slate-500 dark:text-slate-300">
-          {searchTerm.trim().length
-            ? "Aucun livre ne correspond à votre recherche. Essayez un autre mot-clé ou changez de filtre."
-            : emptyMessages[activeFilter]}
-        </div>
+        !hasAnyBook ? (
+          <div className="flex items-center justify-center gap-6 text-slate-600 dark:text-slate-200 sm:gap-8">
+            <div className="max-w-xl space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary/80">Bibliothèque vide</p>
+              <p className="text-lg font-semibold text-primary">
+                {emptyMessages[activeFilter] || "Aucun livre dans votre bibliothèque pour le moment."}
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Ajoutez vos premiers ouvrages depuis le catalogue pour suivre vos lectures, planifier vos envies et
+                partager vos découvertes avec vos amis.
+              </p>
+            </div>
+            <img
+              src={emptyLibraryIllustration}
+              alt="Illustration de bibliothèque vide"
+              className="w-44 shrink-0 sm:w-56 md:w-64"
+            />
+          </div>
+        ) : (
+          <div className="card text-center text-sm text-slate-500 dark:text-slate-300">
+            Aucun livre ne correspond à votre recherche. Essayez un autre mot-clé ou changez de filtre.
+          </div>
+        )
       ) : viewMode === 'cards' ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {sortedBooks.map(({ book, inLibrary, inWishlist }) => (
