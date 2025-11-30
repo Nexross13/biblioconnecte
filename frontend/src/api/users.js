@@ -52,6 +52,11 @@ export const fetchFriendRequests = async (userId) => {
   return data.requests
 }
 
+export const fetchOutgoingFriendRequests = async (userId) => {
+  const { data } = await apiClient.get(`/users/${userId}/friends/outgoing`)
+  return data.requests
+}
+
 export const rejectFriendRequest = async ({ userId, friendId }) => {
   await apiClient.post(`/users/${userId}/friends/${friendId}/reject`)
 }
