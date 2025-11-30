@@ -1,5 +1,86 @@
 const { pool, query } = require('../config/db');
 
+const ACCENT_MAP = [
+  ['à', 'a'],
+  ['á', 'a'],
+  ['â', 'a'],
+  ['ä', 'a'],
+  ['ã', 'a'],
+  ['å', 'a'],
+  ['ç', 'c'],
+  ['è', 'e'],
+  ['é', 'e'],
+  ['ê', 'e'],
+  ['ë', 'e'],
+  ['ì', 'i'],
+  ['í', 'i'],
+  ['î', 'i'],
+  ['ï', 'i'],
+  ['ñ', 'n'],
+  ['ò', 'o'],
+  ['ó', 'o'],
+  ['ô', 'o'],
+  ['ö', 'o'],
+  ['õ', 'o'],
+  ['ù', 'u'],
+  ['ú', 'u'],
+  ['û', 'u'],
+  ['ü', 'u'],
+  ['ý', 'y'],
+  ['ÿ', 'y'],
+  ['À', 'a'],
+  ['Á', 'a'],
+  ['Â', 'a'],
+  ['Ä', 'a'],
+  ['Ã', 'a'],
+  ['Å', 'a'],
+  ['Ç', 'c'],
+  ['È', 'e'],
+  ['É', 'e'],
+  ['Ê', 'e'],
+  ['Ë', 'e'],
+  ['Ì', 'i'],
+  ['Í', 'i'],
+  ['Î', 'i'],
+  ['Ï', 'i'],
+  ['Ñ', 'n'],
+  ['Ò', 'o'],
+  ['Ó', 'o'],
+  ['Ô', 'o'],
+  ['Ö', 'o'],
+  ['Õ', 'o'],
+  ['Ù', 'u'],
+  ['Ú', 'u'],
+  ['Û', 'u'],
+  ['Ü', 'u'],
+  ['Ý', 'y'],
+  ['Ÿ', 'y'],
+  ['’', "'"],
+  ['‘', "'"],
+  ['`', "'"],
+  ['´', "'"],
+];
+const BASE_ACCENT_FROM = ACCENT_MAP.map(([source]) => source).join('');
+const ACCENT_TO = ACCENT_MAP.map(([, target]) => target).join('');
+const COMBINING_MARKS = Array.from({ length: 0x36f - 0x300 + 1 }, (_, index) =>
+  String.fromCharCode(0x0300 + index),
+).join('');
+const ACCENT_FROM = `${BASE_ACCENT_FROM}${COMBINING_MARKS}`;
+const ACCENT_TO_SQL = ACCENT_TO.replace(/'/g, "''");
+
+const normalizeTextInput = (value = '') =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘`´]/g, "'")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const normalizeNameColumn = (column) =>
+  `TRIM(BOTH ' ' FROM REGEXP_REPLACE(REGEXP_REPLACE(LOWER(TRANSLATE(${column}, '${ACCENT_FROM}', '${ACCENT_TO_SQL}')), '[^a-z0-9]+', ' ', 'g'), '\\s+', ' ', 'g'))`;
+
 const mapUser = (id, firstName, lastName, email) =>
   id
     ? {
@@ -118,6 +199,35 @@ const listProposals = async ({ status, limit, offset }) => {
   return result.rows.map(mapProposal);
 };
 
+const findExistingMatch = async ({ firstName, lastName }) => {
+  const normalizedFirst = normalizeTextInput(firstName);
+  const normalizedLast = normalizeTextInput(lastName);
+
+  const authorResult = await query(
+    `SELECT id, first_name, last_name
+     FROM authors
+     WHERE ${normalizeNameColumn('first_name')} = $1
+       AND ${normalizeNameColumn('last_name')} = $2
+     LIMIT 1`,
+    [normalizedFirst, normalizedLast],
+  );
+
+  const proposalResult = await query(
+    `SELECT id, first_name, last_name, status
+     FROM author_proposals
+     WHERE status IN ('pending', 'approved')
+       AND ${normalizeNameColumn('first_name')} = $1
+       AND ${normalizeNameColumn('last_name')} = $2
+     LIMIT 1`,
+    [normalizedFirst, normalizedLast],
+  );
+
+  return {
+    author: authorResult.rows[0] || null,
+    proposal: proposalResult.rows[0] || null,
+  };
+};
+
 const approveProposal = async (id, { decidedBy }) => {
   const client = await pool.connect();
   try {
@@ -220,6 +330,7 @@ module.exports = {
   createProposal,
   listProposals,
   findById,
+  findExistingMatch,
   approveProposal,
   rejectProposal,
 };
