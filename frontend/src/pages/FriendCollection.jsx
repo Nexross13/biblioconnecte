@@ -12,7 +12,12 @@ import { readCookie, writeCookie } from '../utils/cookies'
 import formatBookTitle from '../utils/formatBookTitle'
 import formatBookAuthors from '../utils/formatBookAuthors'
 import { LIBRARY_VIEW_COOKIE, LIBRARY_VIEW_MODES } from '../constants/libraryView'
-import { LIBRARY_SORT_OPTIONS, DEFAULT_LIBRARY_SORT } from '../constants/librarySort'
+import {
+  DEFAULT_LIBRARY_SORT,
+  LIBRARY_SORT_COOKIE,
+  LIBRARY_SORT_OPTIONS,
+  normalizeLibrarySort,
+} from '../constants/librarySort'
 import {
   compareBooksBySeriesAndVolume,
   getBookAddedTimestamp,
@@ -34,7 +39,9 @@ const FriendCollection = () => {
   const initialFilter = location.state?.initialFilter ?? 'all'
   const [filter, setFilter] = useState(initialFilter)
   const [searchTerm, setSearchTerm] = useState('')
-  const [sortOption, setSortOption] = useState(DEFAULT_LIBRARY_SORT)
+  const [sortOption, setSortOption] = useState(() =>
+    normalizeLibrarySort(readCookie(LIBRARY_SORT_COOKIE)),
+  )
   const [viewMode, setViewMode] = useState(() => {
     const stored = readCookie(LIBRARY_VIEW_COOKIE)
     return stored === 'list' ? 'list' : 'cards'
@@ -49,6 +56,13 @@ const FriendCollection = () => {
       sameSite: 'Strict',
     })
   }, [viewMode])
+
+  useEffect(() => {
+    writeCookie(LIBRARY_SORT_COOKIE, sortOption, {
+      maxAgeSeconds: 60 * 60 * 24 * 365,
+      sameSite: 'Strict',
+    })
+  }, [sortOption])
 
   const friendQuery = useQuery({
     queryKey: ['friend', friendId],
