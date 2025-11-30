@@ -458,6 +458,45 @@ const listFriendRequests = async (req, res, next) => {
   }
 };
 
+const listOutgoingFriendRequests = async (req, res, next) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId)) {
+      const err = new Error('Invalid user identifier');
+      err.status = 400;
+      throw err;
+    }
+
+    ensureSelfAction(req, userId);
+
+    if (process.env.USE_MOCKS === 'true') {
+      const { getFriendships, getUserById } = require('../data/mockData');
+      const outgoing = getFriendships()
+        .filter((friendship) => friendship.status === 'pending' && friendship.requesterId === userId)
+        .map((friendship) => {
+          const addressee = getUserById(friendship.addresseeId);
+          return addressee
+            ? {
+                addresseeId: addressee.id,
+                login: addressee.login,
+                firstName: addressee.firstName,
+                lastName: addressee.lastName,
+                email: addressee.email,
+                requestedAt: friendship.requestedAt,
+              }
+            : null;
+        })
+        .filter(Boolean);
+      return res.json({ requests: outgoing });
+    }
+
+    const requests = await friendshipModel.listOutgoingRequests(userId);
+    res.json({ requests });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const ensureFriendshipOrSelf = async (authUserId, targetUserId) => {
   if (Number(authUserId) === Number(targetUserId)) {
     return true;
@@ -639,6 +678,7 @@ module.exports = {
   getUserById,
   listFriends,
   listFriendRequests,
+  listOutgoingFriendRequests,
   updateUserRole,
   setBookProposalDerogation: updateBookProposalDerogation,
   setAuthorProposalDerogation: updateAuthorProposalDerogation,

@@ -76,6 +76,7 @@ router.patch(
   requireAdmin,
   userController.setAuthorProposalDerogation,
 );
+router.get('/:id/friends/outgoing', authenticate, userController.listOutgoingFriendRequests);
 router.get('/:id/friends/requests', authenticate, userController.listFriendRequests);
 router.post('/:id/friends/:friendId/reject', authenticate, userController.rejectFriend);
 router.get('/:id/library', authenticate, userController.getUserLibrary);
