@@ -10,6 +10,7 @@ import {
   fetchFriends,
   fetchFriendRequests,
   fetchUsers,
+  fetchOutgoingFriendRequests,
   requestFriend,
   acceptFriend,
   rejectFriendRequest,
@@ -33,40 +34,39 @@ const Friends = () => {
     queryFn: () => fetchFriendRequests(user.id),
   })
 
+  const outgoingRequestsQuery = useQuery({
+    queryKey: ['outgoingFriendRequests', user.id],
+    queryFn: () => fetchOutgoingFriendRequests(user.id),
+  })
+
   const usersQuery = useQuery({
     queryKey: ['users'],
     queryFn: fetchUsers,
   })
 
-  const [pendingTargets, setPendingTargets] = useState(() => new Set())
   const [activeTarget, setActiveTarget] = useState(null)
 
   const sendRequestMutation = useMutation({
     mutationFn: (targetId) => requestFriend(targetId),
     onMutate: (targetId) => {
       setActiveTarget(targetId)
-      setPendingTargets((prev) => {
-        const next = new Set(prev)
-        next.add(targetId)
-        return next
-      })
     },
     onSuccess: (_, targetId) => {
       toast.success('Demande envoyée')
       queryClient.invalidateQueries({ queryKey: ['friendRequests', user.id] })
-      setPendingTargets((prev) => {
-        const next = new Set(prev)
-        next.add(targetId)
-        return next
+      queryClient.setQueryData(['outgoingFriendRequests', user.id], (previous = []) => {
+        if (previous.some((request) => request.addresseeId === targetId)) {
+          return previous
+        }
+        return [
+          { addresseeId: targetId, requestedAt: new Date().toISOString() },
+          ...previous,
+        ]
       })
+      queryClient.invalidateQueries({ queryKey: ['outgoingFriendRequests', user.id] })
     },
-    onError: (_, targetId) => {
+    onError: () => {
       toast.error("Impossible d'envoyer la demande")
-      setPendingTargets((prev) => {
-        const next = new Set(prev)
-        next.delete(targetId)
-        return next
-      })
     },
     onSettled: () => {
       setActiveTarget(null)
@@ -91,6 +91,16 @@ const Friends = () => {
     },
     onError: () => toast.error('Impossible de refuser la demande'),
   })
+
+  const pendingOutgoingTargets = useMemo(
+    () => new Set((outgoingRequestsQuery.data || []).map((request) => request.addresseeId)),
+    [outgoingRequestsQuery.data],
+  )
+
+  const incomingRequesters = useMemo(
+    () => new Set((friendRequestsQuery.data || []).map((request) => request.requesterId)),
+    [friendRequestsQuery.data],
+  )
 
   const friendsIds = useMemo(
     () => new Set((friendsQuery.data || []).map((friend) => friend.id)),
@@ -138,8 +148,11 @@ const Friends = () => {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredCandidates.map((candidate) => {
                 const alreadyFriend = friendsIds.has(candidate.id)
-                const pending = pendingTargets.has(candidate.id)
                 const isActive = activeTarget === candidate.id && sendRequestMutation.isPending
+                const pending =
+                  pendingOutgoingTargets.has(candidate.id) ||
+                  incomingRequesters.has(candidate.id) ||
+                  isActive
                 const candidateLabel = alreadyFriend
                   ? `${candidate.firstName} est déjà votre ami`
                   : pending

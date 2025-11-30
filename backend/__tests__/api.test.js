@@ -722,6 +722,31 @@ test('userController.listFriends renvoie la liste mock', async () => {
   assert.ok(Array.isArray(res.body.friends));
 });
 
+test('userController.listOutgoingFriendRequests rejette les accès tiers', async () => {
+  await expectReject(
+    () =>
+      callController(userController.listOutgoingFriendRequests, {
+        params: { id: 2 },
+        user: { id: 1 },
+      }),
+    (err) => {
+      assert.equal(err.status, 403);
+      assert.equal(err.message, 'You are not allowed to perform this action');
+      return true;
+    },
+  );
+});
+
+test('userController.listOutgoingFriendRequests renvoie les demandes envoyées mock', async () => {
+  const res = await callController(userController.listOutgoingFriendRequests, {
+    params: { id: 2 },
+    user: { id: 2 },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.ok(Array.isArray(res.body.requests));
+  assert.equal(res.body.requests[0].addresseeId, 3);
+});
+
 test('userController.requestFriend refuse les identifiants invalides', async () => {
   await expectReject(
     () =>

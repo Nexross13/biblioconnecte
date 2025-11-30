@@ -41,6 +41,26 @@ const listIncomingRequests = async (userId) => {
   }));
 };
 
+const listOutgoingRequests = async (userId) => {
+  const result = await query(
+    `SELECT u.id, u.login, u.first_name, u.last_name, u.email, f.requested_at
+     FROM friendships f
+     JOIN users u ON u.id = f.addressee_id
+     WHERE f.requester_id = $1 AND f.status = 'pending'
+     ORDER BY f.requested_at DESC`,
+    [userId],
+  );
+
+  return result.rows.map((row) => ({
+    addresseeId: row.id,
+    login: row.login,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    requestedAt: row.requested_at,
+  }));
+};
+
 const isAcceptedFriend = async ({ userId, friendId }) => {
   const result = await query(
     `SELECT 1
@@ -90,6 +110,7 @@ const removeFriendship = async ({ userId, friendId }) => {
 module.exports = {
   listFriends,
   listIncomingRequests,
+  listOutgoingRequests,
   createFriendRequest,
   acceptFriendRequest,
   removeFriendship,
