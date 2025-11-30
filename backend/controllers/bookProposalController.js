@@ -11,6 +11,7 @@ const {
   rejectBookProposal: rejectMockBookProposal,
   updateBookProposal: updateMockBookProposal,
   getUserById: getMockUserById,
+  getBooks: getMockBooks,
 } = require('../data/mockData');
 const userModel = require('../models/userModel');
 const { PRIMARY_FRONTEND_ORIGIN } = require('../config/frontend');
@@ -24,6 +25,82 @@ const MIME_EXTENSION_MAP = {
   'image/jpg': '.jpg',
   'image/png': '.png',
   'image/webp': '.webp',
+};
+
+const normalizeTextInput = (value = '') =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘`´]/g, "'")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const normalizeIsbnInput = (value = '') =>
+  String(value)
+    .replace(/[^0-9a-z]/gi, '')
+    .toLowerCase();
+
+const normalizeVolumeInput = (value) =>
+  value === undefined || value === null ? '' : String(value).trim().toLowerCase();
+
+const findMockBookConflict = ({ title, isbn, volume }) => {
+  const normalizedTitle = normalizeTextInput(title);
+  const normalizedIsbn = normalizeIsbnInput(isbn);
+  const normalizedVolume = normalizeVolumeInput(volume);
+
+  const existingBook = getMockBooks().find((book) => {
+    if (!book) {
+      return false;
+    }
+    const bookIsbn = normalizeIsbnInput(book.isbn);
+    if (normalizedIsbn && bookIsbn && bookIsbn === normalizedIsbn) {
+      return true;
+    }
+    const bookTitle = normalizeTextInput(book.title);
+    if (normalizedTitle && bookTitle === normalizedTitle) {
+      const bookVolume = normalizeVolumeInput(book.volume);
+      if (!normalizedVolume || bookVolume === normalizedVolume) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  if (existingBook) {
+    return { book: { title: existingBook.title } };
+  }
+
+  const proposals = getMockBookProposals({});
+  const existingProposal = proposals.find((proposal) => {
+    if (!proposal || proposal.status === 'rejected') {
+      return false;
+    }
+    const proposalIsbn = normalizeIsbnInput(proposal.isbn);
+    if (normalizedIsbn && proposalIsbn && proposalIsbn === normalizedIsbn) {
+      return true;
+    }
+    const proposalTitle = normalizeTextInput(proposal.title);
+    if (normalizedTitle && proposalTitle === normalizedTitle) {
+      const proposalVolume = normalizeVolumeInput(proposal.volume);
+      if (!normalizedVolume || proposalVolume === normalizedVolume) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  if (existingProposal) {
+    return {
+      proposal: {
+        title: existingProposal.title,
+        status: existingProposal.status,
+      },
+    };
+  }
+
+  return null;
 };
 
 const normalizeStringArray = (value) => {
@@ -237,7 +314,8 @@ const createProposal = async (req, res, next) => {
   try {
     const { title, isbn, edition, volume, volumeTitle, summary, releaseDate: rawReleaseDate } =
       req.body;
-    if (!title) {
+    const sanitizedTitle = typeof title === 'string' ? title.trim() : '';
+    if (!sanitizedTitle.length) {
       const err = new Error('Title is required');
       err.status = 400;
       throw err;
@@ -254,11 +332,14 @@ const createProposal = async (req, res, next) => {
       throw err;
     }
 
+    const useMocks = process.env.USE_MOCKS === 'true';
     const releaseDate = normalizeReleaseDateInput(rawReleaseDate);
     const normalizedVolumeTitle = normalizeVolumeTitle(volumeTitle);
+    const normalizedIsbn = typeof isbn === 'string' ? isbn.trim() : isbn;
+    const normalizedVolume = normalizeOptionalString(volume);
 
     let runtimeCanBypass = Boolean(req.user?.canBypassBookProposals);
-    if (process.env.USE_MOCKS !== 'true') {
+    if (!useMocks) {
       const loadedUser = await userModel.findById(submittedBy);
       runtimeCanBypass = Boolean(loadedUser?.canBypassBookProposals);
       req.user.canBypassBookProposals = runtimeCanBypass;
@@ -266,9 +347,40 @@ const createProposal = async (req, res, next) => {
 
     const authorNames = normalizeStringArray(req.body.authorNames || req.body.authors);
     const genreNames = normalizeStringArray(req.body.genreNames || req.body.genres);
+    const conflict = useMocks
+      ? findMockBookConflict({
+          title: sanitizedTitle,
+          isbn: normalizedIsbn,
+          volume: normalizedVolume,
+        })
+      : await bookProposalModel.findExistingMatch({
+          title: sanitizedTitle,
+          isbn: normalizedIsbn,
+        });
+    if (conflict?.book) {
+      const err = new Error(
+        `Ce livre existe déjà dans le catalogue${conflict.book.title ? ` (${conflict.book.title})` : ''}`,
+      );
+      err.status = 409;
+      throw err;
+    }
+    if (conflict?.proposal) {
+      const statusLabel =
+        conflict.proposal.status === 'approved'
+          ? 'déjà validée'
+          : conflict.proposal.status === 'pending'
+          ? 'déjà en cours de validation'
+          : 'déjà soumise';
+      const err = new Error(
+        `Une proposition ${statusLabel} existe déjà${conflict.proposal.title ? ` pour "${conflict.proposal.title}"` : ''}`,
+      );
+      err.status = 409;
+      throw err;
+    }
+
     const coverImageBase64 = typeof req.body.coverImage === 'string' ? req.body.coverImage : null;
     let savedCoverPath = null;
-    if (process.env.USE_MOCKS !== 'true') {
+    if (!useMocks) {
       try {
         if (coverImageBase64) {
           savedCoverPath = await saveCoverImage(coverImageBase64);
@@ -279,12 +391,12 @@ const createProposal = async (req, res, next) => {
       }
     }
 
-    if (process.env.USE_MOCKS === 'true') {
+    if (useMocks) {
       const proposal = createMockBookProposal({
-        title,
-        isbn,
+        title: sanitizedTitle,
+        isbn: normalizedIsbn,
         edition,
-        volume,
+        volume: normalizedVolume,
         volumeTitle: normalizedVolumeTitle,
         summary,
         releaseDate,
@@ -311,10 +423,10 @@ const createProposal = async (req, res, next) => {
 
     try {
       const proposal = await bookProposalModel.createProposal({
-        title,
-        isbn,
+        title: sanitizedTitle,
+        isbn: normalizedIsbn,
         edition,
-        volume,
+        volume: normalizedVolume,
         volumeTitle: normalizedVolumeTitle,
         summary,
         publicationDate: releaseDate,

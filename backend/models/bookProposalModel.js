@@ -3,6 +3,73 @@ const path = require('path');
 const { pool, query } = require('../config/db');
 
 const fsPromises = fs.promises;
+const ACCENT_MAP = [
+  ['à', 'a'],
+  ['á', 'a'],
+  ['â', 'a'],
+  ['ä', 'a'],
+  ['ã', 'a'],
+  ['å', 'a'],
+  ['ç', 'c'],
+  ['è', 'e'],
+  ['é', 'e'],
+  ['ê', 'e'],
+  ['ë', 'e'],
+  ['ì', 'i'],
+  ['í', 'i'],
+  ['î', 'i'],
+  ['ï', 'i'],
+  ['ñ', 'n'],
+  ['ò', 'o'],
+  ['ó', 'o'],
+  ['ô', 'o'],
+  ['ö', 'o'],
+  ['õ', 'o'],
+  ['ù', 'u'],
+  ['ú', 'u'],
+  ['û', 'u'],
+  ['ü', 'u'],
+  ['ý', 'y'],
+  ['ÿ', 'y'],
+  ['À', 'a'],
+  ['Á', 'a'],
+  ['Â', 'a'],
+  ['Ä', 'a'],
+  ['Ã', 'a'],
+  ['Å', 'a'],
+  ['Ç', 'c'],
+  ['È', 'e'],
+  ['É', 'e'],
+  ['Ê', 'e'],
+  ['Ë', 'e'],
+  ['Ì', 'i'],
+  ['Í', 'i'],
+  ['Î', 'i'],
+  ['Ï', 'i'],
+  ['Ñ', 'n'],
+  ['Ò', 'o'],
+  ['Ó', 'o'],
+  ['Ô', 'o'],
+  ['Ö', 'o'],
+  ['Õ', 'o'],
+  ['Ù', 'u'],
+  ['Ú', 'u'],
+  ['Û', 'u'],
+  ['Ü', 'u'],
+  ['Ý', 'y'],
+  ['Ÿ', 'y'],
+  ['’', "'"],
+  ['‘', "'"],
+  ['`', "'"],
+  ['´', "'"],
+];
+const BASE_ACCENT_FROM = ACCENT_MAP.map(([source]) => source).join('');
+const ACCENT_TO = ACCENT_MAP.map(([, target]) => target).join('');
+const COMBINING_MARKS = Array.from({ length: 0x36f - 0x300 + 1 }, (_, index) =>
+  String.fromCharCode(0x0300 + index),
+).join('');
+const ACCENT_FROM = `${BASE_ACCENT_FROM}${COMBINING_MARKS}`;
+const ACCENT_TO_SQL = ACCENT_TO.replace(/'/g, "''");
 const PROPOSAL_COVER_RELATIVE_DIR = path.join('assets', 'books', 'proposals');
 const PROPOSAL_COVER_DIR = path.join(__dirname, '..', PROPOSAL_COVER_RELATIVE_DIR);
 const FINAL_COVER_DIR = path.join(__dirname, '..', 'assets', 'books');
@@ -10,6 +77,24 @@ const FINAL_COVER_DIR = path.join(__dirname, '..', 'assets', 'books');
 const ensureDirectory = async (dir) => {
   await fsPromises.mkdir(dir, { recursive: true });
 };
+
+const normalizeIsbn = (value = '') =>
+  String(value)
+    .replace(/[^0-9a-z]/gi, '')
+    .toLowerCase();
+
+const normalizeTextInput = (value = '') =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’‘`´]/g, "'")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const normalizeTitleColumn = (column) =>
+  `TRIM(BOTH ' ' FROM REGEXP_REPLACE(REGEXP_REPLACE(LOWER(TRANSLATE(${column}, '${ACCENT_FROM}', '${ACCENT_TO_SQL}')), '[^a-z0-9]+', ' ', 'g'), '\\s+', ' ', 'g'))`;
 
 const normalizeDate = (value) => {
   if (!value) {
@@ -166,6 +251,63 @@ const createProposal = async ({
     ],
   );
   return mapProposal(result.rows[0]);
+};
+
+const findExistingMatch = async ({ title, isbn }) => {
+  const normalizedTitle = normalizeTextInput(title);
+  const normalizedIsbn = normalizeIsbn(isbn);
+
+  let existingProposal = null;
+  let existingBook = null;
+
+  if (normalizedIsbn) {
+    const proposalByIsbn = await query(
+      `SELECT id, title, status
+       FROM book_proposals
+       WHERE status IN ('pending', 'approved')
+         AND REGEXP_REPLACE(LOWER(COALESCE(isbn, '')), '[^a-z0-9]+', '', 'g') = $1
+       LIMIT 1`,
+      [normalizedIsbn],
+    );
+    existingProposal = proposalByIsbn.rows[0] || null;
+
+    const bookByIsbn = await query(
+      `SELECT id, title
+       FROM books
+       WHERE REGEXP_REPLACE(LOWER(COALESCE(isbn, '')), '[^a-z0-9]+', '', 'g') = $1
+       LIMIT 1`,
+      [normalizedIsbn],
+    );
+    existingBook = bookByIsbn.rows[0] || null;
+  }
+
+  if (!existingProposal && normalizedTitle) {
+    const proposalByTitle = await query(
+      `SELECT id, title, status
+       FROM book_proposals
+       WHERE status IN ('pending', 'approved')
+         AND ${normalizeTitleColumn('title')} = $1
+       LIMIT 1`,
+      [normalizedTitle],
+    );
+    existingProposal = proposalByTitle.rows[0] || null;
+  }
+
+  if (!existingBook && normalizedTitle) {
+    const bookByTitle = await query(
+      `SELECT id, title
+       FROM books
+       WHERE ${normalizeTitleColumn('title')} = $1
+       LIMIT 1`,
+      [normalizedTitle],
+    );
+    existingBook = bookByTitle.rows[0] || null;
+  }
+
+  return {
+    proposal: existingProposal,
+    book: existingBook,
+  };
 };
 
 const listProposals = async ({ status, limit = 25, offset = 0 } = {}) => {
@@ -488,4 +630,5 @@ module.exports = {
   updateProposal,
   PROPOSAL_COVER_DIR,
   PROPOSAL_COVER_RELATIVE_DIR,
+  findExistingMatch,
 };
