@@ -4,3 +4,8 @@ export const LIBRARY_SORT_OPTIONS = [
 ]
 
 export const DEFAULT_LIBRARY_SORT = 'recent'
+
+export const LIBRARY_SORT_COOKIE = 'library_sort_preference'
+
+export const normalizeLibrarySort = (value) =>
+  LIBRARY_SORT_OPTIONS.some((option) => option.id === value) ? value : DEFAULT_LIBRARY_SORT
